@@ -19,9 +19,24 @@ def fetch_data(ticker: str, period: str = "2y") -> pd.DataFrame:
     data.columns = data.columns.str.lower() # Ensure lowercase columns
     return data
 
-# Placeholder for cache_data function (Task 2.2)
 def cache_data(data: pd.DataFrame, ticker: str) -> str:
-    pass
+    """
+    Caches the DataFrame to a Parquet file in the 'data/' directory.
+
+    Args:
+        data: The pandas DataFrame to cache.
+        ticker: The stock ticker symbol, used for naming the file.
+
+    Returns:
+        The path to the saved Parquet file.
+    """
+    data_dir = Path("data")
+    data_dir.mkdir(parents=True, exist_ok=True) # Ensure data directory exists
+    timestamp = datetime.now().strftime("%Y%m%d")
+    file_path = data_dir / f"{ticker}_{timestamp}.parquet"
+    data.to_parquet(file_path)
+    print(f"Data for {ticker} cached to {file_path}")
+    return str(file_path)
 
 # Placeholder for main execution flow (Task 5.1)
 if __name__ == "__main__":

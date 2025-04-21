@@ -3,12 +3,12 @@
 ## Status Summary
 
 *   **Total Tasks:** 19
-*   **Tasks Done:** 4
-*   **Tasks Pending:** 15
-*   **% Completed:** 21.1%
+*   **Tasks Done:** 5
+*   **Tasks Pending:** 14
+*   **% Completed:** 26.3%
 *   **Total Estimated Hours:** 13.4 h
-*   **Hours Completed:** 1.4 h
-*   **Hours Pending:** 12.0 h
+*   **Hours Completed:** 2.4 h
+*   **Hours Pending:** 11.0 h
 
 *(Summary based on initial estimates and completion of this plan file)*
 
@@ -24,7 +24,7 @@
 | 1.3     | Create `requirements.txt` and install dependencies | 0.1 h           | Done    |
 | **2**   | **Data Layer (`pipeline.py`)**                  | **3.0 h**       | In Progress |
 | 2.1     | Implement `fetch_data` function (yfinance)      | 1.0 h           | Done    |
-| 2.2     | Implement `cache_data` function (to parquet)    | 1.0 h           | Pending |
+| 2.2     | Implement `cache_data` function (to parquet)    | 1.0 h           | Done    |
 | 2.3     | Add basic data validation (e.g., check for NaNs) | 1.0 h           | Pending |
 | **3**   | **Backtesting (`backtest.py`)**                 | **3.0 h**       | Pending |
 | 3.1     | Define `SMACrossover` strategy class & `init` method | 1.0 h           | Pending |
