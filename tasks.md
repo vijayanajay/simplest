@@ -3,12 +3,12 @@
 ## Status Summary
 
 *   **Total Tasks:** 19
-*   **Tasks Done:** 2
-*   **Tasks Pending:** 17
-*   **% Completed:** 10.5%
+*   **Tasks Done:** 3
+*   **Tasks Pending:** 16
+*   **% Completed:** 15.8%
 *   **Total Estimated Hours:** 13.4 h
-*   **Hours Completed:** 0.3 h
-*   **Hours Pending:** 13.1 h
+*   **Hours Completed:** 0.4 h
+*   **Hours Pending:** 13.0 h
 
 *(Summary based on initial estimates and completion of this plan file)*
 
@@ -18,8 +18,8 @@
 
 | Task ID | Description                                     | Estimated Hours | Status  |
 | :------ | :---------------------------------------------- | :-------------- | :------ |
-| **1**   | **Project Setup**                               | **0.4 h**       | Mixed   |
-| 1.1     | Create project directory structure (`tech_analysis/`, `data/`, `plots/`, `reports/`) | 0.1 h           | Pending |
+| **1**   | **Project Setup**                               | **0.4 h**       | Done    |
+| 1.1     | Create project directory structure (`tech_analysis/`, `data/`, `plots/`, `reports/`) | 0.1 h           | Done    |
 | 1.2     | Set up virtual environment (Recommended)        | 0.2 h           | Done    |
 | 1.3     | Create `requirements.txt` and install dependencies | 0.1 h           | Done    |
 | **2**   | **Data Layer (`pipeline.py`)**                  | **3.0 h**       | Pending |
