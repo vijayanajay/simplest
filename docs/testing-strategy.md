@@ -10,6 +10,7 @@ The testing strategy for the Adaptive Automated Trading Strategy Discovery Syste
 -   **Goal 3: Validate Correctness of Algorithms:** Verify that the financial calculations, GA operations, and backtesting mechanics are implemented correctly against known examples or theoretical behavior.
 -   **Goal 4: Ensure Reproducibility:** Tests will be designed to confirm that, given the same inputs and configuration (and random seeds where applicable), the system produces consistent outputs. (PRD Testing Requirements)
 -   **Goal 5: Validate Strategy Robustness:** Employ specific testing methodologies to assess the generalizability and robustness of discovered strategies. (PRD Testing Requirements)
+-   **Integrate testing early in spikes/prototyping:** Conduct testing during dedicated spike phases for high-risk areas like backtesting and GA fitness to validate approaches and catch issues early.
 
 ## 2. Testing Levels
 
@@ -54,6 +55,7 @@ The testing strategy for the Adaptive Automated Trading Strategy Discovery Syste
     *   Cover critical user paths and core functionalities.
     *   Slower and potentially more brittle than unit/integration tests.
     *   Run as part of CI, but perhaps less frequently on every commit if very time-consuming (e.g., run on PRs and merges to main).
+    *   In E2E Tests, include automated verification for initial setup processes, such as environment configuration and dependency installation.
 
 ### Manual / Exploratory Testing
 
@@ -98,6 +100,7 @@ The testing strategy for the Adaptive Automated Trading Strategy Discovery Syste
 -   **Parameter Sensitivity Analysis (Conceptual for MVP):**
     *   **Scope:** Understand how sensitive a strategy's performance is to small changes in its parameters.
     *   **Methodology (MVP):** For top strategies, manually vary key parameters slightly and observe the impact on backtest results.
+-   **Robustness & Validation Testing Methodology:** Ensure testing includes scenarios from spike findings to validate multi-stock GA and backtesting robustness.
 
 ### Performance Testing & Profiling
 

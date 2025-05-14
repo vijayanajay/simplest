@@ -49,6 +49,7 @@ This document outlines the key technologies, libraries, and tools selected for t
 -   **Automation:** GitHub Actions and pre-commit hooks are selected to automate quality checks and ensure consistency.
 -   **User Experience (CLI):** Typer is chosen for its modern approach to building user-friendly CLIs with good validation and help generation.
 -   **Flexibility vs. Off-the-Shelf:** For core components like the GA and Backtester, the PRD indicates a preference for either well-regarded libraries (DEAP, Backtrader) or custom implementations if more control is needed. The tech stack reflects this by listing them as options, with the final decision to be based on detailed implementation needs.
+-   **Support for spike planning:** Select tools that facilitate rapid prototyping and validation in high-risk areas, ensuring modularity and ease of testing.
 
 ## 4. Change Log
 

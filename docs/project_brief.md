@@ -14,12 +14,15 @@ The Adaptive Automated Trading Strategy Discovery System is a Python-based solut
 
 - **Measurable Outcomes:**
   - Reduction in manual effort required for strategy discovery and refinement.
+  - **Completion of dedicated spike/prototyping phases for high-risk algorithmic components (realistic backtesting, multi-stock GA fitness/heuristics) with documented findings.**
+  - **Creation of clear, step-by-step initial project setup documentation and a user-facing basic usage guide.**
   - Improvement in strategy performance metrics (net profit, Sharpe ratio, win rate) compared to baseline strategies.
   - Increased analyst confidence in automated strategy evolution through clear reporting and transparency.
 
 - **Success Criteria:**
   - System autonomously generates and evolves strategies that outperform simple baseline strategies.
   - Analysts can clearly understand strategy logic, evolution rationale, and heuristic adjustments from generated reports.
+  - Spikes/prototypes for core algorithms successfully validate implementation approaches and de-risk development.
   - Strategies demonstrate robustness across multiple market conditions and stocks.
 
 - **Key Performance Indicators (KPIs):**
@@ -31,21 +34,25 @@ The Adaptive Automated Trading Strategy Discovery System is a Python-based solut
 
 ### Functional Requirements (High-Level)
 
-- **Capability 1: Automated Feature Generation**
+- **Capability 1: Data Ingestion and Feature Engineering**
   - Automatically fetch NSE equity data via `yfinance`.
   - Generate standard technical indicators (RSI, MACD, Bollinger Bands, moving averages, volume indicators).
 
 - **Capability 2: Strategy Backtesting**
+  - **Spike:** Conduct dedicated spike on implementing realistic costs, slippage, and basic position sizing, focusing on multi-stock backtest aggregation performance.
   - Evaluate strategies defined by simple JSON-like rules.
+  - Calculate key performance metrics (profit, Sharpe ratio, win rate, drawdown), including costs and sizing, aggregated across multiple stocks.
   - Calculate key performance metrics (profit, Sharpe ratio, win rate, drawdown).
   - Provide concise visualizations (equity curves, trade signals).
 
 - **Capability 3: Genetic Algorithm-Based Strategy Optimization**
   - Automatically generate initial simple strategies.
   - Evolve strategies using genetic operations (crossover, mutation, selection).
+  - **Spike:** Conduct dedicated spike on implementing the multi-stock fitness function and core heuristic integration (e.g., penalizing `GloballyPoorPerformer`, `PoorGeneralization`).
   - Implement heuristic tagging, archetype clustering, Bayesian updates, and evolutionary fitness shaping.
+  - **Implement core GA mechanics based on spike findings.**
 
-- **Capability 4: Analyst Reporting and Heuristic Analysis**
+- **Capability 4: Reporting and Analysis**
   - Generate concise, human-readable analyst reports summarizing strategy performance, heuristic tags, adjustments, and robustness tests.
   - Perform heuristic tagging (root cause analysis), archetype clustering, and adversarial simulations.
 
@@ -58,11 +65,13 @@ The Adaptive Automated Trading Strategy Discovery System is a Python-based solut
 - **Maintainability:** Clear, modular Python code with comprehensive documentation and unit tests.
 - **Usability/Accessibility:** Clear, intuitive analyst reports; minimal technical expertise required.
 - **Other Constraints:** Python-only implementation, exclusive use of `yfinance` for data sourcing.
+- **Initial Setup:** Provide clear, automated steps for setting up the development environment, installing dependencies, and configuring development tools (linters, formatters, hooks).
 
 ### User Experience (UX) Requirements (High-Level)
 
 - **UX Goal 1:** Analysts can quickly understand strategy logic, performance, and evolution rationale from concise reports.
 - **UX Goal 2:** Minimal setup and configuration required; intuitive command-line or script-based interaction.
+- **User Documentation:** Create a clear, step-by-step guide for initial project setup and basic user operation (running a discovery run, interpreting reports).
 
 _(See `docs/ui-ux-spec.md` for details)_
 
@@ -78,6 +87,7 @@ _(See `docs/api-reference.md` for technical details)_
 - Comprehensive unit tests for each Python package.
 - Integration tests validating interactions between packages.
 - Specific robustness testing across diverse market regimes.
+- Automated tests for initial setup verification.
 
 _(See `docs/testing-strategy.md` for details)_
 
@@ -87,12 +97,13 @@ _(See `docs/testing-strategy.md` for details)_
 - **Epic 2: Strategy Backtester Package** - Goal: Evaluate trading strategies and calculate performance metrics.
 - **Epic 3: Strategy Optimizer Package** - Goal: Automate strategy discovery and evolution using genetic algorithms and heuristic analysis.
 - **Epic 4: Strategy Analyzer Package** - Goal: Generate concise analyst reports and perform heuristic tagging, clustering, and robustness analysis.
+- **Epic 5 (Implicit/Cross-Cutting): Documentation & Developer Experience** - Goal: Ensure clear initial setup, developer coding standards, and user-facing documentation are created and maintained.
 
 ## Key Reference Documents
 
 - [`docs/project-brief.md`](docs/project-brief.md)
 - [`docs/architecture.md`](docs/architecture.md)
-- [`docs/epic1.md`](docs/epic1.md), [`docs/epic2.md`](docs/epic2.md), [`docs/epic3.md`](docs/epic3.md), [`docs/epic4.md`](docs/epic4.md)
+- [`docs/epic1.md`](docs/epic1.md), [`docs/epic2.md`](docs/epic2.md), [`docs/epic3.md`](docs/epic3.md), [`docs/epic4.md`](docs/epic4.md), [`docs/epic5.md`](docs/epic5.md)
 - [`docs/tech-stack.md`](docs/tech-stack.md)
 - [`docs/api-reference.md`](docs/api-reference.md)
 - [`docs/testing-strategy.md`](docs/testing-strategy.md)
@@ -120,6 +131,7 @@ _(See `docs/testing-strategy.md` for details)_
 - **Frontend Platform:** Not applicable; command-line or script-based interaction.
 - **Backend Platform:** Python exclusively; modular packages (`FeatureFactory`, `StrategyBacktester`, `StrategyOptimizer`, `StrategyAnalyzer`).
 - **Database Requirements:** No database required; local CSV or Pandas DataFrames sufficient for MVP.
+- **Plan for dedicated spike/prototyping phases for high-risk, complex areas (realistic backtesting, multi-stock GA fitness/heuristics) early in design and implementation.**
 
 ### Technical Constraints
 
@@ -130,7 +142,7 @@ _(See `docs/testing-strategy.md` for details)_
 ### Deployment Considerations
 
 - Local deployment only; no CI/CD pipeline required for MVP.
-- Clear documentation and setup instructions for local execution.
+- **Provide clear, step-by-step initial setup instructions for developers (Poetry, environment, hooks).**
 
 ### Local Development & Testing Requirements
 
@@ -138,9 +150,19 @@ _(See `docs/testing-strategy.md` for details)_
 - Comprehensive unit tests (`pytest`) for each package.
 - Integration tests validating package interactions.
 - Utility scripts provided for easy local execution and testing.
+- **Integrate testing early, including testing during prototyping/spiking phases.**
 
 ### Other Technical Considerations
 
 - Minimal security concerns due to local execution.
 - Scalability considerations for future cloud-based enhancements.
 - Clear logging and error handling for debugging and analyst review.
+
+### Design Principles
+
+- **Must support realistic transaction costs, slippage, and position sizing in backtesting.**
+- **GA fitness function must effectively incorporate multi-stock performance and heuristic penalties.**
+
+### General Requirements
+
+- Ensure comprehensive user-facing documentation is planned for setup, basic configuration, running the system, and interpreting reports.

@@ -49,6 +49,8 @@ The following table lists the environment variables recognized by the applicatio
 -   **Relationship with `config.yaml`:**
     *   `config.yaml` is the primary source for most application settings, especially those related to the trading strategy discovery logic, data sources, feature engineering, GA parameters, backtesting, and reporting.
     *   Environment variables are for settings that are external to the core application logic, are sensitive, or need to vary between deployment environments without altering the committed `config.yaml`.
+-   **Integrate with initial setup:** Ensure environment variables are part of the automated initial setup process, including scripts for quick configuration during spike phases.
+-   **Support for spike planning and early testing:** Include validation of environment variables in early testing phases to ensure correct setup for high-risk components like GA and backtesting, with clear instructions in the project's setup documentation.
 
 ## 5. Change Log
 

@@ -74,6 +74,10 @@ graph TD
 
 - **Configuration-Driven Behavior**: Extensive use of external configuration rather than hardcoded parameters. - Justification: Allows users to customize runs without code changes and supports reproducible experiments.
 
+- **Plan for dedicated spike/prototyping phases:** Conduct spikes for high-risk areas like realistic backtesting and multi-stock GA fitness to validate approaches early.
+
+- **Integrate testing early:** Include testing during prototyping phases to ensure robustness.
+
 ## Core Workflow / Sequence Diagrams
 
 ```mermaid
@@ -111,6 +115,8 @@ sequenceDiagram
 - Infrastructure as Code (IaC): N/A
 - Deployment Strategy: Local installation via Python environment setup
 - Environments: Local Development/Testing (Windows focus for MVP)
+
+- **Provide clear, step-by-step initial setup instructions:** Include automated steps for setting up the development environment, installing dependencies, and configuring tools like linters and formatters.
 
 ## Key Reference Documents
 

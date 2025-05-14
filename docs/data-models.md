@@ -240,6 +240,8 @@ class CLIConfiguration(BaseModel):
         import uuid
         return v or str(uuid.uuid4())
 
+    - **Provide clear initial setup instructions:** Add notes on automated validation and setup for environment variables and configuration files to ensure seamless integration during spike phases.
+
 ### ReportData
 
 -   **Description:** Structure of the data object passed to the reporting engine to generate various output formats (HTML, Markdown, CSV).
