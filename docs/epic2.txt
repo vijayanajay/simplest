@@ -1,0 +1,112 @@
+# Epic 2: Strategy Backtesting Engine
+
+**Goal:** Build a robust backtesting engine (`StrategyBacktester`) that can evaluate strategies using the standardized rule format, incorporating realistic costs, slippage, and basic position sizing, and calculate key performance metrics per stock and aggregated. This supports the PRD goals of identifying profitable/robust strategies, providing interpretable strategies (via backtest results), and enabling measurable outcomes (KPIs).
+
+## Story List
+
+### Story 2.1: Core Backtesting Logic
+
+- **User Story / Goal:** As the system, I need a core backtesting engine that can simulate trades based on a standardized strategy rule format and historical data so that strategy performance can be evaluated.
+- **Detailed Requirements:**
+  - Implement the `StrategyBacktester` component.
+  - The backtester must accept historical OHLCV data and generated features (Pandas DataFrames).
+  - The backtester must accept a strategy definition in the standardized rule format (e.g., JSON object, validated by Pydantic).
+  - Implement the logic to evaluate entry and exit rules based on the provided data and strategy definition.
+  - Simulate trade execution (entry and exit points) based on rule signals and available data (e.g., using close price for simplicity in MVP, or next open/close based on rule type).
+  - Track open positions and their state.
+  - Handle basic trade lifecycle (entry, holding, exit).
+  - **Plan for versioning the strategy rule format to accommodate future enhancements (e.g., dynamic exits) and maintain backward compatibility or provide clear migration paths.**
+- **Acceptance Criteria (ACs):**
+  - AC1: The `StrategyBacktester` can be instantiated with historical data and features.
+  - AC2: The backtester accepts a strategy definition in the standardized rule format.
+  - AC3: The backtester correctly identifies entry and exit points based on simple rule types (e.g., single indicator threshold, simple crossover).
+  - AC4: The backtester simulates the holding of positions between entry and exit.
+  - AC5: The backtester processes the historical data chronologically to simulate trades.
+  - AC6: The strategy rule format is defined and documented, including a plan for versioning.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Define standardized strategy rule format (Pydantic model).
+  - [ ] Implement core backtesting loop.
+  - [ ] Implement rule evaluation logic.
+  - [ ] Implement position tracking.
+  - [ ] Add basic trade simulation (entry/exit points).
+
+---
+
+### Story 2.2: Realistic Simulation
+
+- **User Story / Goal:** As a trader, I want the backtesting results to reflect real-world trading conditions by including transaction costs, slippage, and basic position sizing so that the performance metrics are realistic and trustworthy.
+- **Detailed Requirements:**
+  - Modify `StrategyBacktester` to include configurable transaction costs (brokerage, statutory charges).
+  - Modify `StrategyBacktester` to include configurable slippage modeling (e.g., fixed percentage or points per trade).
+  - Implement basic position sizing logic within the backtester (e.g., fixed fractional sizing based on account equity and a configurable fraction).
+  - Ensure that transaction costs and slippage are applied to simulated trades.
+  - Ensure that position sizing determines the number of shares traded for each entry.
+  - The backtester must track account equity over time, incorporating trade profits/losses, costs, and sizing.
+- **Acceptance Criteria (ACs):**
+  - AC1: The backtester can be configured with transaction cost parameters.
+  - AC2: The backtester can be configured with slippage parameters.
+  - AC3: The backtester can be configured with basic position sizing parameters (e.g., fixed fractional fraction).
+  - AC4: Simulated trades correctly deduct transaction costs and account for slippage.
+  - AC5: Position sizing logic correctly calculates the number of shares to trade based on current equity and configuration.
+  - AC6: The backtester accurately tracks account equity over the backtest period, reflecting trade outcomes, costs, and sizing.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Add transaction cost calculation.
+  - [ ] Add slippage calculation.
+  - [ ] Implement fixed fractional sizing.
+  - [ ] Integrate costs, slippage, and sizing into trade simulation.
+  - [ ] Implement equity curve tracking.
+
+---
+
+### Story 2.3: Performance Metrics Calculation
+
+- **User Story / Goal:** As an analyst, I want to view key performance metrics (like Net Profit, Max Drawdown, Sharpe Ratio) for each strategy, broken down per stock tested, so that I can quickly assess its historical performance and generalizability.
+- **Detailed Requirements:**
+  - Modify `StrategyBacktester` to calculate key performance metrics after a backtest run.
+  - Metrics to calculate: Net Profit, Max Drawdown, Sharpe Ratio, Win Rate, Total Trades.
+  - Calculate these metrics for each individual stock the strategy was tested on.
+  - Calculate aggregated metrics across all stocks tested for a strategy.
+  - Ensure metrics clearly state if they are inclusive of configured transaction costs and slippage.
+  - Output metrics in a structured format suitable for consumption by the `StrategyAnalyzer`.
+- **Acceptance Criteria (ACs):**
+  - AC1: The backtester calculates Net Profit, Max Drawdown, Sharpe Ratio, Win Rate, and Total Trades for a backtest run on a single stock.
+  - AC2: The backtester calculates these metrics individually for each stock when tested on multiple stocks.
+  - AC3: The backtester calculates aggregated metrics across all stocks tested for a strategy.
+  - AC4: The calculated metrics correctly reflect the impact of transaction costs, slippage, and position sizing.
+  - AC5: The output format for metrics is structured and includes both per-stock and aggregated results.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Implement Net Profit calculation.
+  - [ ] Implement Max Drawdown calculation.
+  - [ ] Implement Sharpe Ratio calculation.
+  - [ ] Implement Win Rate calculation.
+  - [ ] Implement Total Trades count.
+  - [ ] Aggregate metrics across stocks.
+  - [ ] Format metric output.
+
+---
+
+### Story 2.4: Basic Overfitting & Robustness Checks
+
+- **User Story / Goal:** As an analyst, I want to see how strategies performed across different market conditions and different stocks so that I can assess their robustness, reliability, and generalizability.
+- **Detailed Requirements:**
+  - Modify `StrategyBacktester` to support backtesting on different historical periods or data segments (e.g., in-sample vs. out-of-sample, or specific regime slices). This will be driven by configuration.
+  - The backtester should output performance metrics separately for each tested period/segment.
+  - Support the concept of "Adversarial Simulation" by allowing backtesting on pre-defined, potentially challenging historical data slices configured by the user.
+  - The backtester should provide data necessary for the `StrategyAnalyzer` to compare performance across different stocks and periods/segments.
+- **Acceptance Criteria (ACs):**
+  - AC1: The backtester can run simulations on a specified subset or segment of the historical data range.
+  - AC2: Performance metrics are calculated and reported separately for each distinct data segment tested.
+  - AC3: The backtester can be configured to run on multiple, distinct historical periods/segments within a single evaluation.
+  - AC4: The output includes sufficient detail (metrics per segment, per stock per segment) for the `StrategyAnalyzer` to perform robustness comparisons.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Add date range/segmenting logic to backtester.
+  - [ ] Ensure metrics are calculated per segment.
+  - [ ] Update output format to include segment results.
+
+---
+
+## Change Log
+
+| Change        | Date       | Version | Description                    | Author         |
+| ------------- | ---------- | ------- | ------------------------------ | -------------- |
+| Initial Draft | 2023-10-27 | 0.1     | Created Epic 2 based on PRD MVP | PM Agent       | 

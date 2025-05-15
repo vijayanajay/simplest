@@ -1,0 +1,101 @@
+# Epic 1: Core Framework & Data Handling
+
+**Goal:** Setup the foundational system structure, handle configuration, fetch and cache historical data for Indian stocks, and generate the core set of MVP technical features. This supports the PRD goals of automating discovery for Indian equities, providing interpretable strategies (via features), and enabling local execution.
+
+## Story List
+
+### Story 1.1: System Setup & Configuration
+
+- **User Story / Goal:** As a user, I want to easily configure the system (e.g., list of Indian large/mid-cap NSE stocks or criteria for selection, date range, basic GA parameters, feature families to include, heuristic thresholds) via a configuration file so that I can tailor the discovery process to my specific needs without overcomplicating the configuration process. I also want to run the system on my local Windows machine with minimal setup hassle so that I can get started quickly.
+- **Detailed Requirements:**
+  - Implement a Command Line Interface (CLI) using Typer/Click for initiating runs (e.g., `tradefinder discover --config-file config.yaml`).
+  - Design and implement the `config.yaml` structure to include essential user-facing parameters as defined in the PRD User Stories and Configuration NFR (stock list, date range, feature selection, basic GA settings, heuristic thresholds, min profitable stocks).
+  - Implement configuration loading and parsing logic.
+  - Implement robust validation for the `config.yaml` structure and values (e.g., using Pydantic) with clear error messages.
+  - Implement structured logging (e.g., JSON format) with context (module, function, run ID).
+  - Log the full effective configuration used for each run.
+  - Provide clear, step-by-step setup instructions for setting up a local Python environment (e.g., using `venv`) and installing dependencies from a `requirements.txt` file.
+  - Ensure the system runs successfully within a standard local Python environment on Windows.
+- **Acceptance Criteria (ACs):**
+  - AC1: The system can be initiated via a CLI command specifying a configuration file.
+  - AC2: The system successfully loads and parses parameters from a valid `config.yaml` file.
+  - AC3: The system provides clear, user-friendly error messages for invalid or malformed `config.yaml` files.
+  - AC4: The system logs are structured (e.g., JSON lines) and include relevant context like run ID.
+  - AC5: The full configuration used for a run is logged at the start of the run.
+  - AC6: Setup instructions clearly guide a user to install dependencies in a virtual environment.
+  - AC7: The system executes the initial steps (e.g., config loading, logging setup) successfully on a local Windows machine with the specified dependencies installed.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Design `config.yaml` schema.
+  - [ ] Implement config loading/parsing.
+  - [ ] Add Pydantic validation for config.
+  - [ ] Setup structured logging.
+  - [ ] Implement CLI entry point.
+  - [ ] Write setup documentation.
+
+---
+
+### Story 1.2: Historical Data Fetching & Caching
+
+- **User Story / Goal:** As a user, I want the system to reliably fetch historical price and volume data for the specified Indian large/mid-cap NSE stocks over the configured date range so that the backtesting and strategy discovery process has the necessary input data. I also want the system to cache this data efficiently so that subsequent runs using the same data are faster.
+- **Detailed Requirements:**
+  - Implement a resilient wrapper around `yfinance` to fetch OHLCV data for NSE equity stocks (symbols ending in `.NS`).
+  - The wrapper must include retry logic and configurable timeouts for API calls.
+  - Implement a local caching mechanism for fetched data.
+  - The cache should use SQLite for metadata (symbol, date range, version) and potentially data chunks.
+  - Include simple checksums or verification logic for cached data integrity.
+  - The caching mechanism should support versioning to handle potential future data format changes.
+  - Handle and report errors gracefully if data fetching fails for a specific stock or date range.
+  - Ensure the system can handle the volume of data required for multiple stocks over several years.
+- **Acceptance Criteria (ACs):**
+  - AC1: The system successfully fetches historical OHLCV data for all specified `.NS` stock symbols within the configured date range using the `yfinance` wrapper.
+  - AC2: The `yfinance` wrapper includes retry logic for failed requests.
+  - AC3: Fetched data is stored in a local cache.
+  - AC4: Subsequent runs requesting the same data within the cached range retrieve data from the cache instead of refetching via `yfinance`.
+  - AC5: The caching mechanism includes metadata allowing verification of cached data validity (e.g., symbol, date range, version, checksum).
+  - AC6: The system logs clear messages indicating data fetching progress, cache hits, and any fetching errors.
+  - AC7: The system handles cases where data is partially available or missing for a stock/date range, logging warnings but continuing the run if possible (or failing gracefully if critical data is missing).
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Design `yfinance` wrapper with retries.
+  - [ ] Design caching strategy (SQLite + data storage).
+  - [ ] Implement caching logic (save, load, check validity).
+  - [ ] Integrate fetching and caching.
+  - [ ] Add error handling for fetching failures.
+
+---
+
+### Story 1.3: MVP Feature Generation
+
+- **User Story / Goal:** As the system, I need to generate a core set of technical indicators and features for the fetched historical data so that the Strategy Optimizer has the necessary building blocks to construct trading strategies.
+- **Detailed Requirements:**
+  - Implement the `FeatureFactory` component.
+  - `FeatureFactory` must take historical OHLCV data (Pandas DataFrame) as input.
+  - `FeatureFactory` must generate the MVP set of features as specified in the PRD Phase 1: Moving Averages (SMA, EMA), RSI, MACD, Bollinger Bands, ATR, basic Volume indicators.
+  - The generation process should be vectorized for efficiency using Pandas/NumPy.
+  - Ensure appropriate data types are used for features (`float32` where possible).
+  - The `FeatureFactory` should accept configuration specifying which feature families to generate.
+  - **Indicator parameters will be chosen by the GA from a small, predefined set of common values or very tight ranges to ensure interpretability and reduce search space initially.** The `FeatureFactory` needs to be able to generate features for these specific parameter sets.
+  - Output generated features as Pandas DataFrames with clear column naming conventions.
+- **Acceptance Criteria (ACs):**
+  - AC1: The `FeatureFactory` component can be instantiated and accepts historical data.
+  - AC2: The `FeatureFactory` generates SMA, EMA, RSI, MACD, Bollinger Bands, ATR, and basic Volume features.
+  - AC3: Feature generation is performed efficiently (vectorized).
+  - AC4: Generated features are output as a Pandas DataFrame with correctly named columns.
+  - AC5: The `FeatureFactory` can generate features for specific, predefined indicator parameter values (e.g., SMA 20, RSI 14).
+  - AC6: The `FeatureFactory` respects the configuration specifying which feature families to include.
+- **Tasks (Optional Initial Breakdown):**
+  - [ ] Implement SMA/EMA calculation.
+  - [ ] Implement RSI calculation.
+  - [ ] Implement MACD calculation.
+  - [ ] Implement Bollinger Bands calculation.
+  - [ ] Implement ATR calculation.
+  - [ ] Implement basic Volume indicators.
+  - [ ] Integrate feature selection based on config.
+  - [ ] Ensure vectorized calculations.
+
+---
+
+## Change Log
+
+| Change        | Date       | Version | Description                    | Author         |
+| ------------- | ---------- | ------- | ------------------------------ | -------------- |
+| Initial Draft | 2023-10-27 | 0.1     | Created Epic 1 based on PRD MVP | PM Agent       | 
