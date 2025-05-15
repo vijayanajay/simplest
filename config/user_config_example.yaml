@@ -1,0 +1,44 @@
+# Example User Configuration for Adaptive Trading Strategy Discovery System
+# Customize this file for your specific needs
+
+# Data source configuration (required)
+data_source:
+  provider: yfinance
+  symbols:
+    - RELIANCE.NS        # Reliance Industries
+    - TCS.NS             # Tata Consultancy Services
+    - HDFCBANK.NS        # HDFC Bank
+  start_date: 2011-01-01 # Start date for historical data
+  end_date: 2025-04-30   # End date for historical data
+  interval: 1d           # Data interval (1d = daily)
+
+# Feature engineering - using defaults for simplicity
+# Uncomment and modify specific settings if needed
+#feature_engineering:
+#  sma_periods:
+#    - 10
+#    - 20
+#    - 50
+
+# Genetic Algorithm configuration - minimal customization
+genetic_algorithm:
+  population_size: 50    # Reduced population size for faster execution
+  generations: 20        # Reduced number of generations for faster execution
+  
+  # Minimum number of symbols the strategy must be profitable on
+  min_profitable_symbols: 2
+
+# Backtesting configuration - using defaults
+# Uncomment and modify specific settings if needed
+#backtesting:
+#  initial_capital: 50000.0
+#  commission_percent: 0.002  # 0.2%
+
+# Reporting configuration - using defaults
+# Uncomment and modify specific settings if needed
+#reporting:
+#  top_n_strategies: 3
+
+# Set logging level to INFO for normal operation
+# Use DEBUG for more detailed logs during development
+logging_level: INFO 

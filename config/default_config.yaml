@@ -1,0 +1,98 @@
+# Default configuration for the Adaptive Trading Strategy Discovery System
+# All available settings are included with default values where applicable
+
+# run_id: Optional. If not provided, a UUID will be generated
+
+# Data source configuration (required)
+data_source:
+  provider: yfinance                    # Currently only 'yfinance' is supported
+  api_key_env_var: YFINANCE_API_KEY     # Optional. Environment variable name for API key if needed
+  symbols:                              # List of stock symbols to analyze
+    - RELIANCE.NS                       # Example: Reliance Industries Ltd (NSE)
+    - TCS.NS                            # Example: Tata Consultancy Services (NSE)
+    - INFY.NS                           # Example: Infosys Ltd (NSE)
+    - HDFCBANK.NS                       # Example: HDFC Bank Ltd (NSE)
+    - BHARTIARTL.NS                     # Example: Bharti Airtel Ltd (NSE)
+  start_date: 2011-01-01                # Start date for historical data (YYYY-MM-DD)
+  end_date: 2025-04-30                  # End date for historical data (YYYY-MM-DD)
+  interval: 1d                          # Data interval (1d = daily)
+
+# Feature engineering configuration
+feature_engineering:
+  # Simple Moving Average periods
+  sma_periods:
+    - 20
+    - 50
+    - 200
+  
+  # Exponential Moving Average periods
+  ema_periods:
+    - 12
+    - 26
+  
+  # Relative Strength Index periods
+  rsi_periods:
+    - 14
+  
+  # MACD parameters
+  macd_parameters:
+    fast: 12
+    slow: 26
+    signal: 9
+  
+  # Bollinger Bands parameters
+  bollinger_bands_parameters:
+    period: 20
+    std_dev: 2.0
+  
+  # Custom feature scripts (optional)
+  custom_feature_scripts: []
+
+# Genetic Algorithm configuration
+genetic_algorithm:
+  population_size: 100                  # Number of strategies in the population
+  generations: 50                       # Number of generations to evolve
+  mutation_rate: 0.1                    # Probability of mutation (0.0 to 1.0)
+  crossover_rate: 0.7                   # Probability of crossover (0.0 to 1.0)
+  elitism_count: 5                      # Number of top strategies to preserve unchanged
+  min_profitable_symbols: 1             # Minimum number of symbols the strategy must be profitable on
+  
+  # Fitness function weights
+  fitness_weights:
+    net_profit: 1.0
+    sharpe_ratio: 1.0
+    max_drawdown: -0.5
+    win_rate: 0.5
+  
+  # Rule complexity limits
+  max_rule_count: 5                     # Maximum number of rules in a strategy
+  max_conditions_per_rule: 3            # Maximum number of conditions per rule
+  
+  # Checkpointing
+  checkpoint_interval: 10               # Save GA state every N generations
+  checkpoint_path_template: ./state/ga_checkpoints/gen_{generation}.pkl  # Path template for GA checkpoints
+  evolution_log_path: ./state/ga_evolution_log.jsonl  # Path for GA evolution log
+
+# Backtesting configuration
+backtesting:
+  initial_capital: 100000.0             # Initial capital for backtesting
+  commission_percent: 0.001             # Commission as a percentage (0.1%)
+  slippage_percent: 0.0005              # Slippage as a percentage (0.05%)
+  position_size_percent: 0.1            # Position size as a percentage of capital (10%)
+  
+  # Optional: backtest date range if different from data source
+  # backtest_start_date: 2021-06-01
+  # backtest_end_date: 2022-12-31
+
+# Reporting configuration
+reporting:
+  output_directory: ./reports            # Directory to save reports
+  report_formats:                        # Output formats
+    - html
+    - markdown
+    - csv
+  top_n_strategies: 5                    # Number of top strategies to detail in the report
+  plot_generation: true                  # Whether to generate plots
+
+# Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+logging_level: INFO 
