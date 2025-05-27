@@ -33,6 +33,20 @@ This document provides a reference for the external APIs consumed by the system 
             ...
             ```
     *   Other `yfinance` functionalities (e.g., fetching company info, financials) are not core to the MVP's strategy discovery but might be used for extended analysis if implemented.
+
+-   **Common Issues with yfinance and Solutions:**
+    *   **Rate Limiting:** Yahoo Finance may impose rate limits on frequent requests. Our wrapper incorporates retry logic with exponential backoff.
+    *   **Data Availability:** Some symbols might have incomplete data for certain timeframes. The system handles this gracefully.
+    *   **Network Issues:** Temporary connection problems are handled through retry mechanisms.
+    *   **API Changes:** Yahoo Finance occasionally changes their API structure. Our versioning system in the cache ensures compatibility.
+
+-   **Implemented Wrapper Features in `data_fetcher.py`:**
+    *   Configurable retry logic with exponential backoff
+    *   Connection timeout handling
+    *   Local caching mechanism to minimize API calls
+    *   Data integrity verification through checksums
+    *   Graceful error handling for missing data points
+    *   Detailed logging of data fetch operations
 -   **Rate Limits:**
     *   Yahoo Finance may impose rate limits on API requests. The `yfinance` library might handle some of this, but excessive requests can lead to temporary blocks.
     *   The system's data fetching component includes configurable retries with backoff (see `docs/coding-standards.md` and PRD) to manage transient issues.

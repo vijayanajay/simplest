@@ -269,7 +269,7 @@ The system uses SQLite for local caching of market data and potentially technica
 
 ### CachedMarketData Table
 
--   **Purpose:** Stores downloaded OHLCV market data.
+-   **Purpose:** Stores downloaded OHLCV market data to avoid repeated API calls to external data providers.
 -   **SQLite Schema Definition:**
     ```sql
     CREATE TABLE IF NOT EXISTS cached_market_data (
@@ -284,12 +284,28 @@ The system uses SQLite for local caching of market data and potentially technica
         fetch_datetime TEXT NOT NULL, -- ISO8601 timestamp of when data was fetched
         interval TEXT NOT NULL, -- e.g., '1d', '1h'
         version TEXT NOT NULL DEFAULT '1.0', -- Version of the data schema or processing
-        checksum TEXT, -- Optional: MD5 or SHA256 hash of the data for integrity
+        checksum TEXT, -- Optional: MD5 or SHA256 hash of the data for integrity check
         PRIMARY KEY (symbol, timestamp, interval, data_source)
     );
 
     CREATE INDEX IF NOT EXISTS idx_market_data_symbol_interval ON cached_market_data (symbol, interval);
     CREATE INDEX IF NOT EXISTS idx_market_data_timestamp ON cached_market_data (timestamp);
+    ```
+-   **Python Dataclass or Pydantic Model:**
+    ```python
+    class CachedMarketData(BaseModel):
+        symbol: str
+        timestamp: int  # Unix timestamp (seconds)
+        open: float
+        high: float
+        low: float
+        close: float
+        volume: int
+        data_source: str
+        fetch_datetime: str  # ISO8601 timestamp
+        interval: str
+        version: str = "1.0"
+        checksum: Optional[str] = None
     ```
 
 ### CachedIndicatorData Table (Optional, if indicators are pre-calculated and cached)
