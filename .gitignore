@@ -4,6 +4,7 @@
 *.code-workspace
 .aider*
 /aider.conf.yaml
+bmad-agent/
 
 # Python bytecode and cache
 __pycache__/
@@ -14,6 +15,8 @@ __pycache__/
 htmlcov/
 .tox/
 .nox/
+.vscode/
+.github/
 
 # Distribution / packaging
 dist/
@@ -36,3 +39,4 @@ ENV/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
