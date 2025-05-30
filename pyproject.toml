@@ -33,6 +33,12 @@ pytest = ">=7.3.1"
 [project.scripts]
 meqsap = "meqsap.cli:app"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
 [tool.pytest.ini_options]
 pythonpath = [
     "src"

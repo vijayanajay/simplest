@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from src.meqsap.data import fetch_market_data, clear_cache, DataError
+from meqsap.data import fetch_market_data, clear_cache, DataError
 
 # Mock data for testing
 def create_mock_data(start_date, end_date):
@@ -19,13 +19,13 @@ def create_mock_data(start_date, end_date):
 
 @pytest.fixture
 def mock_yfinance_download():
-    with patch('src.meqsap.data.yf.download') as mock_download:
+    with patch('meqsap.data.yf.download') as mock_download:
         yield mock_download
 
 @pytest.fixture
 def mock_cache():
-    with patch('src.meqsap.data.load_from_cache') as mock_load, \
-         patch('src.meqsap.data.save_to_cache') as mock_save:
+    with patch('meqsap.data.load_from_cache') as mock_load, \
+         patch('meqsap.data.save_to_cache') as mock_save:
         yield mock_load, mock_save
 
 @pytest.fixture(autouse=True)
@@ -99,9 +99,8 @@ def test_stale_data_validation(mock_yfinance_download, mock_cache):
     # Create data that ends at stale_date
     start_date = stale_date - timedelta(days=5)
     mock_data = create_mock_data(start_date, stale_date)
-    
-    # Mock today's date to be 3 days after stale_date
-    with patch('src.meqsap.data.date') as mock_date:
+      # Mock today's date to be 3 days after stale_date
+    with patch('meqsap.data.date') as mock_date:
         mock_date.today.return_value = stale_date + timedelta(days=3)
         mock_yfinance_download.return_value = mock_data
         
@@ -122,7 +121,7 @@ def test_invalid_ticker(mock_yfinance_download, mock_cache):
         fetch_market_data('INVALID_TICKER', date(2023, 1, 1), date(2023, 1, 10))
 
 def test_clear_cache():
-    from src.meqsap.data import CACHE_DIR
+    from meqsap.data import CACHE_DIR
     
     # Create dummy cache file
     test_file = CACHE_DIR / 'test_cache.parquet'
