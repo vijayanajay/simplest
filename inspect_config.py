@@ -2,7 +2,18 @@ import sys
 import os
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+# Find project root by looking for pyproject.toml or other project markers
+current_dir = os.path.abspath(os.path.dirname(__file__))
+project_root = current_dir
+
+# If this script is moved to a subdirectory, navigate up to find project root
+while project_root != os.path.dirname(project_root):  # Stop at filesystem root
+    if os.path.exists(os.path.join(project_root, 'pyproject.toml')) or \
+       os.path.exists(os.path.join(project_root, 'src')):
+        break
+    project_root = os.path.dirname(project_root)
+
+sys.path.insert(0, project_root)
 
 def inspect_strategy_config():
     """Inspect the StrategyConfig class and its requirements."""

@@ -4,6 +4,11 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import warnings
+
+# Suppress pandas_ta related warnings
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
+
 from meqsap.data import fetch_market_data, clear_cache, DataError
 
 # Mock data for testing

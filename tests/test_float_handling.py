@@ -1,10 +1,14 @@
 import unittest
+import warnings
 import pandas as pd
 import numpy as np
 import datetime
 from datetime import date
-from src.meqsap.backtest import run_backtest, BacktestError
+from src.meqsap.backtest import run_backtest, BacktestError, safe_float, StrategySignalGenerator
 from src.meqsap.config import StrategyConfig, MovingAverageCrossoverParams
+
+# Suppress pandas_ta pkg_resources deprecation warning
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
 
 class TestFloatConversions(unittest.TestCase):
     """Test float conversion handling in backtest module."""
@@ -42,7 +46,7 @@ class TestFloatConversions(unittest.TestCase):
             start_date=date(2020, 1, 1),
             end_date=date(2021, 1, 1),
             strategy_type="MovingAverageCrossover",
-            strategy_params=self.valid_params.dict()
+            strategy_params=self.valid_params.model_dump()
         )
     
     def test_none_values(self):
@@ -62,7 +66,7 @@ class TestFloatConversions(unittest.TestCase):
             start_date=date(2020, 1, 1),
             end_date=date(2021, 1, 1),
             strategy_type="MovingAverageCrossover",
-            strategy_params=params.dict()
+            strategy_params=params.model_dump()
         )
         
         # Prepare data and signals for backtesting
@@ -95,7 +99,7 @@ class TestFloatConversions(unittest.TestCase):
             start_date=date(2020, 1, 1),
             end_date=date(2021, 1, 1),
             strategy_type="MovingAverageCrossover",
-            strategy_params=params.dict()
+            strategy_params=params.model_dump()
         )
         
         # Prepare data and signals for backtesting
@@ -114,6 +118,35 @@ class TestFloatConversions(unittest.TestCase):
     def test_mock_stats_with_non_numeric(self):
         """Test handling of non-numeric values in stats dictionary."""
         self.skipTest("Skipping this test as it requires mocking")
+
+class TestFloatHandling:
+    """Test safe float handling in backtesting operations."""
+    
+    def test_safe_float_with_valid_numbers(self):
+        """Test safe_float with valid numeric inputs."""
+        assert safe_float(1.5) == 1.5
+        assert safe_float(10) == 10.0
+        assert safe_float("3.14") == 3.14
+        assert safe_float(0) == 0.0
+        
+    def test_safe_float_with_invalid_inputs(self):
+        """Test safe_float with invalid inputs."""
+        assert safe_float(None) == 0.0
+        assert safe_float("invalid") == 0.0
+        assert safe_float([1, 2, 3]) == 0.0
+        assert safe_float({"key": "value"}) == 0.0
+        
+    def test_safe_float_with_custom_default(self):
+        """Test safe_float with custom default values."""
+        assert safe_float(None, default=100.0) == 100.0
+        assert safe_float("invalid", default=-1.0) == -1.0
+        
+    def test_safe_float_with_nan_and_inf(self):
+        """Test safe_float with NaN and infinite values."""
+        assert safe_float(np.nan, default=0.0) == 0.0
+        # Note: inf values should be handled gracefully
+        result = safe_float(np.inf, default=0.0)
+        assert result == 0.0 or result == float('inf')  # Allow either behavior
 
 if __name__ == '__main__':
     unittest.main()

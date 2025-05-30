@@ -5,6 +5,7 @@ Tests for the configuration module.
 import os
 import tempfile
 from datetime import date
+import warnings
 
 import pytest
 import yaml
@@ -17,6 +18,9 @@ from meqsap.config import (
     ConfigError,
     MovingAverageCrossoverParams,
 )
+
+# Suppress pandas_ta related warnings  
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
 
 
 # Test fixtures

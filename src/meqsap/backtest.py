@@ -13,6 +13,9 @@ from datetime import date
 import warnings
 import logging
 
+# Suppress pandas_ta pkg_resources deprecation warning
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
+
 try:
     import pandas_ta as ta
 except ImportError:
@@ -130,9 +133,12 @@ class StrategySignalGenerator:
         validated_params = strategy_config.validate_strategy_params()
         if not isinstance(validated_params, MovingAverageCrossoverParams):
             raise BacktestError("Invalid parameters for MovingAverageCrossover strategy")
-        
         fast_ma = validated_params.fast_ma
         slow_ma = validated_params.slow_ma
+        
+        # Validate MA period ordering
+        if fast_ma >= slow_ma:
+            raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma}) must be less than slow_ma ({slow_ma})")
         
         # Check data sufficiency
         if len(data) < slow_ma:
@@ -140,27 +146,34 @@ class StrategySignalGenerator:
         
         # Extract close prices
         close_prices = data['Close']
-        
-        # Calculate moving averages using pandas-ta
+          # Calculate moving averages using pandas-ta
         fast_ma_series = ta.sma(close_prices, length=fast_ma)
         slow_ma_series = ta.sma(close_prices, length=slow_ma)
         
-        # Create signals DataFrame
-        signals = pd.DataFrame(index=data.index)
+        # Find valid index range where both MAs have non-NaN values
+        valid_mask = fast_ma_series.notna() & slow_ma_series.notna()
+        valid_index = data.index[valid_mask]
+        
+        if len(valid_index) == 0:
+            raise BacktestError("No valid data points after moving average calculation")
+        
+        # Create signals DataFrame restricted to valid index range
+        signals = pd.DataFrame(index=valid_index)
         signals['entry'] = False
         signals['exit'] = False
         
-        # Generate crossover signals
+        # Extract valid MA series for signal generation
+        fast_ma_valid = fast_ma_series[valid_mask]
+        slow_ma_valid = slow_ma_series[valid_mask]
+        
+        # Generate crossover signals using only valid MA values
         # Entry: Fast MA crosses above Slow MA
-        ma_cross_up = (fast_ma_series > slow_ma_series) & (fast_ma_series.shift(1) <= slow_ma_series.shift(1))
+        ma_cross_up = (fast_ma_valid > slow_ma_valid) & (fast_ma_valid.shift(1) <= slow_ma_valid.shift(1))
         signals.loc[ma_cross_up, 'entry'] = True
         
         # Exit: Fast MA crosses below Slow MA  
-        ma_cross_down = (fast_ma_series < slow_ma_series) & (fast_ma_series.shift(1) >= slow_ma_series.shift(1))
+        ma_cross_down = (fast_ma_valid < slow_ma_valid) & (fast_ma_valid.shift(1) >= slow_ma_valid.shift(1))
         signals.loc[ma_cross_down, 'exit'] = True
-        
-        # Remove any NaN rows (from MA calculation period)
-        signals = signals.dropna()
         
         if signals.empty:
             raise BacktestError("No valid signals generated after removing NaN values")
@@ -176,7 +189,12 @@ def safe_float(value, default=0.0):
     if value is None:
         return default
     try:
-        return float(value)
+        result = float(value)
+        # Check for NaN and infinite values
+        if np.isnan(result) or np.isinf(result):
+            logger.warning(f"Value '{value}' converted to NaN or inf, using default: {default}")
+            return default
+        return result
     except (ValueError, TypeError):
         logger.warning(f"Could not convert '{value}' (type: {type(value).__name__}) to float, using default: {default}")
         return default
@@ -369,12 +387,11 @@ def run_backtest(data, signals=None, initial_cash=10000, fees=0.001):
         
         logger.debug("Extracting performance metrics...")
         # Replace float conversions with safe_float where needed
-        total_return = safe_float(stats.get('Total Return [%]', 0.0))
+        total_return = safe_float(stats.get('Total Return [%]', 0.0))        
         annualized_return = safe_float(stats.get('Annualized Return [%]', 0.0))
         sharpe_ratio = safe_float(stats.get('Sharpe Ratio', 0.0))
         max_drawdown = safe_float(stats.get('Max Drawdown [%]', 0.0))
         final_value = safe_float(stats.get('End Value', initial_cash))
-        
         logger.debug(f"Basic metrics extracted: TR={total_return}, AR={annualized_return}, SR={sharpe_ratio}")
         
         # Calculate win rate and profit factor
@@ -383,11 +400,31 @@ def run_backtest(data, signals=None, initial_cash=10000, fees=0.001):
         logger.debug(f"Trades type: {type(trades)}, length: {len(trades)}")
         
         if len(trades) > 0:
-            winning_trades = len(trades[trades['PnL'] > 0])
+            # Get column mapping for different vectorbt versions
+            columns = trades.columns.tolist()
+            logger.debug(f"Trade columns: {columns}")
+            
+            # Create column name mappings with fallbacks
+            entry_time_col = next((c for c in ['entry_time', 'Entry Time', 'Entry Timestamp', 'entry_timestamp'] 
+                                if c in columns), columns[0] if len(columns) > 0 else 'entry_time')
+            exit_time_col = next((c for c in ['exit_time', 'Exit Time', 'Exit Timestamp', 'exit_timestamp'] 
+                               if c in columns), columns[1] if len(columns) > 1 else 'exit_time')
+            entry_price_col = next((c for c in ['entry_price', 'Entry Price', 'EntryPrice'] 
+                                  if c in columns), columns[2] if len(columns) > 2 else 'entry_price')
+            exit_price_col = next((c for c in ['exit_price', 'Exit Price', 'ExitPrice'] 
+                                 if c in columns), columns[3] if len(columns) > 3 else 'exit_price')
+            pnl_col = next((c for c in ['pnl', 'PnL', 'profit_loss'] 
+                          if c in columns), columns[4] if len(columns) > 4 else 'PnL')
+            return_pct_col = next((c for c in ['return_pct', 'Return [%]', 'return'] 
+                                  if c in columns), columns[5] if len(columns) > 5 else 'Return [%]')
+            
+            logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, pnl={pnl_col}")
+            
+            winning_trades = len(trades[trades[pnl_col] > 0])
             win_rate = (winning_trades / len(trades)) * 100
             
-            gross_profit = trades[trades['PnL'] > 0]['PnL'].sum()
-            gross_loss = abs(trades[trades['PnL'] < 0]['PnL'].sum())
+            gross_profit = trades[trades[pnl_col] > 0][pnl_col].sum()
+            gross_loss = abs(trades[trades[pnl_col] < 0][pnl_col].sum())
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
             logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")
         else:
@@ -411,26 +448,7 @@ def run_backtest(data, signals=None, initial_cash=10000, fees=0.001):
         logger.debug("Extracting trade details...")
         trade_details = []
         if len(trades) > 0:
-            # Get column mapping for different vectorbt versions
-            columns = trades.columns.tolist()
-            logger.debug(f"Trade columns: {columns}")
-            
-            # Create column name mappings with fallbacks
-            entry_time_col = next((c for c in ['entry_time', 'Entry Time', 'Entry Timestamp', 'entry_timestamp'] 
-                                if c in columns), columns[0] if len(columns) > 0 else 'entry_time')
-            exit_time_col = next((c for c in ['exit_time', 'Exit Time', 'Exit Timestamp', 'exit_timestamp'] 
-                               if c in columns), columns[1] if len(columns) > 1 else 'exit_time')
-            entry_price_col = next((c for c in ['entry_price', 'Entry Price', 'EntryPrice'] 
-                                  if c in columns), columns[2] if len(columns) > 2 else 'entry_price')
-            exit_price_col = next((c for c in ['exit_price', 'Exit Price', 'ExitPrice'] 
-                                 if c in columns), columns[3] if len(columns) > 3 else 'exit_price')
-            pnl_col = next((c for c in ['pnl', 'PnL', 'profit_loss'] 
-                          if c in columns), columns[4] if len(columns) > 4 else 'PnL')
-            return_pct_col = next((c for c in ['return_pct', 'Return [%]', 'return'] 
-                                  if c in columns), columns[5] if len(columns) > 5 else 'Return [%]')
-            
-            logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, pnl={pnl_col}")
-            
+            # Column mappings are already defined above
             for _, trade in trades.iterrows():
                 try:
                     trade_details.append({
@@ -654,7 +672,7 @@ def run_complete_backtest(strategy_config, data):
             primary_result=primary_result,
             vibe_checks=vibe_checks,
             robustness_checks=robustness_checks,
-            strategy_config=strategy_config.dict() if hasattr(strategy_config, 'dict') else strategy_config.model_dump()
+            strategy_config=strategy_config.model_dump()
         )
         
     except Exception as e:

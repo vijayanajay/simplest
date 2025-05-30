@@ -8,6 +8,10 @@ import numpy as np
 from datetime import date, datetime
 from unittest.mock import patch, MagicMock
 import unittest
+import warnings
+
+# Suppress pandas_ta related warnings
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
 
 from src.meqsap.backtest import (
     StrategySignalGenerator,
@@ -87,15 +91,7 @@ class TestStrategySignalGenerator:
     def test_generate_signals_unknown_strategy(self):
         """Test signal generation with unknown strategy type."""
         data = self.create_sample_data()
-        config = StrategyConfig(
-            ticker="AAPL",
-            start_date=date(2023, 1, 1),
-            end_date=date(2023, 4, 10),
-            strategy_type="MovingAverageCrossover",  # This will be changed
-            strategy_params={"fast_ma": 10, "slow_ma": 20}
-        )
-        
-        # Manually change strategy type to test error handling
+        config = self.create_sample_config()
         config.strategy_type = "UnknownStrategy"
         
         with pytest.raises(BacktestError, match="Unknown strategy type"):
@@ -333,7 +329,7 @@ class TestCompleteBacktest(unittest.TestCase):
             start_date=date(2020, 1, 1),
             end_date=date(2021, 1, 1),
             strategy_type="MovingAverageCrossover",
-            strategy_params=strategy_params.dict() if hasattr(strategy_params, 'dict') else strategy_params.model_dump()
+            strategy_params=strategy_params.model_dump()
         )
         
         # Pass both data and signals to run_complete_backtest
