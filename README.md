@@ -35,6 +35,33 @@ meqsap analyze path/to/your/config.yaml
     - `fast_ma`: The period for the fast moving average (must be > 0)
     - `slow_ma`: The period for the slow moving average (must be > fast_ma)
 
+## Data Acquisition & Caching
+
+The data module handles acquisition of historical OHLCV market data using yfinance, with local caching to avoid redundant downloads.
+
+### Features
+- Automatically caches downloaded data in Parquet format
+- On subsequent requests for the same data, loads from cache
+- Performs data integrity checks:
+  - No NaN values in returned data
+  - Full coverage of requested date range
+  - Data freshness (within 2 days for recent data)
+- Clear error handling for bad tickers, missing data, and API issues
+
+### Usage
+
+```python
+from datetime import date
+from src.meqsap.data import fetch_market_data
+
+# Fetch data for Apple Inc. from 2023-01-01 to 2023-12-31
+data = fetch_market_data("AAPL", date(2023,1,1), date(2023,12,31))
+
+# Clear cache (for testing or diagnostics)
+from src.meqsap.data import clear_cache
+clear_cache()
+```
+
 ## Development
 
 Make sure to install the development dependencies:

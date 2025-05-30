@@ -32,3 +32,9 @@ pytest = ">=7.3.1"
 
 [project.scripts]
 meqsap = "meqsap.cli:app"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src"
+]
+cache_dir = "/tmp/pytest_cache"
