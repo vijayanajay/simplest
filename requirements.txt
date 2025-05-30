@@ -5,3 +5,6 @@ pytest>=7.3.1
 pandas>=2.0.0
 yfinance>=0.2.0
 pyarrow>=14.0.0
+pandas-ta>=0.3.14b
+vectorbt>=0.25.0
+numpy>=1.24.0

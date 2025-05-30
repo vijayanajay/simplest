@@ -1,4 +1,4 @@
-<!-- Status: Draft -->
+<!-- Status: InProgress -->
 # Story: Signal Generation and Backtesting Module Implementation
 
 ## Description
@@ -51,8 +51,9 @@ Create `src/meqsap/backtest.py` as the core backtesting engine with the followin
 - Returns DataFrame with 'entry' and 'exit' boolean columns
 - Handles different strategy types via factory pattern
 
-#### `run_backtest(data: pd.DataFrame, signals: pd.DataFrame, initial_cash: float = 10000, fees: float = 0.001) -> BacktestResult`
-- Executes backtest using vectorbt
+#### `run_backtest(data, signals=None, initial_cash=10000, fees=0.001) -> BacktestResult`
+- Executes backtest using vectorbt with flexible data input formats
+- Accepts either DataFrame with OHLCV data or dictionary with 'prices' and 'signals' keys
 - Returns structured results with performance metrics
 - Includes trade-level details and portfolio statistics
 
