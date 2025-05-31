@@ -1,4 +1,4 @@
-<!-- Status: InProgress -->
+<!-- Status: Completed -->
 # Story: Signal Generation and Backtesting Module Implementation
 
 ## Description
@@ -127,26 +127,26 @@ class RobustnessResults(BaseModel):
 - Performance benchmarking for large datasets
 
 ## Tasks Breakdown
-- [ ] Create `src/meqsap/backtest.py` module structure
-- [ ] Implement strategy factory pattern and base strategy interface
-- [ ] Implement Moving Average Crossover signal generation using pandas-ta
-- [ ] Integrate vectorbt for backtesting execution
-- [ ] Implement performance metrics calculation and result packaging
-- [ ] Create vibe check validation functions
-- [ ] Implement robustness check framework
-- [ ] Add comprehensive unit tests in `tests/test_backtest.py`
-- [ ] Create integration tests for end-to-end backtesting workflow
-- [ ] Update CLI module to integrate with backtesting functionality
-- [ ] Add documentation and examples for extending strategy types
+- [x] Create `src/meqsap/backtest.py` module structure
+- [x] Implement strategy factory pattern and base strategy interface
+- [x] Implement Moving Average Crossover signal generation using pandas-ta
+- [x] Integrate vectorbt for backtesting execution
+- [x] Implement performance metrics calculation and result packaging
+- [x] Create vibe check validation functions
+- [x] Implement robustness check framework
+- [x] Add comprehensive unit tests in `tests/test_backtest.py`
+- [x] Create integration tests for end-to-end backtesting workflow
+- [x] Update CLI module to integrate with backtesting functionality
+- [x] Add documentation and examples for extending strategy types
 
 ## Definition of Done
-- [ ] All acceptance criteria are met and tested
-- [ ] Module passes all unit and integration tests
-- [ ] Code follows project style guidelines and type hints
-- [ ] Documentation is complete with usage examples
-- [ ] Integration with existing config and data modules is seamless
-- [ ] Performance benchmarks meet requirements (sub-second for typical strategies)
-- [ ] Error handling provides clear, actionable user feedback
+- [x] All acceptance criteria are met and tested
+- [x] Module passes all unit and integration tests
+- [x] Code follows project style guidelines and type hints
+- [x] Documentation is complete with usage examples
+- [x] Integration with existing config and data modules is seamless
+- [x] Performance benchmarks meet requirements (sub-second for typical strategies)
+- [x] Error handling provides clear, actionable user feedback
 
 ## Dependencies
 - **Prerequisite**: Story 01 (Project Setup and Configuration) - ✅ Completed
@@ -419,6 +419,239 @@ class RobustnessResults(BaseModel):
      * Specific recommendations
 
 8. **Return the `Robustness Results`** to the calling function
+
+---
+
+## Extending Strategy Types: Examples and Guide
+
+MEQSAP is designed to be easily extensible with new strategy types. Here's a comprehensive guide for adding new strategies:
+
+### 1. Adding a New Strategy Parameter Class
+
+Create a new parameter class in `config.py`:
+
+```python
+class RSIStrategy(BaseStrategyParams):
+    """Parameters for RSI mean reversion strategy."""
+    
+    rsi_period: int = Field(14, gt=0, description="RSI calculation period")
+    oversold_threshold: float = Field(30.0, ge=0, le=100, description="RSI oversold level")
+    overbought_threshold: float = Field(70.0, ge=0, le=100, description="RSI overbought level")
+    stop_loss: Optional[float] = Field(None, gt=0, description="Stop loss percentage")
+    take_profit: Optional[float] = Field(None, gt=0, description="Take profit percentage")
+    
+    @field_validator("overbought_threshold")
+    @classmethod
+    def overbought_must_be_greater_than_oversold(cls, v: float, info: Any) -> float:
+        """Validate that overbought threshold is greater than oversold."""
+        if "oversold_threshold" in info.data and v <= info.data["oversold_threshold"]:
+            raise ValueError("overbought_threshold must be greater than oversold_threshold")
+        return v
+```
+
+### 2. Update StrategyConfig to Support New Strategy
+
+Update the `StrategyConfig` class in `config.py`:
+
+```python
+class StrategyConfig(BaseModel):
+    """Configuration for a trading strategy backtest."""
+    
+    ticker: str = Field(..., description="Stock ticker symbol")
+    start_date: date = Field(..., description="Backtest start date")
+    end_date: date = Field(..., description="Backtest end date")
+    strategy_type: Literal["MovingAverageCrossover", "RSIStrategy"] = Field(
+        ..., description="Type of trading strategy to backtest"
+    )
+    strategy_params: Dict[str, Any] = Field(
+        ..., description="Strategy-specific parameters"
+    )
+    # ... rest of the class remains the same
+```
+
+### 3. Update StrategyFactory
+
+Add your new strategy to the factory in `config.py`:
+
+```python
+class StrategyFactory:
+    """Factory for creating strategy parameter validators."""
+    
+    @staticmethod
+    def create_strategy_validator(strategy_type: str, params: Dict[str, Any]) -> BaseStrategyParams:
+        """Create and validate strategy parameters based on strategy type."""
+        if strategy_type == "MovingAverageCrossover":
+            return MovingAverageCrossoverParams(**params)
+        elif strategy_type == "RSIStrategy":
+            return RSIStrategy(**params)
+        else:
+            raise ValueError(f"Unknown strategy type: {strategy_type}")
+```
+
+### 4. Implement Signal Generation Logic
+
+Add your signal generation logic to `StrategySignalGenerator` in `backtest.py`:
+
+```python
+class StrategySignalGenerator:
+    """Factory for generating trading signals based on strategy type."""
+    
+    @staticmethod
+    def generate_signals(data: pd.DataFrame, strategy_config: StrategyConfig) -> pd.DataFrame:
+        """Generate trading signals based on strategy configuration."""
+        
+        if strategy_config.strategy_type == "MovingAverageCrossover":
+            return StrategySignalGenerator._generate_ma_crossover_signals(data, strategy_config)
+        elif strategy_config.strategy_type == "RSIStrategy":
+            return StrategySignalGenerator._generate_rsi_signals(data, strategy_config)
+        else:
+            raise BacktestError(f"Unknown strategy type: {strategy_config.strategy_type}")
+    
+    @staticmethod
+    def _generate_rsi_signals(data: pd.DataFrame, strategy_config: StrategyConfig) -> pd.DataFrame:
+        """Generate RSI mean reversion signals."""
+        import pandas_ta as ta
+        
+        # Validate strategy parameters
+        params = strategy_config.validate_strategy_params()
+        if not isinstance(params, RSIStrategy):
+            raise BacktestError("Invalid RSI strategy parameters")
+        
+        # Check for sufficient data
+        if len(data) < params.rsi_period * 2:
+            raise BacktestError(f"Insufficient data for RSI strategy. Need at least {params.rsi_period * 2} bars, got {len(data)}")
+        
+        # Calculate RSI
+        rsi = ta.rsi(data['Close'], length=params.rsi_period)
+        
+        # Generate entry signals (RSI oversold)
+        entry_signals = rsi <= params.oversold_threshold
+        
+        # Generate exit signals (RSI overbought)
+        exit_signals = rsi >= params.overbought_threshold
+        
+        # Create signals DataFrame
+        signals = pd.DataFrame({
+            'entry': entry_signals.fillna(False),
+            'exit': exit_signals.fillna(False)
+        }, index=data.index)
+        
+        return signals
+```
+
+### 5. Update Vibe Checks for New Strategy
+
+Update the vibe checks in `perform_vibe_checks` function to handle your new strategy:
+
+```python
+def perform_vibe_checks(
+    result: BacktestResult, 
+    data: pd.DataFrame, 
+    strategy_config: StrategyConfig
+) -> VibeCheckResults:
+    """Perform strategy validation checks."""
+    
+    # ... existing checks ...
+    
+    # Check 3: Data coverage (strategy-specific)
+    validated_params = strategy_config.validate_strategy_params()
+    
+    if isinstance(validated_params, MovingAverageCrossoverParams):
+        required_bars = validated_params.slow_ma
+        data_coverage_pass = len(data) >= required_bars * 2
+        if data_coverage_pass:
+            messages.append(f"✓ Data coverage check: {len(data)} bars >= {required_bars * 2} required")
+        else:
+            messages.append(f"✗ Data coverage check: {len(data)} bars < {required_bars * 2} required")
+    
+    elif isinstance(validated_params, RSIStrategy):
+        required_bars = validated_params.rsi_period
+        data_coverage_pass = len(data) >= required_bars * 2
+        if data_coverage_pass:
+            messages.append(f"✓ Data coverage check: {len(data)} bars >= {required_bars * 2} required")
+        else:
+            messages.append(f"✗ Data coverage check: {len(data)} bars < {required_bars * 2} required")
+    
+    else:
+        data_coverage_pass = True
+        messages.append("✓ Data coverage check: Unknown strategy, assuming sufficient data")
+    
+    # ... rest of function ...
+```
+
+### 6. Create Example Configuration
+
+Create an example YAML configuration for your new strategy:
+
+```yaml
+# examples/rsi_strategy.yaml
+ticker: "TSLA"
+start_date: "2023-01-01"
+end_date: "2023-12-31"
+strategy_type: "RSIStrategy"
+strategy_params:
+  rsi_period: 14
+  oversold_threshold: 30
+  overbought_threshold: 70
+  stop_loss: 0.05  # 5% stop loss
+  take_profit: 0.10  # 10% take profit
+```
+
+### 7. Add Unit Tests
+
+Create comprehensive tests for your new strategy:
+
+```python
+# In tests/test_backtest.py
+
+class TestRSIStrategy:
+    
+    def create_sample_rsi_config(self):
+        """Create sample RSI strategy configuration."""
+        return StrategyConfig(
+            ticker="AAPL",
+            start_date=date(2023, 1, 1),
+            end_date=date(2023, 4, 10),
+            strategy_type="RSIStrategy",
+            strategy_params={
+                "rsi_period": 14,
+                "oversold_threshold": 30,
+                "overbought_threshold": 70
+            }
+        )
+    
+    def test_rsi_signal_generation(self):
+        """Test RSI signal generation."""
+        data = self.create_sample_data(days=100)
+        config = self.create_sample_rsi_config()
+        
+        signals = StrategySignalGenerator.generate_signals(data, config)
+        
+        assert isinstance(signals, pd.DataFrame)
+        assert 'entry' in signals.columns
+        assert 'exit' in signals.columns
+        assert signals.dtypes['entry'] == bool
+        assert signals.dtypes['exit'] == bool
+```
+
+### Best Practices for Strategy Extension
+
+1. **Parameter Validation**: Always include proper Pydantic validation for strategy parameters
+2. **Data Requirements**: Check for sufficient historical data before signal generation
+3. **Error Handling**: Provide clear error messages for configuration issues
+4. **Testing**: Create comprehensive unit tests for both success and failure cases
+5. **Documentation**: Update example configurations and documentation
+6. **Performance**: Use vectorized operations and pandas-ta for indicator calculations
+
+### Common Pitfalls to Avoid
+
+1. **Forward-Looking Bias**: Ensure signals don't use future information
+2. **Index Alignment**: Make sure all indicators are properly aligned with price data
+3. **NaN Handling**: Handle missing values appropriately in signal calculations
+4. **Configuration Validation**: Always validate parameters before signal generation
+5. **Memory Usage**: For large datasets, consider memory-efficient implementations
+
+This extension framework allows MEQSAP to support any technical analysis strategy while maintaining the same simple, configuration-driven interface.
 
 ---
 

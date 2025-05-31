@@ -70,10 +70,9 @@ def analyze_config(
         console.print(f"\nFetching market data for [bold]{config.ticker}[/bold]...")
         market_data = fetch_market_data(config.ticker, config.start_date, config.end_date)
         console.print(f"[green]✓[/green] Data received: {len(market_data)} bars")
-        
-        # Run backtest
+          # Run backtest
         with console.status("[bold blue]Running backtest analysis...[/bold blue]"):
-            backtest_result = run_complete_backtest(market_data, config)
+            backtest_result = run_complete_backtest(config, market_data)
         
         # Display primary results
         primary = backtest_result.primary_result
