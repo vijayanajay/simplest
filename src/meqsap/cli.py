@@ -3,7 +3,6 @@ from pathlib import Path
 import traceback # Import traceback for verbose error reporting
 
 import typer
-from rich import print as rich_print
 from rich.panel import Panel
 from rich.console import Console
 
@@ -18,8 +17,7 @@ from src.meqsap.config import (
 from src.meqsap.data import fetch_market_data, DataError
 from src.meqsap.backtest import run_complete_backtest, BacktestError, BacktestAnalysisResult
 from src.meqsap.reporting import generate_complete_report, ReportingError
-from src.meqsap.exceptions import MEQSAPError # Generic MEQSAP Error
-
+from src.meqsap.exceptions import MEQSAPError
 
 # Create the main Typer app
 app = typer.Typer(
@@ -74,8 +72,6 @@ def analyze_command(
     global console
     if no_color:
         console = Console(color_system=None)
-
-
     try:
         # Step 1: Load and validate configuration
         if not quiet:
@@ -86,7 +82,7 @@ def analyze_command(
         strategy_params = config.validate_strategy_params()
 
         if not quiet:
-            rich_print(
+            console.print(
                 Panel(
                     f"[bold green]Configuration valid![/bold green]\n\n"
                     f"Strategy: [bold]{config.strategy_type}[/bold]\n"
@@ -171,15 +167,24 @@ def analyze_command(
             elif primary_result and primary_result.total_trades == 0 and not quiet:
                 console.print("\n[yellow]No trades were executed during the backtest.[/yellow]")
 
-    except MEQSAPError as e: # Catch specific MEQSAP errors first
+    except (ConfigError, DataError, BacktestError, ReportingError) as e:
+        # Fix: Explicitly catch all MEQSAP-specific errors
         console.print(f"[bold red]{type(e).__name__}:[/bold red] {e}")
         if verbose:
-            console.print_exception(show_locals=True)
-        raise typer.Exit(code=1) # All MEQSAP specific errors result in exit code 1
+            if no_color:
+                # For no_color mode, use plain traceback to avoid any color escape codes
+                console.print(traceback.format_exc())
+            else:
+                console.print_exception(show_locals=True)
+        raise typer.Exit(code=1)
     except Exception as e:
         console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
         if verbose:
-            console.print_exception(show_locals=True) 
+            if no_color:
+                # For no_color mode, use plain traceback to avoid any color escape codes
+                console.print(traceback.format_exc())
+            else:
+                console.print_exception(show_locals=True)
         else:
             console.print("Run with --verbose for more details.")
         raise typer.Exit(code=1) # Unexpected errors also exit with 1
@@ -194,13 +199,13 @@ def version():
     """
     Show the version of MEQSAP and its key dependencies.
     """
-    rich_print(f"MEQSAP version: [bold cyan]{__version__}[/bold cyan]")
+    console.print(f"MEQSAP version: [bold cyan]{__version__}[/bold cyan]")
     # Example of showing other versions:
     # try:
     #     import pandas as pd
     #     import vectorbt as vbt
-    #     rich_print(f"  Pandas version: {pd.__version__}")
-    #     rich_print(f"  VectorBT version: {vbt.__version__}")
+    #     console.print(f"  Pandas version: {pd.__version__}")
+    #     console.print(f"  VectorBT version: {vbt.__version__}")
     # except ImportError:
     #     pass
 

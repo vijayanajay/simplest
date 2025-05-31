@@ -176,3 +176,26 @@ This reinforces that **structural integrity** must exist at the Python package l
 4. Only then test with mocked functions
 
 **Key Lesson**: CLI tests failing uniformly often indicates **runtime execution path issues**, not just structural import problems. The entire execution path must be testable, not just importable.
+
+## Test Mock Specification Mismatch (CLI Module)
+
+**Issue Discovered**: Tests were failing because mock objects for market data used `spec=Path` when the CLI module expects pandas DataFrame-like objects with `__len__` method. The `unittest.mock.Mock` with `spec=Path` prevents setting magic methods like `__len__` that aren't part of the Path interface.
+
+**Root Cause**: Structural mismatch between test assumptions and actual data flow. The `fetch_market_data` function returns pandas DataFrames, but tests mocked them as Path objects, breaking the CLI's expectation of calling `len(market_data)`.
+
+**Fix Applied**: 
+- Changed mock specifications from `spec=Path` to `spec=pd.DataFrame`
+- Updated exception handling in CLI to explicitly catch all MEQSAP-specific errors
+- Fixed traceback method reference in tests to use `console.print_exception` instead of `traceback.print_exception`
+
+**Design Principle Reinforced**: Test mocks must accurately reflect the interfaces of the actual objects they replace. Using `spec` parameter in mocks helps catch interface mismatches early, but the spec must match the actual expected type throughout the data flow pipeline.
+
+**Prevention**: Always verify that mock specifications match the actual return types from the functions being mocked, especially when testing integration points between modules.
+
+## Testing Brittleness: CLI Error Message Validation
+
+**Issue**: Test `test_nonexistent_config_file` was failing because it checked for exact error message text ("does not exist") from Typer, but Typer uses Rich formatting that can vary.
+
+**Fix**: Changed test to check for broader error indicators (`"Error"` presence) rather than exact message text, making it more resilient to Typer version changes or formatting differences.
+
+**Lesson**: When testing CLI error outputs, focus on essential indicators (exit codes, key error terms) rather than exact message formatting, especially with libraries like Typer that may use Rich for formatted output.

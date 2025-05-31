@@ -26,10 +26,12 @@ try:
     # For direct imports when used as a package
     from .backtest import BacktestResult, VibeCheckResults, RobustnessResults, BacktestAnalysisResult
     from .config import StrategyConfig
+    from .exceptions import ReportingError
 except ImportError:
     # For imports when running tests
     from src.meqsap.backtest import BacktestResult, VibeCheckResults, RobustnessResults, BacktestAnalysisResult
     from src.meqsap.config import StrategyConfig
+    from src.meqsap.exceptions import ReportingError
 
 # Optional pyfolio import with graceful degradation
 try:
@@ -43,11 +45,6 @@ except ImportError:
     pf = None
 
 logger = logging.getLogger(__name__)
-
-
-class ReportingError(Exception):
-    """Exception raised for reporting errors."""
-    pass
 
 
 class ReportConfig(BaseModel):
@@ -124,7 +121,10 @@ def get_performance_color(metric_name: str, value: float) -> str:
     thresholds = color_rules[metric_name]
     
     if metric_name == "max_drawdown":
-        # For drawdown, better is less negative (closer to 0)
+        # For drawdown, positive values are invalid (should always be <= 0)
+        if value > 0:
+            return "red"
+        # For valid negative drawdown values, better is less negative (closer to 0)
         if value >= thresholds["good"]:
             return "green"
         elif value <= thresholds["bad"]:
@@ -511,6 +511,10 @@ def generate_pdf_report(
         strategy_config = StrategyConfig(**analysis_result.strategy_config)
         filename = f"{report_config.filename_prefix}_{strategy_config.ticker}_{timestamp}.pdf"
         output_path = os.path.join(report_config.output_directory, filename)
+    else:
+        # Ensure parent directory exists for explicit output_path
+        output_path_obj = Path(output_path)
+        output_path_obj.parent.mkdir(parents=True, exist_ok=True)
     
     try:
         # Prepare data for pyfolio
