@@ -139,14 +139,24 @@ class StrategySignalGenerator:
         # Validate MA period ordering
         if fast_ma >= slow_ma:
             raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma}) must be less than slow_ma ({slow_ma})")
-        
-        # Check data sufficiency
+          # Check data sufficiency
         if len(data) < slow_ma:
             raise BacktestError(f"Insufficient data: need at least {slow_ma} bars, got {len(data)}")
         
-        # Extract close prices
-        close_prices = data['Close']
-          # Calculate moving averages using pandas-ta
+        # Extract close prices - handle different column name cases
+        if 'Close' in data.columns:
+            close_prices = data['Close']
+        elif 'close' in data.columns:
+            close_prices = data['close']
+        else:
+            # Try to find a close price column with case-insensitive search
+            close_columns = [col for col in data.columns if col.lower() == 'close']
+            if close_columns:
+                close_prices = data[close_columns[0]]
+            else:
+                raise BacktestError(f"No 'Close' or 'close' column found in data. Available columns: {list(data.columns)}")
+        
+        # Calculate moving averages using pandas-ta
         fast_ma_series = ta.sma(close_prices, length=fast_ma)
         slow_ma_series = ta.sma(close_prices, length=slow_ma)
         

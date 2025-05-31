@@ -110,8 +110,7 @@ class TestFloatConversions(unittest.TestCase):
                 'exit': np.random.choice([True, False], size=len(self.test_data))
             }, index=self.test_data.index)
         }
-        
-        # Should not raise an exception
+          # Should not raise an exception
         result = run_backtest(data_dict)
         self.assertIsNotNone(result)
         
@@ -119,34 +118,34 @@ class TestFloatConversions(unittest.TestCase):
         """Test handling of non-numeric values in stats dictionary."""
         self.skipTest("Skipping this test as it requires mocking")
 
-class TestFloatHandling:
+class TestFloatHandling(unittest.TestCase):
     """Test safe float handling in backtesting operations."""
     
     def test_safe_float_with_valid_numbers(self):
         """Test safe_float with valid numeric inputs."""
-        assert safe_float(1.5) == 1.5
-        assert safe_float(10) == 10.0
-        assert safe_float("3.14") == 3.14
-        assert safe_float(0) == 0.0
+        self.assertEqual(safe_float(1.5), 1.5)
+        self.assertEqual(safe_float(10), 10.0)
+        self.assertEqual(safe_float("3.14"), 3.14)
+        self.assertEqual(safe_float(0), 0.0)
         
     def test_safe_float_with_invalid_inputs(self):
         """Test safe_float with invalid inputs."""
-        assert safe_float(None) == 0.0
-        assert safe_float("invalid") == 0.0
-        assert safe_float([1, 2, 3]) == 0.0
-        assert safe_float({"key": "value"}) == 0.0
+        self.assertEqual(safe_float(None), 0.0)
+        self.assertEqual(safe_float("invalid"), 0.0)
+        self.assertEqual(safe_float([1, 2, 3]), 0.0)
+        self.assertEqual(safe_float({"key": "value"}), 0.0)
         
     def test_safe_float_with_custom_default(self):
         """Test safe_float with custom default values."""
-        assert safe_float(None, default=100.0) == 100.0
-        assert safe_float("invalid", default=-1.0) == -1.0
+        self.assertEqual(safe_float(None, default=100.0), 100.0)
+        self.assertEqual(safe_float("invalid", default=-1.0), -1.0)
         
     def test_safe_float_with_nan_and_inf(self):
         """Test safe_float with NaN and infinite values."""
-        assert safe_float(np.nan, default=0.0) == 0.0
+        self.assertEqual(safe_float(np.nan, default=0.0), 0.0)
         # Note: inf values should be handled gracefully
         result = safe_float(np.inf, default=0.0)
-        assert result == 0.0 or result == float('inf')  # Allow either behavior
+        self.assertTrue(result == 0.0 or result == float('inf'))  # Allow either behavior
 
 if __name__ == '__main__':
     unittest.main()
