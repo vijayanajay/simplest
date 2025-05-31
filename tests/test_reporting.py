@@ -586,6 +586,8 @@ class TestPyfolioIntegration:
     
     def create_sample_backtest_result_with_series(self):
         """Create a BacktestResult with portfolio value series."""
+        # Set random seed for reproducible test results
+        np.random.seed(42)
         dates = pd.date_range('2023-01-01', periods=100, freq='D')
         # Simulate portfolio growth
         portfolio_values = [10000 * (1 + 0.001 * i + np.random.normal(0, 0.01)) for i in range(100)]
@@ -841,11 +843,19 @@ class TestErrorHandling:
             calmar_ratio=0.0,
             portfolio_value_series={"2023-01-01": 10000, "2023-01-02": 10000}  # No change
         )
-        
-        # Remove the assertion - the function may not raise an error for constant values
-        returns = prepare_returns_for_pyfolio(backtest_result)
-        # Instead, verify it handles the case gracefully
-        assert returns is not None or True  # Adjust based on actual behavior
+          # Test that the function handles constant portfolio values gracefully
+        # This should either return a valid Series of zeros or raise an appropriate error
+        try:
+            returns = prepare_returns_for_pyfolio(backtest_result)
+            # If successful, verify the returns series properties
+            assert isinstance(returns, pd.Series)
+            assert len(returns) >= 0  # Can be empty or contain zero returns
+            if len(returns) > 0:
+                # All returns should be zero for constant portfolio values
+                assert all(abs(ret) < 1e-10 for ret in returns), "Expected zero returns for constant portfolio"
+        except ReportingError as e:
+            # It's also acceptable for the function to raise an error for constant values
+            assert "Unable to calculate returns" in str(e) or "empty" in str(e).lower()
 
 
 class TestEdgeCases:

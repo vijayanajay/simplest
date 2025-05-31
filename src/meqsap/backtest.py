@@ -135,11 +135,11 @@ class StrategySignalGenerator:
             raise BacktestError("Invalid parameters for MovingAverageCrossover strategy")
         fast_ma = validated_params.fast_ma
         slow_ma = validated_params.slow_ma
-        
-        # Validate MA period ordering
+          # Validate MA period ordering
         if fast_ma >= slow_ma:
             raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma}) must be less than slow_ma ({slow_ma})")
-          # Check data sufficiency
+        
+        # Check data sufficiency
         if len(data) < slow_ma:
             raise BacktestError(f"Insufficient data: need at least {slow_ma} bars, got {len(data)}")
         
