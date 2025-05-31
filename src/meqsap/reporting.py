@@ -486,6 +486,10 @@ def prepare_returns_for_pyfolio(backtest_result: BacktestResult) -> pd.Series:
     if returns.empty:
         raise ReportingError("Unable to calculate returns from portfolio values")
     
+    # Check for degenerate cases where returns are meaningless for analysis
+    if (returns.abs() < 1e-10).all():
+        raise ReportingError("Unable to calculate returns: portfolio values are constant (zero returns)")
+    
     return returns
 
 

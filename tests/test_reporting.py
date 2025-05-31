@@ -227,8 +227,7 @@ class TestFormatPerformanceMetrics:
             win_rate=65.0,
             profit_factor=1.8,
             final_value=115500.0,
-            volatility=18.5,
-            calmar_ratio=1.89
+            volatility=18.5,            calmar_ratio=1.89
         )
     
     def test_format_performance_metrics(self):
@@ -251,8 +250,15 @@ class TestFormatPerformanceMetrics:
         result = self.create_sample_backtest_result()
         formatted = format_performance_metrics(result, decimal_places=1)
         
+        # Percentage metrics follow decimal_places exactly
         assert formatted["total_return"] == "+15.5%"
-        assert formatted["sharpe_ratio"] == "1.25"  # Should be decimal_places + 1
+        assert formatted["win_rate"] == "+65.0%"
+        assert formatted["volatility"] == "+18.5%"
+        
+        # Ratio metrics (dimensionless) get decimal_places + 1 for better precision
+        assert formatted["sharpe_ratio"] == "1.25"  # 1.25 with 2 decimal places (decimal_places + 1)
+        assert formatted["calmar_ratio"] == "1.89"  # 1.89 with 2 decimal places (decimal_places + 1)
+        assert formatted["profit_factor"] == "1.80"  # 1.80 with 2 decimal places (decimal_places + 1)
     
     def test_format_performance_metrics_edge_cases(self):
         """Test formatting with edge case values."""
@@ -840,22 +846,13 @@ class TestErrorHandling:
             profit_factor=0.0,
             final_value=10000.0,
             volatility=0.0,
-            calmar_ratio=0.0,
-            portfolio_value_series={"2023-01-01": 10000, "2023-01-02": 10000}  # No change
+            calmar_ratio=0.0,            portfolio_value_series={"2023-01-01": 10000, "2023-01-02": 10000}  # No change
         )
           # Test that the function handles constant portfolio values gracefully
-        # This should either return a valid Series of zeros or raise an appropriate error
-        try:
-            returns = prepare_returns_for_pyfolio(backtest_result)
-            # If successful, verify the returns series properties
-            assert isinstance(returns, pd.Series)
-            assert len(returns) >= 0  # Can be empty or contain zero returns
-            if len(returns) > 0:
-                # All returns should be zero for constant portfolio values
-                assert all(abs(ret) < 1e-10 for ret in returns), "Expected zero returns for constant portfolio"
-        except ReportingError as e:
-            # It's also acceptable for the function to raise an error for constant values
-            assert "Unable to calculate returns" in str(e) or "empty" in str(e).lower()
+        # This should raise an appropriate error with specific message
+        
+        with pytest.raises(ReportingError, match=r"Unable to calculate returns|.*empty.*"):
+            prepare_returns_for_pyfolio(backtest_result)
 
 
 class TestEdgeCases:
