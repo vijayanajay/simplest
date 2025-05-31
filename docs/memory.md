@@ -199,3 +199,27 @@ This reinforces that **structural integrity** must exist at the Python package l
 **Fix**: Changed test to check for broader error indicators (`"Error"` presence) rather than exact message text, making it more resilient to Typer version changes or formatting differences.
 
 **Lesson**: When testing CLI error outputs, focus on essential indicators (exit codes, key error terms) rather than exact message formatting, especially with libraries like Typer that may use Rich for formatted output.
+
+## Schema Evolution Mismatch - MovingAverageCrossoverParams (2024)
+
+**Issue**: Test suite failed due to Pydantic model schema changes where `MovingAverageCrossoverParams` evolved from using `fast_period`/`slow_period` to `fast_ma`/`slow_ma` fields, but tests weren't updated accordingly.
+
+**Root Cause**: Interface contract drift - when core data models evolve, test fixtures become stale if not systematically updated. This created a validation error cascade affecting multiple test classes.
+
+**Fix**: Updated all test helper methods creating `MovingAverageCrossoverParams` instances to use the current schema (`fast_ma`/`slow_ma`). Also corrected `format_percentage` test expectations to match current implementation behavior.
+
+**Lesson**: When modifying Pydantic models, always run a project-wide search for test fixtures that instantiate those models. Consider using factory functions or fixtures in a centralized location to reduce duplication and make schema changes easier to propagate.
+
+**Prevention**: Implement a test helper factory pattern for complex Pydantic models to centralize test data creation and reduce maintenance burden during schema evolution.
+
+## Strategy Type Naming Convention Evolution (2024)
+
+**Issue**: Test failures due to `StrategyConfig.strategy_type` field validation. The Pydantic model evolved from accepting snake_case identifiers (`'moving_average_crossover'`) to requiring PascalCase class-like names (`'MovingAverageCrossover'`).
+
+**Root Cause**: Naming convention drift in configuration system. The strategy type field moved from loose string identifiers to strict class name literals, likely to improve type safety and direct mapping to strategy classes. Test fixtures weren't updated to reflect this API evolution.
+
+**Fix**: Updated all test helper methods creating `StrategyConfig` instances to use PascalCase strategy type (`"MovingAverageCrossover"` instead of `"moving_average_crossover"`).
+
+**Lesson**: When evolving Pydantic Literal types or enum-like fields, always audit test fixtures project-wide for outdated values. Consider using constants or a registry to centralize valid values and reduce maintenance burden.
+
+**Prevention**: Define strategy type constants in `config.py` (e.g., `STRATEGY_TYPES = Literal["MovingAverageCrossover", ...]`) and reference them in tests rather than hardcoding strings.
