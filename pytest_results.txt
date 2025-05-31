@@ -1,0 +1,529 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.3.5, pluggy-1.6.0
+cachedir: \tmp\pytest_cache
+rootdir: D:\Code\simplest
+configfile: pyproject.toml
+collected 56 items
+
+tests\test_backtest.py ............                                      [ 21%]
+tests\test_cli.py EEEEEEFFFF.F..F...                                     [ 53%]
+tests\test_config.py ............                                        [ 75%]
+tests\test_data.py .......                                               [ 87%]
+tests\test_float_handling.py s......                                     [100%]
+
+=================================== ERRORS ====================================
+_____ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_basic_success ______
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3C2F0>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125165477904'>, name = '__len__'
+value = <Mock id='3125204164512'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+_____ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_validate_only ______
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3C410>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125167253424'>, name = '__len__'
+value = <Mock id='3125210619904'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+____ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_with_report_flag ____
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3C590>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125190632480'>, name = '__len__'
+value = <Mock id='3125186930752'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+______ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_verbose_mode ______
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3C710>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125212223904'>, name = '__len__'
+value = <Mock id='3125186929552'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+_______ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_quiet_mode _______
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3C890>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125211677856'>, name = '__len__'
+value = <Mock id='3125201343968'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+_____ ERROR at setup of TestCLIAnalyzeCommand.test_analyze_no_color_mode ______
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x000002D7A1C3CA10>
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        # self.config_file = Path("test_config.yaml") # Will be created inside isolated_filesystem
+    
+        self.mock_config_obj = Mock(spec=StrategyConfig) # Use spec for better mocking
+        self.mock_config_obj.strategy_type = "MovingAverageCrossover"
+        self.mock_config_obj.ticker = "AAPL"
+        self.mock_config_obj.start_date = date(2023, 1, 1)
+        self.mock_config_obj.end_date = date(2023, 12, 31)
+    
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {
+            "short_window": 10, "long_window": 30
+        }
+        self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
+        # Add model_dump to mock_config_obj if reporting needs it directly from config
+        self.mock_config_obj.model_dump.return_value = {
+            "ticker": "AAPL", "start_date": date(2023,1,1),
+            "end_date": date(2023,12,31), "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": 20}
+        }
+    
+    
+        self.mock_market_data = Mock(spec=Path) # Mocking as Path for simplicity
+>       self.mock_market_data.__len__ = Mock(return_value=252)
+
+tests\test_cli.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <Mock spec='Path' id='3125201341136'>, name = '__len__'
+value = <Mock id='3125201351696'>
+
+    def __setattr__(self, name, value):
+        if name in _allowed_names:
+            # property setters go through here
+            return object.__setattr__(self, name, value)
+        elif (self._spec_set and self._mock_methods is not None and
+            name not in self._mock_methods and
+            name not in self.__dict__):
+            raise AttributeError("Mock object has no attribute '%s'" % name)
+        elif name in _unsupported_magics:
+            msg = 'Attempting to set unsupported magic method %r.' % name
+            raise AttributeError(msg)
+        elif name in _all_magics:
+            if self._mock_methods is not None and name not in self._mock_methods:
+>               raise AttributeError("Mock object has no attribute '%s'" % name)
+E               AttributeError: Mock object has no attribute '__len__'
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:782: AttributeError
+================================== FAILURES ===================================
+_______________ TestCLIErrorHandling.test_config_error_handling _______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x000002D7A1C3CCE0>
+mock_cli_load_yaml = <MagicMock name='load_yaml_config' id='3125124980928'>
+
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_config_error_handling(self, mock_cli_load_yaml):
+        mock_cli_load_yaml.side_effect = ConfigError("Invalid configuration format")
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            # File needs to exist for Typer's 'exists=True' check, even if load_yaml_config is mocked
+            with open(config_file_path, "w") as f:
+                f.write("dummy_content_for_exists_check")
+    
+            result = self.runner.invoke(app, ["analyze", str(config_file_path)])
+    
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+>       assert "ConfigError:" in result.stdout # Changed from "Configuration Error:"
+E       AssertionError: assert 'ConfigError:' in 'Loading configuration from: \nC:\\Users\\user\\AppData\\Local\\Temp\\tmpm5ifo6nn\\test_config.yaml\nAn unexpected error occurred: Invalid configuration format\nRun with --verbose for more details.\n'
+E        +  where 'Loading configuration from: \nC:\\Users\\user\\AppData\\Local\\Temp\\tmpm5ifo6nn\\test_config.yaml\nAn unexpected error occurred: Invalid configuration format\nRun with --verbose for more details.\n' = <Result SystemExit(1)>.stdout
+
+tests\test_cli.py:294: AssertionError
+________________ TestCLIErrorHandling.test_data_error_handling ________________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x000002D7A1C3CE60>
+mock_cli_load_yaml = <MagicMock name='load_yaml_config' id='3125201350928'>
+mock_cli_validate_config = <MagicMock name='validate_config' id='3125201339888'>
+mock_cli_fetch_market_data = <MagicMock name='fetch_market_data' id='3125201339168'>
+
+    @patch('src.meqsap.cli.fetch_market_data')
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_data_error_handling(self, mock_cli_load_yaml, mock_cli_validate_config, mock_cli_fetch_market_data):
+        mock_cli_load_yaml.return_value = {"strategy": "test"}
+        mock_cli_validate_config.return_value = self.mock_config_obj_for_errors
+        mock_cli_fetch_market_data.side_effect = DataError("Failed to fetch market data")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, ["analyze", str(config_file_path)])
+    
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+>       assert "DataError:" in result.stdout
+E       AssertionError: assert 'DataError:' in 'Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp2npxij2x\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...01 to 2023-01-02...\\nAn unexpected error occurred: Failed to fetch market data\\nRun with --verbose for more details.\\n'
+E        +  where 'Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp2npxij2x\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...01 to 2023-01-02...\\nAn unexpected error occurred: Failed to fetch market data\\nRun with --verbose for more details.\\n' = <Result SystemExit(1)>.stdout
+
+tests\test_cli.py:312: AssertionError
+______________ TestCLIErrorHandling.test_backtest_error_handling ______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x000002D7A1C3D010>
+mock_cli_load_yaml = <MagicMock name='load_yaml_config' id='3125200275312'>
+mock_cli_validate_config = <MagicMock name='validate_config' id='3125200287744'>
+mock_cli_fetch_market_data = <MagicMock name='fetch_market_data' id='3125200289664'>
+mock_cli_run_complete_backtest = <MagicMock name='run_complete_backtest' id='3125201142272'>
+
+    @patch('src.meqsap.cli.run_complete_backtest')
+    @patch('src.meqsap.cli.fetch_market_data')
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_backtest_error_handling(
+        self, mock_cli_load_yaml, mock_cli_validate_config, mock_cli_fetch_market_data, mock_cli_run_complete_backtest
+    ):
+        mock_cli_load_yaml.return_value = {"strategy": "test"}
+        mock_cli_validate_config.return_value = self.mock_config_obj_for_errors
+        mock_cli_fetch_market_data.return_value = Mock()
+        mock_cli_run_complete_backtest.side_effect = BacktestError("Backtest execution failed")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, ["analyze", str(config_file_path)])
+    
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+>       assert "BacktestError:" in result.stdout
+E       assert 'BacktestError:' in "Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp1huj3nd3\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...023-01-02...\\nAn unexpected error occurred: object of type 'Mock' has no len()\\nRun with --verbose for more details.\\n"
+E        +  where "Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp1huj3nd3\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...023-01-02...\\nAn unexpected error occurred: object of type 'Mock' has no len()\\nRun with --verbose for more details.\\n" = <Result SystemExit(1)>.stdout
+
+tests\test_cli.py:334: AssertionError
+_____________ TestCLIErrorHandling.test_reporting_error_handling ______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x000002D7A1C3D1C0>
+mock_cli_load_yaml = <MagicMock name='load_yaml_config' id='3125210431856'>
+mock_cli_validate_config = <MagicMock name='validate_config' id='3125190955936'>
+mock_cli_fetch_market_data = <MagicMock name='fetch_market_data' id='3125190952192'>
+mock_cli_run_complete_backtest = <MagicMock name='run_complete_backtest' id='3125190964192'>
+mock_cli_generate_complete_report = <MagicMock name='generate_complete_report' id='3125191020080'>
+
+    @patch('src.meqsap.cli.generate_complete_report')
+    @patch('src.meqsap.cli.run_complete_backtest')
+    @patch('src.meqsap.cli.fetch_market_data')
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_reporting_error_handling(
+        self, mock_cli_load_yaml, mock_cli_validate_config, mock_cli_fetch_market_data,
+        mock_cli_run_complete_backtest, mock_cli_generate_complete_report
+    ):
+        mock_cli_load_yaml.return_value = {"strategy": "test"}
+        mock_cli_validate_config.return_value = self.mock_config_obj_for_errors
+        mock_cli_fetch_market_data.return_value = Mock()
+        mock_cli_run_complete_backtest.return_value = Mock(spec=BacktestAnalysisResult)
+        mock_cli_generate_complete_report.side_effect = ReportingError("Failed to generate report")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, ["analyze", str(config_file_path)])
+    
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+>       assert "ReportingError:" in result.stdout
+E       assert 'ReportingError:' in "Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp6ykrp0jd\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...023-01-02...\\nAn unexpected error occurred: object of type 'Mock' has no len()\\nRun with --verbose for more details.\\n"
+E        +  where "Loading configuration from: \\nC:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmp6ykrp0jd\\\\test_config.yaml\\n\u250c\u2500\u2500 \U0001f4ca MEQSAP Anal...023-01-02...\\nAn unexpected error occurred: object of type 'Mock' has no len()\\nRun with --verbose for more details.\\n" = <Result SystemExit(1)>.stdout
+
+tests\test_cli.py:359: AssertionError
+________ TestCLIErrorHandling.test_unexpected_error_verbose_traceback _________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x000002D7A1C3D2B0>
+mock_cli_load_yaml = <MagicMock name='load_yaml_config' id='3125190791088'>
+mock_cli_validate_config = <MagicMock name='validate_config' id='3125190802176'>
+mock_cli_traceback_print_exception = <MagicMock name='print_exception' id='3125190790416'>
+
+    @patch('src.meqsap.cli.traceback.print_exception')
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_unexpected_error_verbose_traceback(
+        self, mock_cli_load_yaml, mock_cli_validate_config, mock_cli_traceback_print_exception
+    ):
+        mock_cli_load_yaml.return_value = {"strategy": "test"}
+        mock_cli_validate_config.side_effect = Exception("Another unexpected error")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, ["analyze", str(config_file_path), "--verbose"])
+    
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+        assert "An unexpected error occurred:" in result.stdout
+        assert "Another unexpected error" in result.stdout
+>       mock_cli_traceback_print_exception.assert_called_once()
+
+tests\test_cli.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='print_exception' id='3125190790416'>
+
+    def assert_called_once(self):
+        """assert that the mock was called only once.
+        """
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to have been called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'print_exception' to have been called once. Called 0 times.
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:928: AssertionError
+___________ TestCLIArgumentValidation.test_nonexistent_config_file ____________
+
+self = <tests.test_cli.TestCLIArgumentValidation object at 0x000002D7A1C3D760>
+
+    def test_nonexistent_config_file(self):
+        """Test error when config file does not exist (Typer's exists=True)."""
+        # No need for isolated_filesystem here as we are testing non-existence
+        result = self.runner.invoke(app, ["analyze", "nonexistent_config.yaml"])
+        assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+        assert "Invalid value for 'CONFIG_FILE'" in result.stderr
+>       assert "'nonexistent_config.yaml' does not exist" in result.stderr # More specific check
+E       assert "'nonexistent_config.yaml' does not exist" in "Usage: meqsap analyze [OPTIONS] CONFIG_FILE\\nTry 'meqsap analyze --help' for help.\\n\u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500...                                  \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n"
+E        +  where "Usage: meqsap analyze [OPTIONS] CONFIG_FILE\\nTry 'meqsap analyze --help' for help.\\n\u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500...                                  \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n" = <Result SystemExit(2)>.stderr
+
+tests\test_cli.py:426: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_config_error_handling - ...
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_data_error_handling - As...
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_backtest_error_handling
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_reporting_error_handling
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_unexpected_error_verbose_traceback
+FAILED tests/test_cli.py::TestCLIArgumentValidation::test_nonexistent_config_file
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_basic_success - ...
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_validate_only - ...
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_with_report_flag
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_verbose_mode - A...
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_quiet_mode - Att...
+ERROR tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_no_color_mode - ...
+============= 6 failed, 43 passed, 1 skipped, 6 errors in 17.93s ==============
