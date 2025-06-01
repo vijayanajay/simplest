@@ -8,7 +8,7 @@ This document provides practical guidelines for implementing consistent error ha
 ### Exception Mapping
 | Error Type | Custom Exception | Use Case |
 |------------|------------------|----------|
-| Invalid config values | `ConfigError` | Pydantic validation failures, missing required settings |
+| Invalid config values | `ConfigurationError` | Pydantic validation failures, missing required settings |
 | Data fetch failures | `DataError` | API errors, file not found, invalid data format |
 | Backtest execution issues | `BacktestError` | Insufficient data, calculation errors, vectorbt failures |
 | Report generation problems | `ReportingError` | Template errors, output file issues |
@@ -23,7 +23,7 @@ This document provides practical guidelines for implementing consistent error ha
 exit 0
 
 # Configuration errors
-exit 1  # ConfigError
+exit 1  # ConfigurationError
 
 # Data errors  
 exit 2  # DataError
@@ -54,15 +54,14 @@ exit 10  # Unhandled exceptions
 
 #### Configuration Validation
 ```python
-from meqsap.exceptions import ConfigError
+from meqsap.exceptions import ConfigurationError
 
 def validate_strategy_params(params: StrategyParams) -> None:
     """Validate strategy parameters with clear error messages."""
     try:
         # Pydantic validation
-        validated = StrategyParams.model_validate(params)
-    except ValidationError as e:
-        raise ConfigError(
+        validated = StrategyParams.model_validate(params)    except ValidationError as e:
+        raise ConfigurationError(
             f"Invalid strategy configuration: {e}",
             details={"validation_errors": e.errors()},
             original_error=e
@@ -70,7 +69,7 @@ def validate_strategy_params(params: StrategyParams) -> None:
     
     # Business logic validation
     if params.ma_short_period >= params.ma_long_period:
-        raise ConfigError(
+        raise ConfigurationError(
             "Short moving average period must be less than long period",
             details={
                 "ma_short_period": params.ma_short_period,
@@ -143,11 +142,11 @@ def run_backtest(data: pd.DataFrame, strategy: Strategy) -> BacktestResults:
 ### 3. CLI Error Handling
 ```python
 import sys
-from meqsap.exceptions import MEQSAPError, ConfigError, DataError, BacktestError, ReportingError, CLIError
+from meqsap.exceptions import MEQSAPError, ConfigurationError, DataError, BacktestError, ReportingError, CLIError
 
 def handle_cli_error(error: Exception) -> int:
     """Convert exceptions to appropriate CLI exit codes."""
-    if isinstance(error, ConfigError):
+    if isinstance(error, ConfigurationError):
         logger.error("Configuration error: %s", str(error))
         return 1
     elif isinstance(error, DataError):
@@ -214,11 +213,11 @@ def log_error_with_context(error: MEQSAPError, operation: str, **context):
 ## Testing Error Handling
 ```python
 import pytest
-from meqsap.exceptions import ConfigError, DataError
+from meqsap.exceptions import ConfigurationError, DataError
 
 def test_config_validation_error():
     """Test that configuration errors are properly raised and handled."""
-    with pytest.raises(ConfigError) as exc_info:
+    with pytest.raises(ConfigurationError) as exc_info:
         validate_invalid_config()
     
     assert "ma_short_period" in str(exc_info.value)

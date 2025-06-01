@@ -14,7 +14,7 @@ The MEQSAP system handles date ranges for data fetching and backtesting. However
 
 ### Internal Implementation
 - `data.py` automatically adjusts for yfinance's exclusive behavior by adding 1 day when calling `yf.download()`
-- Validation logic accounts for this adjustment: `dates.max() < pd.Timestamp(end_date - timedelta(days=1))` verifies the last data point is for the user-specified end_date
+- Validation logic ensures data for the inclusive `end_date` is present, such as `dates.max() >= pd.Timestamp(end_date)` after yfinance fetching and adjustment.
 - All other modules should treat the fetched data as containing data up to and including the configured end_date
 
 ### Documentation Requirements
