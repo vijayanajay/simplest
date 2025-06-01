@@ -418,15 +418,15 @@ class TestCLIArgumentValidation:
         """Test error when config file argument is missing."""
         result = self.runner.invoke(app, ["analyze"])
         assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
-        assert "Missing argument 'CONFIG_FILE'" in result.stderr
+        assert "Missing argument 'CONFIG_FILE'" in result.output
 
     def test_nonexistent_config_file(self):
         """Test error when config file does not exist (Typer's exists=True)."""
         result = self.runner.invoke(app, ["analyze", "nonexistent_config.yaml"])
         assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
-        assert "Invalid value for 'CONFIG_FILE'" in result.stderr
+        assert "Invalid value for 'CONFIG_FILE'" in result.output
         # Check for error indicators rather than exact text - Typer may use Rich formatting
-        assert "Error" in result.stderr or "error" in result.stderr.lower()
+        assert "Error" in result.output or "error" in result.output.lower()
 
     def test_help_command(self):
         result = self.runner.invoke(app, ["--help"])
