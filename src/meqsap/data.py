@@ -3,9 +3,7 @@ import pandas as pd
 import yfinance as yf
 from datetime import date, datetime, timedelta
 from pathlib import Path
-
-class DataError(Exception):
-    """Custom exception for data-related errors."""
+from .exceptions import DataError
 
 # Cache directory setup
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

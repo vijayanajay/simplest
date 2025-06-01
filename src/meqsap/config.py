@@ -10,19 +10,22 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
 
-
-class ConfigError(Exception):
-    """Exception raised for configuration errors."""
-
-    pass
+from .exceptions import ConfigurationError
 
 
 class BaseStrategyParams(BaseModel):
     """Base class for all strategy parameters."""
 
-    pass
+    def get_required_data_coverage_bars(self) -> Optional[int]:
+        """
+        Returns the minimum number of data bars required by the strategy for its calculations.
+        This is the raw requirement from the strategy's perspective (e.g., longest MA period).
+        The vibe check framework might apply additional safety factors (e.g., 2x this value).
+        Returns None if no specific check is needed or handled differently by default.
+        """
+        return None
 
 
 class MovingAverageCrossoverParams(BaseStrategyParams):
@@ -38,6 +41,10 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
         if "fast_ma" in info.data and v <= info.data["fast_ma"]:
             raise ValueError("slow_ma must be greater than fast_ma")
         return v
+
+    def get_required_data_coverage_bars(self) -> Optional[int]:
+        """Return the slow MA period as the minimum data requirement."""
+        return self.slow_ma
 
 
 class StrategyConfig(BaseModel):
@@ -100,9 +107,34 @@ class StrategyFactory:
         """
         validator_class = cls._strategy_validators.get(strategy_type)
         if not validator_class:
-            raise ValueError(f"Unknown strategy type: {strategy_type}")
+            raise ConfigurationError(f"Unknown strategy type: {strategy_type}")
 
-        return validator_class(**params)
+        try:
+            return validator_class(**params)
+        except ValueError as e: # Pydantic validation errors are ValueErrors
+            raise ConfigurationError(f"Invalid parameters for strategy {strategy_type}: {e}")
+
+    @classmethod
+    def validate_strategy_params(
+        cls, strategy_type: str, params: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Validate strategy parameters and return validated dict.
+        
+        Args:
+            strategy_type: The type of strategy to validate
+            params: Strategy-specific parameters
+            
+        Returns:
+            A dictionary of validated parameters
+            
+        Raises:
+            ConfigurationError: If validation fails
+        """
+        try:
+            validated_params = cls.create_strategy_validator(strategy_type, params)
+            return validated_params.model_dump()
+        except (ValidationError, ConfigurationError) as e:
+            raise ConfigurationError(f"Invalid parameters for strategy {strategy_type}: {e}")
 
 
 def load_yaml_config(file_path: str) -> Dict[str, Any]:
@@ -115,20 +147,20 @@ def load_yaml_config(file_path: str) -> Dict[str, Any]:
         A dictionary containing the parsed YAML configuration
 
     Raises:
-        ConfigError: If the file can't be found or contains invalid YAML
+        ConfigurationError: If the file can't be found or contains invalid YAML
     """
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             config_data = yaml.safe_load(file)
             if not config_data:
-                raise ConfigError("Empty configuration file")
+                raise ConfigurationError("Empty configuration file")
             return config_data
     except FileNotFoundError:
-        raise ConfigError(f"Configuration file not found: {file_path}")
+        raise ConfigurationError(f"Configuration file not found: {file_path}")
     except yaml.YAMLError as e:
-        raise ConfigError(f"Invalid YAML in configuration: {str(e)}")
+        raise ConfigurationError(f"Invalid YAML in configuration: {str(e)}")
     except Exception as e:
-        raise ConfigError(f"Error loading configuration: {str(e)}")
+        raise ConfigurationError(f"Error loading configuration: {str(e)}")
 
 
 def validate_config(config_data: Dict[str, Any]) -> StrategyConfig:
@@ -141,17 +173,25 @@ def validate_config(config_data: Dict[str, Any]) -> StrategyConfig:
         A validated StrategyConfig object
 
     Raises:
-        ConfigError: If the configuration is invalid
+        ConfigurationError: If the configuration is invalid
     """
     try:
         # Create and validate the main config
         config = StrategyConfig(**config_data)
-        
-        # Validate strategy-specific parameters
-        config.validate_strategy_params()
-        
+        # Validate strategy params
+        config.strategy_params = StrategyFactory.validate_strategy_params(
+            config.strategy_type, config.strategy_params
+        )
         return config
+    except ConfigurationError as e:
+        # Re-raise ConfigurationError as-is
+        raise e
     except ValueError as e:
-        raise ConfigError(f"Configuration validation failed: {str(e)}")
+        raise ConfigurationError(f"Configuration validation failed: {str(e)}")
     except Exception as e:
-        raise ConfigError(f"Unexpected error in configuration validation: {str(e)}")
+        raise ConfigurationError(f"Unexpected error in configuration validation: {str(e)}")
+
+
+class ConfigError(Exception):
+    """Exception raised for configuration-related errors."""
+    pass

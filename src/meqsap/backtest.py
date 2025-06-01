@@ -31,14 +31,10 @@ from pydantic import BaseModel, Field
 try:
     # For direct imports when used as a package
     from .config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams
-except ImportError:
-    # For imports when running tests
-    from src.meqsap.config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams
-
-
-class BacktestError(Exception):
-    """Exception raised for backtesting errors."""
-    pass
+    from .exceptions import BacktestError
+except ImportError: # For imports when running tests or if structure changes
+    from src.meqsap.config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams # type: ignore
+    from src.meqsap.exceptions import BacktestError # type: ignore
 
 
 class BacktestResult(BaseModel):
@@ -545,17 +541,20 @@ def perform_vibe_checks(
         messages.append("✗ Signal quality check: No signals to evaluate")
     
     # Check 3: Data coverage
-    validated_params = strategy_config.validate_strategy_params()
-    if isinstance(validated_params, MovingAverageCrossoverParams):
-        required_bars = validated_params.slow_ma
-        data_coverage_pass = len(data) >= required_bars * 2  # At least 2x the slow MA period
+    validated_params = strategy_config.validate_strategy_params() # Returns specific param instance
+    strategy_required_bars = validated_params.get_required_data_coverage_bars()
+    
+    if strategy_required_bars is not None:
+        # Apply a safety factor for the check, e.g., 2x the strategy's raw requirement
+        check_threshold_bars = strategy_required_bars * 2
+        data_coverage_pass = len(data) >= check_threshold_bars
         if data_coverage_pass:
-            messages.append(f"✓ Data coverage check: {len(data)} bars >= {required_bars * 2} required")
+            messages.append(f"✓ Data coverage check: {len(data)} bars >= {check_threshold_bars} (strategy needs {strategy_required_bars}, check uses 2x)")
         else:
-            messages.append(f"✗ Data coverage check: {len(data)} bars < {required_bars * 2} required")
+            messages.append(f"✗ Data coverage check: {len(data)} bars < {check_threshold_bars} (strategy needs {strategy_required_bars}, check uses 2x)")
     else:
         data_coverage_pass = True  # Default pass for unknown strategies
-        messages.append("✓ Data coverage check: Passed (unknown strategy type)")
+        messages.append("✓ Data coverage check: Passed (strategy does not declare a specific data coverage bar requirement).")
     
     # Overall pass status
     overall_pass = min_trades_pass and signal_quality_pass and data_coverage_pass

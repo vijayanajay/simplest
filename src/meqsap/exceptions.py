@@ -2,38 +2,33 @@
 
 
 class MEQSAPError(Exception):
-    """Base exception for MEQSAP errors."""
+    """Base exception for all MEQSAP application errors."""
     pass
 
 
-class ConfigError(MEQSAPError):
-    """Configuration-related errors."""
+class ConfigurationError(MEQSAPError):
+    """Errors related to configuration loading, validation, or interpretation."""
     pass
 
 
 class DataError(MEQSAPError):
-    """Data fetching and processing errors."""
+    """Errors related to data acquisition, processing, or integrity."""
     pass
 
 
 class BacktestError(MEQSAPError):
-    """Backtest execution errors."""
+    """Errors related to backtest setup, signal generation, or execution."""
     pass
 
 
 class ReportingError(MEQSAPError):
-    """Report generation errors."""
+    """Errors related to report generation or presentation."""
     pass
 
 
 # CLI-specific exception hierarchy
 class CLIError(MEQSAPError):
     """Base exception for CLI-specific errors."""
-    pass
-
-
-class ConfigurationError(CLIError):
-    """Raised when configuration file has errors."""
     pass
 
 

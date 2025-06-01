@@ -26,15 +26,17 @@ from src.meqsap.config import (
     ConfigError,
     StrategyConfig,
 )
-from src.meqsap.data import fetch_market_data, DataError
-from src.meqsap.backtest import run_complete_backtest, BacktestError, BacktestAnalysisResult
-from src.meqsap.reporting import generate_complete_report, ReportingError
+from src.meqsap.data import fetch_market_data
+from src.meqsap.backtest import run_complete_backtest, BacktestAnalysisResult
+from src.meqsap.reporting import generate_complete_report
 from src.meqsap.exceptions import (
     MEQSAPError,
-    CLIError,
     ConfigurationError,
+    DataError, # For catching from data module
     DataAcquisitionError,
+    BacktestError, # For catching from backtest module
     BacktestExecutionError,
+    ReportingError, # For catching from reporting module
     ReportGenerationError,
 )
 
@@ -257,10 +259,10 @@ def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> 
         # YAML syntax validation and schema validation using existing functions
         try:
             # Use load_yaml_config from the config module
-            raw_config_data = load_yaml_config(config_file)
-            config = validate_config(raw_config_data)
-            strategy_params = config.validate_strategy_params()
-        except ConfigError as e: # Covers file not found, YAML errors, validation errors
+            raw_config_data = load_yaml_config(config_file) # Will raise exceptions.ConfigurationError
+            config = validate_config(raw_config_data) # Will raise exceptions.ConfigurationError
+            strategy_params = config.validate_strategy_params() # Will raise exceptions.ConfigurationError
+        except ConfigurationError as e: # Catch the centralized ConfigurationError
             raise ConfigurationError(f"Configuration error: {e}")
         except Exception as e:
             raise ConfigurationError(f"Unexpected error processing configuration file {config_file}: {e}")
@@ -286,7 +288,7 @@ def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> 
         
         return config
         
-    except ConfigError as e:
+    except ConfigurationError as e: # Catch the centralized ConfigurationError
         raise ConfigurationError(f"Configuration validation failed: {e}")
     except Exception as e:
         raise ConfigurationError(f"Unexpected error loading configuration: {e}")
@@ -364,7 +366,7 @@ def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool)
         
         return market_data
         
-    except DataError as e:
+    except DataError as e: # Catch DataError from data.py
         raise DataAcquisitionError(f"Failed to acquire market data: {e}")
     except Exception as e:
         raise DataAcquisitionError(f"Unexpected error during data acquisition: {e}")
@@ -412,7 +414,7 @@ def _execute_backtest_pipeline(
         
         return analysis_result
         
-    except BacktestError as e:
+    except BacktestError as e: # Catch BacktestError from backtest.py
         raise BacktestExecutionError(f"Backtest execution failed: {e}")
     except Exception as e:
         raise BacktestExecutionError(f"Unexpected error during backtest execution: {e}")
@@ -507,7 +509,7 @@ def _display_trade_details(analysis_result: BacktestAnalysisResult) -> None:
         console.print("\n[yellow]⚠ No trades were executed during the backtest.[/yellow]")
 
 
-def _generate_error_message(exception: Exception, verbose: bool = False, no_color: bool = False) -> str:
+def _generate_error_message(exception: MEQSAPError, verbose: bool = False, no_color: bool = False) -> str:
     """
     Generate user-friendly error messages with recovery suggestions.
     
@@ -546,7 +548,7 @@ def _generate_error_message(exception: Exception, verbose: bool = False, no_colo
     return "\n".join(message_parts)
 
 
-def _get_recovery_suggestions(exception: Exception) -> list[str]:
+def _get_recovery_suggestions(exception: MEQSAPError) -> list[str]:
     """Get specific recovery suggestions based on exception type."""
     suggestions = []
     

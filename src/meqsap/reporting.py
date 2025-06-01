@@ -25,13 +25,12 @@ from rich import box
 try:
     # For direct imports when used as a package
     from .backtest import BacktestResult, VibeCheckResults, RobustnessResults, BacktestAnalysisResult
-    from .config import StrategyConfig
     from .exceptions import ReportingError
 except ImportError:
-    # For imports when running tests
-    from src.meqsap.backtest import BacktestResult, VibeCheckResults, RobustnessResults, BacktestAnalysisResult
-    from src.meqsap.config import StrategyConfig
-    from src.meqsap.exceptions import ReportingError
+    # For imports when running tests or if structure changes
+    from src.meqsap.backtest import BacktestResult, VibeCheckResults, RobustnessResults, BacktestAnalysisResult  # type: ignore
+    from src.meqsap.exceptions import ReportingError  # type: ignore
+from .config import StrategyConfig  # This import should be fine as it's a sibling module
 
 # Optional pyfolio import with graceful degradation
 try:

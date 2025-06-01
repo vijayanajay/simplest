@@ -10,14 +10,14 @@ import warnings
 import pytest
 import yaml
 
-from meqsap.config import (
+from src.meqsap.config import (
     load_yaml_config,
     validate_config,
     StrategyFactory,
     StrategyConfig,
-    ConfigError,
     MovingAverageCrossoverParams,
 )
+from src.meqsap.exceptions import ConfigurationError
 
 # Suppress pandas_ta related warnings  
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
@@ -96,21 +96,21 @@ def test_load_yaml_valid(valid_config_yaml):
 
 def test_load_yaml_file_not_found():
     """Test handling of a non-existent YAML file."""
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         load_yaml_config("non_existent_file.yaml")
     assert "not found" in str(excinfo.value)
 
 
 def test_load_yaml_invalid(invalid_yaml):
     """Test handling of syntactically invalid YAML."""
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         load_yaml_config(invalid_yaml)
     assert "Invalid YAML" in str(excinfo.value)
 
 
 def test_load_yaml_empty(empty_yaml):
     """Test handling of an empty YAML file."""
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         load_yaml_config(empty_yaml)
     assert "Empty configuration" in str(excinfo.value)
 
@@ -139,7 +139,7 @@ def test_validate_config_missing_fields():
         },
     }
     
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         validate_config(incomplete_data)
     assert "validation failed" in str(excinfo.value)
 
@@ -158,7 +158,7 @@ def test_validate_ticker_format():
         },
     }
     
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         validate_config(invalid_data)
     assert "ticker must contain only" in str(excinfo.value)
 
@@ -177,7 +177,7 @@ def test_validate_dates():
         },
     }
     
-    with pytest.raises(ConfigError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:
         validate_config(invalid_dates)
     assert "end_date must be after start_date" in str(excinfo.value)
 
@@ -195,7 +195,7 @@ def test_strategy_factory_valid():
 
 def test_strategy_factory_unknown_type():
     """Test the strategy factory with an unknown strategy type."""
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:  # Changed from ValueError
         StrategyFactory.create_strategy_validator(
             "UnknownStrategy", {"param1": "value1"}
         )
@@ -204,7 +204,7 @@ def test_strategy_factory_unknown_type():
 
 def test_strategy_factory_invalid_params():
     """Test the strategy factory with invalid parameters."""
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ConfigurationError) as excinfo:  # Changed from ValueError
         StrategyFactory.create_strategy_validator(
             "MovingAverageCrossover", {"fast_ma": 30, "slow_ma": 10}  # Invalid: fast > slow
         )
