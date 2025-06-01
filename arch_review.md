@@ -34,33 +34,24 @@ Resolution Date: 2025-06-02
 
 ## Part 1B: New Critical Architectural Flaws
 
-**Issue ID:** FLAW-20250602-001
-**Category:** Critical Logic Failure & Architectural Degeneration (Incorrect Error Handling & Exit Code for Unexpected Exceptions)
-**Location:** `src/meqsap/cli.py` (function `analyze_command`, final `except Exception as e:` block; function `_main_pipeline`, final `except Exception as e:` block) and `_generate_error_message`, `_get_recovery_suggestions` function signatures.
-**Description:**
-    1.  The `analyze_command`'s final `except Exception as e:` block uses `raise typer.Exit(code=5)` for unexpected exceptions. This contradicts ADR-004 and `docs/policies/error-handling-policy.md`, which specify exit code `10` for "Unexpected/unhandled errors".
-    2.  The `_main_pipeline`'s final `except Exception as e:` block incorrectly calls `_generate_error_message` with non-existent parameters (`error_type`, `suggestions`) and also returns `5` instead of `10`.
-    3.  The `_generate_error_message` function and the internally called `_get_recovery_suggestions` function have a type hint `exception: MEQSAPError`. However, `_generate_error_message` is called from `analyze_command`'s generic `except Exception as e:` block (and was incorrectly called from `_main_pipeline`'s similar block), where `e` might not be a `MEQSAPError` subclass. This violates the type hint.
-**Consequences:**
-    1.  Incorrect exit codes mislead users and automation scripts.
-    2.  The incorrect call to `_generate_error_message` from `_main_pipeline` would lead to a runtime error if that path was taken.
-    3.  Violating the type hint for `_generate_error_message` and `_get_recovery_suggestions` can lead to runtime errors if `MEQSAPError`-specific attributes were accessed (though current internal logic appears safe, the contract is violated).
-**Justification for Criticality:** Accurate exit codes and robust, type-safe error handling are fundamental for CLI tools. Deviations from documented policy and type violations can lead to incorrect behavior, obscure root causes, and hinder maintainability.
-**Root Cause Analysis:**
-    1.  Exit code implementation in `cli.py` diverged from documented policy (ADR-004).
-    2.  An incorrect call to `_generate_error_message` was present in `_main_pipeline`.
-    3.  Type hints for error handling utility functions did not accurately reflect their usage with generic exceptions.
-**Systemic Prevention Mandate:**
-1.  In `src/meqsap/cli.py`:
-    * In the `_main_pipeline` function, modify the final `except Exception as e:` block:
-        * Correct the call to `_generate_error_message` to `_generate_error_message(e, verbose=verbose, no_color=no_color)`.
-        * Change `return 5` to `return 10`.
-    * In the `analyze_command` function, modify the final `except Exception as e:` block:
-        * Change `raise typer.Exit(code=5)` to `raise typer.Exit(code=10)`.
-    * Modify the function signature of `_generate_error_message` from `exception: MEQSAPError` to `exception: Exception`.
-    * Modify the function signature of `_get_recovery_suggestions` from `exception: MEQSAPError` to `exception: Exception`.
-2.  Mandate that code reviews for CLI modules specifically verify adherence to documented exit code policies (ADR-004) and type consistency in error handlers.
-3.  Utilize static type checking tools (e.g., MyPy) in the CI pipeline to proactively catch type inconsistencies in error handling paths.
+**✅ RESOLVED:** **Issue ID:** FLAW-20250602-001
+Category: Critical Logic Failure & Architectural Degeneration (Incorrect Error Handling & Exit Code for Unexpected Exceptions)
+Location: `src/meqsap/cli.py` (function `analyze_command`, final `except Exception as e:` block; function `_main_pipeline`, final `except Exception as e:` block) and `_generate_error_message`, `_get_recovery_suggestions` function signatures.
+Resolution Date: 2025-06-02
+**Initial Resolution Summary:**
+    Code changes implemented as per the Systemic Prevention Mandate:
+    1. In `src/meqsap/cli.py`:
+        - The `_main_pipeline` function's final `except Exception as e:` block:
+            - Corrected the call to `_generate_error_message` to pass `e`, `verbose`, and `no_color` arguments correctly.
+            - Changed the return code from `5` to `10`.
+        - The `analyze_command` function's final `except Exception as e:` block:
+            - Changed the exit code from `5` to `10`.
+        - Modified the function signature of `_generate_error_message` from `exception: MEQSAPError` to `exception: Exception`.
+        - Modified the function signature of `_get_recovery_suggestions` from `exception: MEQSAPError` to `exception: Exception`.
+    These changes align the CLI's error handling for unexpected exceptions with ADR-004 and ensure type consistency.
+
+*(This section would be empty if no other new flaws are found during this audit)*
+No new critical architectural flaws identified in this audit cycle beyond FLAW-20250602-001 (which is now resolved).
 
 ## Part 2: Strategic Architectural Imperatives
 

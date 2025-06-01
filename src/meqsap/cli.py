@@ -142,9 +142,9 @@ def analyze_command(
     except typer.Exit:
         raise  # Re-raise typer.Exit as-is
     except Exception as e:
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color) # type: ignore
         console.print(error_msg)
-        raise typer.Exit(code=5)  # Use distinct exit code for unexpected errors
+        raise typer.Exit(code=10)  # Use distinct exit code for unexpected errors
 
 
 def _configure_application_context(verbose: bool, quiet: bool, no_color: bool) -> None:
@@ -226,14 +226,9 @@ def _main_pipeline(
         # Log the unexpected error for debugging
         logging.exception("An unexpected error occurred in main pipeline")
         
-        error_msg = _generate_error_message(
-            error=e,
-            error_type="Unexpected Error",
-            suggestions=["Check logs for detailed traceback", "Report this issue if it persists"],
-            verbose=verbose
-        )
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
         console.print(error_msg)
-        return 5  # Distinct exit code for unexpected errors
+        return 10  # Distinct exit code for unexpected errors
 
 
 def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> StrategyConfig:
@@ -518,7 +513,7 @@ def _display_trade_details(analysis_result: BacktestAnalysisResult) -> None:
         console.print("\n[yellow]⚠ No trades were executed during the backtest.[/yellow]")
 
 
-def _generate_error_message(exception: MEQSAPError, verbose: bool = False, no_color: bool = False) -> str:
+def _generate_error_message(exception: Exception, verbose: bool = False, no_color: bool = False) -> str:
     """
     Generate user-friendly error messages with recovery suggestions.
     
@@ -557,7 +552,7 @@ def _generate_error_message(exception: MEQSAPError, verbose: bool = False, no_co
     return "\n".join(message_parts)
 
 
-def _get_recovery_suggestions(exception: MEQSAPError) -> list[str]:
+def _get_recovery_suggestions(exception: Exception) -> list[str]:
     """Get specific recovery suggestions based on exception type."""
     suggestions = []
     
