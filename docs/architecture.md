@@ -124,7 +124,15 @@ meqsap/
 │       └── main.yml            # CI/CD pipeline for testing and publishing to PyPI
 ├── .venv/                      # Python virtual environment directory (git-ignored)
 ├── docs/
-│   └── architecture.md         # This architecture document
+│   ├── adr/                          # Architectural Decision Records
+│   │   ├── 004-error-handling-policy.md # Example ADR file
+│   │   └── ...                         # Other ADR files
+│   ├── policies/                     # Policy documents
+│   │   └── error-handling-policy.md    # Example Policy file
+│   ├── architecture.md               # This architecture document
+│   └── ...                           # Other documentation (prd.md, etc.)
+├── examples/                         # Example strategy configurations
+│   └── ma_crossover.yaml        # Example Moving Average Crossover config
 ├── src/
 │   └── meqsap/                 # The main installable Python package
 │       ├── __init__.py
@@ -132,17 +140,18 @@ meqsap/
 │       ├── cli.py              # Main CLI entrypoint and command parsing
 │       ├── config.py           # Pydantic schema and YAML loading
 │       ├── data.py             # Data acquisition and caching logic
+│       ├── exceptions.py             # Custom application exceptions
 │       ├── reporting.py        # Terminal output and PDF generation
 │       └── py.typed            # PEP 561 marker to indicate type hints are supported
 ├── tests/
 │   ├── __init__.py
 │   ├── test_backtest.py
 │   ├── test_config.py
-│   └── ...                     # Tests mirroring the application package structure
+│   └── ...                       # Tests mirroring the application package structure
 ├── .gitignore
-├── pyproject.toml              # Defines project metadata for packaging (for PyPI)
-├── README.md                   # Project overview and setup instructions
-└── requirements.txt            # Frozen project dependencies for reproducibility
+├── pyproject.toml                # Defines project metadata for packaging (for PyPI)
+├── README.md                     # Project overview and setup instructions
+└── requirements.txt              # Frozen project dependencies for reproducibility
 ```
 
 ### Key Directory Descriptions

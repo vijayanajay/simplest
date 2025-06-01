@@ -27,7 +27,7 @@ from src.meqsap.cli import (
 )
 
 # Import custom exceptions and types
-from src.meqsap.config import ConfigError, StrategyConfig
+from src.meqsap.config import StrategyConfig
 from src.meqsap.data import DataError
 from src.meqsap.backtest import BacktestError, BacktestAnalysisResult, BacktestResult
 from src.meqsap.reporting import ReportingError

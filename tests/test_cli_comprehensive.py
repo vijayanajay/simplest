@@ -14,7 +14,8 @@ import pandas as pd
 from io import StringIO
 
 from src.meqsap.cli import app
-from src.meqsap.config import ConfigError, StrategyConfig
+from src.meqsap.config import StrategyConfig
+from src.meqsap.exceptions import ConfigurationError
 from src.meqsap.data import DataError
 from src.meqsap.backtest import BacktestError, BacktestAnalysisResult, BacktestResult
 from src.meqsap.reporting import ReportingError
@@ -247,9 +248,8 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         mock_load_yaml_config.return_value = {
             "strategy_type": "MovingAverageCrossover", "ticker": "AAPL",
             "start_date": "2023-01-01", "end_date": "2023-12-31",
-            "strategy_params": {"fast_ma": 50, "slow_ma": 10}
-        }
-        mock_validate_config.side_effect = ConfigError("Fast MA (50) must be less than Slow MA (10).")
+            "strategy_params": {"fast_ma": 50, "slow_ma": 10}        }
+        mock_validate_config.side_effect = ConfigurationError("Fast MA (50) must be less than Slow MA (10).")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"

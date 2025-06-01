@@ -23,7 +23,6 @@ from src.meqsap import __version__
 from src.meqsap.config import (
     load_yaml_config,
     validate_config,
-    ConfigError,
     StrategyConfig,
 )
 from src.meqsap.data import fetch_market_data
@@ -145,7 +144,7 @@ def analyze_command(
     except Exception as e:
         error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
         console.print(error_msg)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=5)  # Use distinct exit code for unexpected errors
 
 
 def _configure_application_context(verbose: bool, quiet: bool, no_color: bool) -> None:
@@ -223,8 +222,18 @@ def _main_pipeline(
         return 3  # Computation failures  
     except ReportGenerationError:
         return 4  # Output generation failures
-    except Exception:
-        return 1  # Other errors
+    except Exception as e:
+        # Log the unexpected error for debugging
+        logging.exception("An unexpected error occurred in main pipeline")
+        
+        error_msg = _generate_error_message(
+            error=e,
+            error_type="Unexpected Error",
+            suggestions=["Check logs for detailed traceback", "Report this issue if it persists"],
+            verbose=verbose
+        )
+        console.print(error_msg)
+        return 5  # Distinct exit code for unexpected errors
 
 
 def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> StrategyConfig:

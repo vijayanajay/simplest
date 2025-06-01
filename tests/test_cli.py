@@ -15,7 +15,8 @@ import pandas as pd
 # Import the Typer app instance from your CLI module
 from src.meqsap.cli import app
 # Import custom exceptions and types
-from src.meqsap.config import ConfigError, StrategyConfig
+from src.meqsap.config import StrategyConfig
+from src.meqsap.exceptions import ConfigurationError
 from src.meqsap.data import DataError
 from src.meqsap.backtest import BacktestError, BacktestAnalysisResult, BacktestResult
 from src.meqsap.reporting import ReportingError
@@ -268,7 +269,7 @@ class TestCLIErrorHandling:
 
     @patch('src.meqsap.cli.load_yaml_config')
     def test_config_error_handling(self, mock_load_yaml):
-        mock_load_yaml.side_effect = ConfigError("Invalid configuration format")
+        mock_load_yaml.side_effect = ConfigurationError("Invalid configuration format")
         with self.runner.isolated_filesystem() as temp_dir:
             config_file_path = Path(temp_dir) / "test_config.yaml"
             with open(config_file_path, "w") as f: 

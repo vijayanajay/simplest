@@ -517,3 +517,30 @@ class ReportGenerationError(CLIError):
 **Status: Review** - All tasks completed, comprehensive CLI implementation ready for final approval.
 
 The CLI module now provides a complete, production-ready command-line interface that integrates all MEQSAP modules with comprehensive error handling, user-friendly messaging, and robust command-line argument processing. All acceptance criteria have been met and the implementation follows the project's architectural principles and coding standards.
+
+## Exit Code Strategy
+
+The CLI uses a comprehensive exit code system to enable precise error diagnosis:
+
+- **0**: Success - Analysis completed without errors
+- **1**: Configuration Error - Invalid config file, missing parameters, validation failures
+- **2**: Data Error - Data acquisition failures, missing data, format issues
+- **3**: Backtest Error - Strategy execution failures, calculation errors
+- **4**: Report Error - Output generation failures, file system issues
+- **5**: Unexpected Error - Unhandled exceptions, system errors, programming bugs
+
+This refined strategy ensures that:
+- CI/CD pipelines can accurately determine failure categories
+- Scripts can implement category-specific retry logic
+- Debugging is accelerated through precise error classification
+- No exit code collisions between error categories
+
+## Error Propagation & Logging
+
+All unhandled exceptions are:
+1. Logged with full tracebacks using `logging.exception()`
+2. Wrapped with descriptive error messages via `_generate_error_message()`
+3. Assigned the appropriate exit code (5 for unexpected errors)
+4. Presented consistently through the CLI's error formatting system
+
+This ensures comprehensive error visibility in both interactive and non-interactive environments.

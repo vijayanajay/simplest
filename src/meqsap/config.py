@@ -197,10 +197,4 @@ def validate_config(config_data: Dict[str, Any]) -> StrategyConfig:
         raise e
     except ValueError as e:
         raise ConfigurationError(f"Configuration validation failed: {str(e)}")
-    except Exception as e:
-        raise ConfigurationError(f"Unexpected error in configuration validation: {str(e)}")
-
-
-class ConfigError(Exception):
-    """Exception raised for configuration-related errors."""
-    pass
+    except Exception as e:        raise ConfigurationError(f"Unexpected error in configuration validation: {str(e)}")
