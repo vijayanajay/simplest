@@ -255,18 +255,16 @@ def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> 
         if not config_file.suffix.lower() in ['.yaml', '.yml']:
             raise ConfigurationError(f"Configuration file must have .yaml or .yml extension: {config_file}")
         
-        # YAML syntax validation
+        # YAML syntax validation and schema validation using existing functions
         try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            raise ConfigurationError(f"YAML syntax error in {config_file}: {e}")
+            # Use load_yaml_config from the config module
+            raw_config_data = load_yaml_config(config_file)
+            config = validate_config(raw_config_data)
+            strategy_params = config.validate_strategy_params()
+        except ConfigError as e: # Covers file not found, YAML errors, validation errors
+            raise ConfigurationError(f"Configuration error: {e}")
         except Exception as e:
-            raise ConfigurationError(f"Failed to read configuration file {config_file}: {e}")
-        
-        # Schema validation using existing functions
-        config = validate_config(config_data)
-        strategy_params = config.validate_strategy_params()
+            raise ConfigurationError(f"Unexpected error processing configuration file {config_file}: {e}")
         
         if not quiet:
             console.print(
