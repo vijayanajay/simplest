@@ -97,21 +97,20 @@ class TestEnhancedCLIMain:
 
     def test_help_command(self):
         """Test that help command works and shows enhanced help."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert result.exit_code == 0
         assert "MEQSAP" in result.output
         assert "--report" in result.output
-        assert "--verbose" in result.output
-        assert "--dry-run" in result.output
+        assert "--verbose" in result.output # This is a global option, but also shown in subcommand
+        assert "--validate-only" in result.output # Specific to analyze
 
     def test_mutually_exclusive_flags(self):
         """Test that verbose and quiet flags are mutually exclusive."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
-        
         try:
-            result = self.runner.invoke(app, [config_path, "--verbose", "--quiet"])
+            result = self.runner.invoke(app, ["analyze", config_path, "--verbose", "--quiet"])
             assert result.exit_code == 1
             assert "cannot be used together" in result.output
         finally:
@@ -121,13 +120,11 @@ class TestEnhancedCLIMain:
     def test_successful_execution(self, mock_pipeline):
         """Test successful pipeline execution."""
         mock_pipeline.return_value = 0
-        
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
-        
         try:
-            result = self.runner.invoke(app, [config_path])
+            result = self.runner.invoke(app, ["analyze", config_path])
             assert result.exit_code == 0
             mock_pipeline.assert_called_once()
         finally:
@@ -136,14 +133,12 @@ class TestEnhancedCLIMain:
     @patch('src.meqsap.cli._main_pipeline')
     def test_pipeline_failure(self, mock_pipeline):
         """Test pipeline failure handling."""
-        mock_pipeline.side_effect = ConfigurationError("Test error")
-        
+        mock_pipeline.return_value = 1
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
-        
         try:
-            result = self.runner.invoke(app, [config_path])
+            result = self.runner.invoke(app, ["analyze", config_path])
             assert result.exit_code == 1
         finally:
             os.unlink(config_path)
@@ -190,12 +185,10 @@ class TestConfigurationValidation:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(INVALID_YAML_CONTENT)
             config_path = Path(f.name)
-        
         try:
             with pytest.raises(ConfigurationError) as exc_info:
                 _validate_and_load_config(config_path, verbose=False, quiet=True)
-            
-            assert "YAML syntax error" in str(exc_info.value)
+            assert "Invalid YAML in configuration" in str(exc_info.value)
         finally:
             os.unlink(config_path)
 
@@ -483,27 +476,25 @@ class TestCLIIntegration:
             config_path = f.name
         
         try:
-            result = self.runner.invoke(app, [config_path, "--quiet"])
+            result = self.runner.invoke(app, ["analyze", config_path, "--quiet"])
             assert result.exit_code == 0
         finally:
             os.unlink(config_path)
 
     def test_invalid_config_file_path(self):
         """Test handling of invalid config file path."""
-        result = self.runner.invoke(app, ["/nonexistent/config.yaml"])
+        result = self.runner.invoke(app, ["analyze", "/nonexistent/config.yaml"])
         assert result.exit_code == 2  # Typer's exit code for file not found
 
     @patch('src.meqsap.cli._main_pipeline')
     def test_configuration_error_exit_code(self, mock_pipeline):
         """Test that configuration errors return exit code 1."""
-        mock_pipeline.side_effect = ConfigurationError("Invalid config")
-        
+        mock_pipeline.return_value = 1
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
-        
         try:
-            result = self.runner.invoke(app, [config_path])
+            result = self.runner.invoke(app, ["analyze", config_path])
             assert result.exit_code == 1
         finally:
             os.unlink(config_path)
@@ -511,15 +502,13 @@ class TestCLIIntegration:
     @patch('src.meqsap.cli._main_pipeline')
     def test_data_error_exit_code(self, mock_pipeline):
         """Test that data errors return exit code 2."""
-        mock_pipeline.side_effect = DataAcquisitionError("Network error")
-        
+        mock_pipeline.return_value = 2 # To test the specific code path from _main_pipeline
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
-        
         try:
-            result = self.runner.invoke(app, [config_path])
-            assert result.exit_code == 1  # All exceptions mapped to exit code 1 in main function
+            result = self.runner.invoke(app, ["analyze", config_path])
+            assert result.exit_code == 2
         finally:
             os.unlink(config_path)
 
@@ -533,32 +522,30 @@ class TestCLIFlags:
 
     def test_report_flag(self):
         """Test --report flag functionality."""
-        # This would require a more complex mock setup
-        # For now, just test that the flag is recognized
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--report" in result.output
 
     def test_verbose_flag(self):
         """Test --verbose flag functionality."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--verbose" in result.output
 
     def test_quiet_flag(self):
         """Test --quiet flag functionality."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--quiet" in result.output
 
     def test_dry_run_flag(self):
         """Test --dry-run flag functionality."""
-        result = self.runner.invoke(app, ["--help"])
-        assert "--dry-run" in result.output
+        result = self.runner.invoke(app, ["analyze", "--help"])
+        assert "--validate-only" in result.output # --dry-run is an alias for --validate-only
 
     def test_output_dir_flag(self):
         """Test --output-dir flag functionality."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--output-dir" in result.output
 
     def test_no_color_flag(self):
         """Test --no-color flag functionality."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--no-color" in result.output

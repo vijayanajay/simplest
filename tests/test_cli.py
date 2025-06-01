@@ -36,7 +36,7 @@ class TestCLIAnalyzeCommand:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
 
         self.mock_config_obj = Mock(spec=StrategyConfig)
         self.mock_config_obj.strategy_type = "MovingAverageCrossover"
@@ -256,7 +256,7 @@ class TestCLIErrorHandling:
     """Test error handling in CLI commands."""
     
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
 
         self.mock_config_obj_for_errors = Mock(spec=StrategyConfig)
         self.mock_config_obj_for_errors.strategy_type = "TestStrategy"
@@ -389,7 +389,7 @@ class TestCLIVersionCommand:
     """Test the version command."""
     
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
 
     @patch('src.meqsap.cli.__version__', "1.2.3")
     def test_version_command(self):
@@ -402,7 +402,7 @@ class TestCLIArgumentValidation:
     """Test CLI argument validation and parsing."""
     
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
 
     def test_missing_config_file_argument(self):
         """Test error when config file argument is missing."""
@@ -427,7 +427,7 @@ class TestCLIArgumentValidation:
     def test_analyze_help(self):
         result = self.runner.invoke(app, ["analyze", "--help"])
         assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
-        assert "Analyze a trading strategy using a YAML configuration file." in result.stdout
+        assert "Analyze a trading strategy with MEQSAP using a YAML configuration file." in result.stdout
         assert "--validate-only" in result.stdout
 
 
@@ -435,7 +435,7 @@ class TestCLIIntegration:
     """Integration tests for CLI commands."""
     
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
 
         self.mock_config_obj_integ = Mock(spec=StrategyConfig)
         self.mock_config_obj_integ.strategy_type = "MovingAverageCrossover"

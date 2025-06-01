@@ -108,16 +108,16 @@ def analyze_command(
     ),
 ) -> None:
     """
-    Analyze a trading strategy using a YAML configuration file.
-    
+    Analyze a trading strategy with MEQSAP using a YAML configuration file.
+
     This command loads the configuration, fetches market data, runs a backtest, 
-    and generates comprehensive analysis reports.
-    
+    and generates comprehensive analysis reports for the MEQSAP platform.
+
     Examples:
-        meqsap config.yaml
-        meqsap config.yaml --report --verbose
-        meqsap config.yaml --dry-run
-        meqsap config.yaml --output-dir ./custom_reports --report
+        meqsap analyze config.yaml
+        meqsap analyze config.yaml --report --verbose
+        meqsap analyze config.yaml --validate-only
+        meqsap analyze config.yaml --output-dir ./custom_reports --report
     """
     # Validate mutually exclusive options
     if verbose and quiet:
@@ -211,7 +211,6 @@ def _main_pipeline(
         if not quiet:
             elapsed_time = time.time() - start_time
             console.print(f"\n[bold green]✓ MEQSAP analysis completed successfully in {elapsed_time:.2f} seconds[/bold green]")
-        
         return 0
         
     except ConfigurationError:

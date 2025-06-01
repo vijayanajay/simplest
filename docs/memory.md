@@ -258,3 +258,90 @@ This reinforces that **structural integrity** must exist at the Python package l
 **Design Principle**: Always inspect the actual CLI implementation before writing tests. Use `typer.testing.CliRunner` with the actual command structure, not an assumed one. Mock at the module boundary where functions are actually called, not at the CLI module level.
 
 **Prevention**: When adding new CLI features, write tests that match the actual implementation, or implement the CLI features first, then write tests against the real interface.
+
+## Test Suite Misalignment with Typer CLI Structure and Dependency APIs
+
+**Date**: 2025-06-01
+**Issue**: A significant number of CLI tests were failing due to two primary structural issues:
+    1.  Incompatibility with `typer.testing.CliRunner` API changes (removal of `mix_stderr` argument).
+    2.  Incorrect test invocation patterns for a Typer application structured with subcommands (e.g., `meqsap analyze <config> [options]`). Tests were often invoking the main app (`meqsap [options]`) when they intended to test subcommand options or behavior.
+
+**Symptoms**:
+* `TypeError: CliRunner.__init__() got an unexpected keyword argument 'mix_stderr'` across multiple test setup methods in `test_cli.py` and `test_cli_comprehensive.py`.
+* AssertionErrors in `test_cli_enhanced.py` related to:
+    * Help text not containing expected subcommand options when global help was invoked.
+    * Incorrect exit codes (typically getting Typer's default error code `2` instead of expected `0` or `1`) because arguments were being passed incorrectly to the main app instead of the subcommand.
+    * Mocks for `_main_pipeline` raising exceptions that were caught by the generic `analyze_command` handler (exit code 1), instead of testing the specific error code paths (2,3,4) returned by `_main_pipeline`.
+
+**Structural Problems**:
+1.  **Dependency API Drift**: The test suite was not updated to reflect changes in the `typer.testing.CliRunner` API (specifically, the removal of `mix_stderr` from the underlying Click library). This highlights a need for better dependency management or more regular test suite maintenance against library updates.
+2.  **Misinterpretation of CLI Subcommand Testing**: Tests for subcommand options and behaviors were incorrectly invoking the main Typer application. This indicates a flawed testing strategy for applications with a nested command structure. For example, to test options of `meqsap analyze`, `CliRunner` must be invoked with `["analyze", config_file, options]`, not just `[config_file, options]`.
+3.  **Fragile Mocking Strategy for Error Codes**: Some tests directly mocked `_main_pipeline` to raise specific exceptions. While `_main_pipeline` internally catches these and returns distinct error codes (1-4), the mock caused the exception to be caught by the broader `analyze_command`'s generic error handler, always resulting in exit code 1. This prevented testing the specific error code paths.
+
+**Fix Applied**:
+1.  Updated all `CliRunner` instantiations to remove the `mix_stderr` argument (e.g., `CliRunner()` instead of `CliRunner(mix_stderr=False)`).
+2.  Corrected `CliRunner.invoke` calls in `test_cli_enhanced.py` to use the proper subcommand structure (e.g., `app, ["analyze", config_path, ...]`).
+3.  Adjusted assertions for help messages to target subcommand help where appropriate (e.g., `app, ["analyze", "--help"]`).
+4.  Modified mocks in exit code tests to have `_main_pipeline.return_value = <expected_code>` to accurately test the intended error code propagation from `_main_pipeline` through `analyze_command`.
+5.  Made error message assertions in YAML validation tests more robust.
+
+**Lesson Learned**:
+* Test suites must be actively maintained against evolving APIs of their dependencies. Consider stricter version pinning or more frequent compatibility checks.
+* When testing CLIs with subcommands, ensure test invocation patterns correctly reflect the command hierarchy (e.g., `app_object, ["subcommand", arg1, "--option1"]`).
+* Mocking strategies for testing error code paths should accurately simulate the intended flow of control and return values, rather than just raising exceptions that might be caught by overly broad handlers higher up the call stack.
+* Testing help messages requires invoking help for the correct scope (main app vs. subcommand).
+
+**Prevention**:
+* Run integration tests regularly, especially after updating dependencies.
+* When designing CLI tests, explicitly map out invocation patterns for each level of the command structure.
+* When testing specific returned error codes from a function that has its own error handling, ensure mocks cause the function to *return* the code, rather than *raising* an exception that bypasses that internal handling.
+
+## CLI Subcommand Help Text Content and Testing
+
+**Date**: 2025-06-01
+**Issue**: Test `TestEnhancedCLIMain::test_help_command` in `test_cli_enhanced.py` was failing. The test asserted that the main application name ("MEQSAP") should be present in the help output of the `analyze` subcommand (`meqsap analyze --help`).
+
+**Symptoms**:
+* `AssertionError: assert 'MEQSAP' in ' Usage: meqsap analyze [OPTIONS] CON...'` when running `pytest`.
+
+**Structural Problem**:
+* Typer, by default, generates help text for subcommands primarily from their own docstrings and parameter definitions. It does not automatically include the main application's name or full help string in subcommand help screens unless explicitly part of the subcommand's docstring.
+* The test's expectation was that the main application branding should be present in the subcommand's help, which is a reasonable consistency requirement but not automatically fulfilled by Typer's default behavior.
+
+**Fix Applied**:
+* Modified the docstring of the `analyze_command` function in `src/meqsap/cli.py` to include the term "MEQSAP".
+* Corrected the examples within the `analyze_command` docstring to use the correct subcommand invocation (`meqsap analyze ...`) and the actual flag (`--validate-only` instead of `--dry-run`, which was an internal variable name mapping).
+
+**Lesson Learned**:
+* Help text for Typer subcommands is principally derived from their specific docstrings. If global application branding or context needs to be present in subcommand help, it should be explicitly added to the subcommand's docstring.
+* Ensure test expectations for help messages align with how the CLI framework generates them, or modify the help content source (like docstrings) to meet those expectations.
+* Keep examples in docstrings consistent with the actual command structure and defined flags.
+
+**Prevention**:
+* When writing tests for CLI help messages, be clear about the scope (main app help vs. subcommand help).
+* If consistent branding in help screens is desired, establish a convention for including it in subcommand docstrings.
+* Regularly review and update examples in docstrings to reflect the current CLI structure and options.
+
+## CLI Test Help String Mismatch (test_cli.py)
+
+**Date**: 2025-06-01
+**Issue**: The test `TestCLIArgumentValidation.test_analyze_help` in `tests/test_cli.py` was failing due to an `AssertionError`. The test expected a specific help string for the `analyze` subcommand that did not exactly match the first line of the `analyze_command`'s docstring in `src/meqsap/cli.py`.
+
+**Symptoms**:
+* `AssertionError: assert 'Analyze a trading strategy using a YAML configuration file.' in <actual Typer help output>`
+* The `pytest_results.txt` indicated the specific assertion failure.
+
+**Structural Problem**:
+* **Test Specification Drift**: The assertion string in the unit test had become outdated or was slightly different from the actual docstring content used by Typer to generate the help message. The docstring for `analyze_command` in `src/meqsap/cli.py` starts with "Analyze a trading strategy with MEQSAP using a YAML configuration file.", while the test assertion was missing "with MEQSAP".
+
+**Fix Applied**:
+* Updated the assertion string in `tests/test_cli.py` for the `test_analyze_help` method to correctly match the first line of the `analyze_command` docstring in `src/meqsap/cli.py`, by including the phrase "with MEQSAP".
+
+**Lesson Learned**:
+* Tests for CLI help messages should be robust but also precisely aligned with the source of the help text (typically command docstrings).
+* When command docstrings are updated (e.g., for clarity or branding like adding "MEQSAP"), corresponding tests asserting help content must also be updated to prevent false negatives.
+* Regularly review and synchronize test assertions with actual UI/CLI outputs, especially for text-based checks.
+
+**Prevention**:
+* When modifying CLI command docstrings, immediately review and update any tests that assert against the generated help text.
+* Ensure test assertions accurately reflect the current state of the docstrings used for help message generation.

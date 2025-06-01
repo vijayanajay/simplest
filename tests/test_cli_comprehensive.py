@@ -25,7 +25,7 @@ class TestConfigurationErrorScenarios:
     """Test various configuration error scenarios and recovery suggestions."""
     
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     def test_missing_required_fields(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
@@ -107,7 +107,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
 
 class TestDataAcquisitionErrorScenarios:
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     @patch('src.meqsap.cli.fetch_market_data')
     def test_network_connection_failure(self, mock_fetch_market_data):
@@ -197,7 +197,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
 
 class TestBacktestExecutionErrorScenarios:
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     @patch('src.meqsap.cli.run_complete_backtest')
     @patch('src.meqsap.cli.fetch_market_data')
@@ -267,7 +267,7 @@ strategy_params: { "fast_ma": 50, "slow_ma": 10 } """)
 
 class TestReportGenerationErrorScenarios:
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     @patch('src.meqsap.cli.generate_complete_report')
     @patch('src.meqsap.cli.run_complete_backtest')
@@ -293,7 +293,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
 
 class TestProgressAndUserExperience:
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     @patch('src.meqsap.cli.Progress')
     @patch('src.meqsap.cli.fetch_market_data')
@@ -338,7 +338,7 @@ strategy_params: {"fast_ma": 1, "slow_ma": 2}""")
 
 class TestVersionAndDiagnostics:
     def setup_method(self):
-        self.runner = CliRunner(mix_stderr=False)
+        self.runner = CliRunner()
     
     def test_version_information_display(self):
         result = self.runner.invoke(app, ["version"])
@@ -370,8 +370,8 @@ class TestCrossPlatformCompatibility:
         is_terminal = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty(); assert isinstance(is_terminal, bool)
 
 class TestPerformanceAndOptimization:
-    def setup_method(self): self.runner = CliRunner(mix_stderr=False)
-    def test_startup_time_optimization(self):
+    def setup_method(self): self.runner = CliRunner()
+    def test_startup_time_optimization(self): # FIXME: mix_stderr issue likely here too if not fixed by parent
         import time; start_time = time.time(); result = self.runner.invoke(app, ["--help"]); end_time = time.time()
         assert (end_time - start_time) < 2.0 and result.exit_code == 0
     
