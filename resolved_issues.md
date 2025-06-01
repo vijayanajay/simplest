@@ -24,3 +24,10 @@ The exception hierarchy diagram in `docs/adr/004-error-handling-policy.md` and t
 **Resolution Date:** 2025-06-02
 **Summary of Resolution:**
 The "Project Structure" diagram in `docs/architecture.md` was verified to include `src/meqsap/exceptions.py`, the `examples/` directory, and details of the `docs/` subdirectories (e.g., `adr/`, `policies/`), accurately reflecting the current project structure.
+
+---
+**Issue ID:** FLAW-20250601-004
+**Status:** RESOLVED
+**Resolution Date:** 2025-06-02
+**Summary of Resolution:**
+Corrected the example validation logic in `docs/adr/adr-002-date-range-handling.md` (section "Internal Implementation") to reflect the actual correct check, ensuring data for the inclusive `end_date` is present after yfinance fetching and adjustment.

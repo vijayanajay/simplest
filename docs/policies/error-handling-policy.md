@@ -54,6 +54,7 @@ exit 10  # Unhandled exceptions
 
 #### Configuration Validation
 ```python
+from pydantic import ValidationError
 from meqsap.exceptions import ConfigurationError
 
 def validate_strategy_params(params: StrategyParams) -> None:
