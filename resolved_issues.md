@@ -9,7 +9,7 @@ This file tracks issues that have been resolved, including their re-open history
 **Status:** RESOLVED
 **Resolution Date:** 2025-06-02
 **Summary of Resolution:**
-The local `ConfigError` definition was removed from `src/meqsap/config.py`. The `src/meqsap/cli.py` module was verified to exclusively import and use `ConfigurationError` from `src/meqsap/exceptions.py`, adhering to ADR-004.
+The local `ConfigError` definition was removed from `src/meqsap/config.py`. The `src/meqsap/cli.py` module was verified to exclusively import and use `ConfigurationError` from `src/meqsap/exceptions.py`, adhering to `docs/adr/004-error-handling-policy.md`.
 
 ---
 **Issue ID:** FLAW-20250601-002

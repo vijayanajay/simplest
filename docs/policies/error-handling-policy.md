@@ -60,7 +60,8 @@ def validate_strategy_params(params: StrategyParams) -> None:
     """Validate strategy parameters with clear error messages."""
     try:
         # Pydantic validation
-        validated = StrategyParams.model_validate(params)    except ValidationError as e:
+        validated = StrategyParams.model_validate(params)
+    except ValidationError as e:
         raise ConfigurationError(
             f"Invalid strategy configuration: {e}",
             details={"validation_errors": e.errors()},
