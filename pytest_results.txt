@@ -3,13 +3,1293 @@ platform win32 -- Python 3.12.10, pytest-8.3.5, pluggy-1.6.0
 cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
-collected 97 items
+collected 154 items
 
-tests\test_backtest.py ............                                      [ 12%]
-tests\test_cli.py ..................                                     [ 30%]
-tests\test_config.py ............                                        [ 43%]
-tests\test_data.py .......                                               [ 50%]
-tests\test_float_handling.py s......                                     [ 57%]
+tests\test_backtest.py ............                                      [  7%]
+tests\test_cli.py FFFFFFFFFFFF.....F                                     [ 19%]
+tests\test_cli_comprehensive.py FFFFFFFFFFFFFF.........                  [ 34%]
+tests\test_cli_enhanced.py FFFF....................F.FFFFFFFF            [ 56%]
+tests\test_config.py ............                                        [ 64%]
+tests\test_data.py .......                                               [ 68%]
+tests\test_float_handling.py s......                                     [ 73%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 95 passed, 2 skipped in 15.79s ========================
+================================== FAILURES ===================================
+______________ TestCLIAnalyzeCommand.test_analyze_basic_success _______________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3F3B0>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714623175392'>
+mock_validate_config = <MagicMock name='validate_config' id='2714619786352'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714619922720'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714619934768'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714619923440'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')  # Fixed path
+    @patch('src.meqsap.backtest.run_complete_backtest')      # Fixed path
+    @patch('src.meqsap.data.fetch_market_data')              # Fixed path
+    @patch('src.meqsap.config.validate_config')              # Fixed path
+    @patch('src.meqsap.config.load_yaml_config')             # Fixed path
+    def test_analyze_basic_success(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+        mock_fetch_market_data.return_value = self.mock_market_data
+        mock_run_complete_backtest.return_value = self.mock_analysis_result
+        mock_generate_complete_report.return_value = None
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+    
+            # Fix: Use actual CLI command structure
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpdz9hm7wg\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:105: AssertionError
+______________ TestCLIAnalyzeCommand.test_analyze_validate_only _______________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3F590>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714620070416'>
+mock_validate_config = <MagicMock name='validate_config' id='2714620074064'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714620068688'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714620074208'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714620447584'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_analyze_validate_only(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+    
+            # Fix: Use actual command for validation-only mode
+            result = self.runner.invoke(app, [str(config_file_path), "--dry-run"])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmppj9ykqqk\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:129: AssertionError
+_____________ TestCLIAnalyzeCommand.test_analyze_with_report_flag _____________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3F710>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714620458768'>
+mock_validate_config = <MagicMock name='validate_config' id='2714620452000'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714620045952'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714620040048'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714620040912'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_analyze_with_report_flag(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+        mock_fetch_market_data.return_value = self.mock_market_data
+        mock_run_complete_backtest.return_value = self.mock_analysis_result
+        mock_generate_complete_report.return_value = "/path/to/report.pdf"
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+    
+            custom_reports_dir_name = "custom_reports_test_dir"
+    
+            result = self.runner.invoke(app, [
+                str(config_file_path),
+                "--report", "--output-dir", custom_reports_dir_name
+            ])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpxmt5_yp3\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:164: AssertionError
+_______________ TestCLIAnalyzeCommand.test_analyze_verbose_mode _______________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3F890>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714620457376'>
+mock_validate_config = <MagicMock name='validate_config' id='2714620448880'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714620077040'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714620083376'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714620070800'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_analyze_verbose_mode(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+        mock_fetch_market_data.return_value = self.mock_market_data
+        mock_run_complete_backtest.return_value = self.mock_analysis_result
+        mock_generate_complete_report.return_value = None
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path), "--verbose"])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpg5g3ivtb\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:196: AssertionError
+________________ TestCLIAnalyzeCommand.test_analyze_quiet_mode ________________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3FA10>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714623429664'>
+mock_validate_config = <MagicMock name='validate_config' id='2714619826096'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714619564288'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714619572064'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714619562944'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_analyze_quiet_mode(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+        mock_fetch_market_data.return_value = self.mock_market_data
+        mock_run_complete_backtest.return_value = self.mock_analysis_result
+        mock_generate_complete_report.return_value = None
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path), "--quiet"])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpsriyc399\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:223: AssertionError
+______________ TestCLIAnalyzeCommand.test_analyze_no_color_mode _______________
+
+self = <tests.test_cli.TestCLIAnalyzeCommand object at 0x0000027807C3FB90>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618214736'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618204752'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714618210080'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714618603872'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714618594128'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_analyze_no_color_mode(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj
+        mock_fetch_market_data.return_value = self.mock_market_data
+        mock_run_complete_backtest.return_value = self.mock_analysis_result
+        mock_generate_complete_report.return_value = None
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path), "--no-color"])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpsbm92sc0\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:253: AssertionError
+_______________ TestCLIErrorHandling.test_config_error_handling _______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C3FEC0>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618599408'>
+
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_config_error_handling(self, mock_load_yaml):
+        mock_load_yaml.side_effect = ConfigError("Invalid configuration format")
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write("dummy_content_for_exists_check")
+    
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+        # Fix: Use actual exit code returned by CLI for config errors
+        assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+        # Fix: Check for actual error message format
+>       assert ("ConfigError" in result.stdout or "configuration" in result.stdout.lower())
+E       AssertionError: assert ('ConfigError' in '' or 'configuration' in '')
+E        +  where '' = <Result SystemExit(2)>.stdout
+E        +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E        +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E        +      where '' = <Result SystemExit(2)>.stdout
+
+tests\test_cli.py:287: AssertionError
+________________ TestCLIErrorHandling.test_data_error_handling ________________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C68080>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618114224'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618107408'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714618104912'>
+
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_data_error_handling(self, mock_load_yaml, mock_validate_config, mock_fetch_market_data):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj_for_errors
+        mock_fetch_market_data.side_effect = DataError("Failed to fetch market data")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+        assert result.exit_code == 2  # Fix: Use actual CLI exit code for data errors
+>       assert "DataError:" in result.stdout
+E       AssertionError: assert 'DataError:' in ''
+E        +  where '' = <Result SystemExit(2)>.stdout
+
+tests\test_cli.py:304: AssertionError
+______________ TestCLIErrorHandling.test_backtest_error_handling ______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C68230>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618548720'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618599504'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714618547856'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714618195088'>
+
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_backtest_error_handling(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data, mock_run_complete_backtest
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj_for_errors
+        # Fix: Mock as DataFrame-like object
+        mock_market_data = Mock(spec=pd.DataFrame)
+        mock_market_data.__len__ = Mock(return_value=252)
+        mock_fetch_market_data.return_value = mock_market_data
+        mock_run_complete_backtest.side_effect = BacktestError("Backtest execution failed")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+>       assert result.exit_code == 3  # Fix: Use actual CLI exit code for backtest errors
+E       assert 2 == 3
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:328: AssertionError
+_____________ TestCLIErrorHandling.test_reporting_error_handling ______________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C683E0>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618185248'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618775840'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714618777952'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714618781648'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714618786784'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_reporting_error_handling(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.return_value = self.mock_config_obj_for_errors
+        # Fix: Mock as DataFrame-like object
+        mock_market_data = Mock(spec=pd.DataFrame)
+        mock_market_data.__len__ = Mock(return_value=252)
+        mock_fetch_market_data.return_value = mock_market_data
+        mock_run_complete_backtest.return_value = Mock(spec=BacktestAnalysisResult)
+        mock_generate_complete_report.side_effect = ReportingError("Failed to generate report")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+>       assert result.exit_code == 4  # Fix: Use actual CLI exit code for reporting errors
+E       assert 2 == 4
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:356: AssertionError
+_____________ TestCLIErrorHandling.test_unexpected_error_handling _____________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C3FE00>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618192016'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618194896'>
+
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_unexpected_error_handling(self, mock_load_yaml, mock_validate_config):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.side_effect = Exception("Completely unexpected error occurred")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path)])
+    
+>       assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmputnq25x1\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 1
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:372: AssertionError
+________ TestCLIErrorHandling.test_unexpected_error_verbose_traceback _________
+
+self = <tests.test_cli.TestCLIErrorHandling object at 0x0000027807C3F740>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618545312'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618559952'>
+mock_print_exception = <MagicMock name='print_exception' id='2714618105968'>
+
+    @patch('src.meqsap.cli.console.print_exception')  # Fix: Mock the correct method
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_unexpected_error_verbose_traceback(
+        self, mock_load_yaml, mock_validate_config, mock_print_exception
+    ):
+        mock_load_yaml.return_value = {"strategy": "test"}
+        mock_validate_config.side_effect = Exception("Another unexpected error")
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+            result = self.runner.invoke(app, [str(config_file_path), "--verbose"])
+    
+>       assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmplnz3bw80\\\\test_config.yaml'.     \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 1
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:391: AssertionError
+______________ TestCLIIntegration.test_full_workflow_integration ______________
+
+self = <tests.test_cli.TestCLIIntegration object at 0x0000027807C69070>
+mock_load_yaml = <MagicMock name='load_yaml_config' id='2714618106400'>
+mock_validate_config = <MagicMock name='validate_config' id='2714618596336'>
+mock_fetch_market_data = <MagicMock name='fetch_market_data' id='2714618203216'>
+mock_run_complete_backtest = <MagicMock name='run_complete_backtest' id='2714550134944'>
+mock_generate_complete_report = <MagicMock name='generate_complete_report' id='2714620081216'>
+
+    @patch('src.meqsap.reporting.generate_complete_report')
+    @patch('src.meqsap.backtest.run_complete_backtest')
+    @patch('src.meqsap.data.fetch_market_data')
+    @patch('src.meqsap.config.validate_config')
+    @patch('src.meqsap.config.load_yaml_config')
+    def test_full_workflow_integration(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        mock_load_yaml.return_value = {"strategy": "MovingAverageCrossover"}
+        mock_validate_config.return_value = self.mock_config_obj_integ
+        mock_fetch_market_data.return_value = self.mock_market_data_integ
+        mock_run_complete_backtest.return_value = self.mock_analysis_result_integ
+        mock_generate_complete_report.return_value = "/path/to/report.pdf"
+    
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "test_integration_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_YAML_CONTENT)
+    
+            custom_reports_dir_name = "test_reports_integration"
+    
+            result = self.runner.invoke(app, [
+                str(config_file_path),
+                "--verbose", "--report",
+                "--output-dir", custom_reports_dir_name,
+                "--no-color"
+            ])
+    
+>       assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}\nException: {result.exception}"
+E       AssertionError: EXIT CODE: 2
+E         STDOUT: 
+E         STDERR: Usage: meqsap [OPTIONS] COMMAND [ARGS]...
+E         Try 'meqsap -h' for help.
+E         \u250c\u2500 Error \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+E         \u2502 No such command                                                             \u2502
+E         \u2502 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\tmpk9m0rkcy\\\\test_integration_confi \u2502
+E         \u2502 g.yaml'.                                                                    \u2502
+E         \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+E         
+E         Exception: 2
+E       assert 2 == 0
+E        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli.py:511: AssertionError
+________ TestConfigurationErrorScenarios.test_missing_required_fields _________
+
+self = <tests.test_cli_comprehensive.TestConfigurationErrorScenarios object at 0x0000027807C6A7E0>
+
+        def test_missing_required_fields(self):
+            """Test error handling for missing required configuration fields."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    # Missing required fields
+    symbol: "AAPL"
+    # No strategy_type, start_date, end_date
+    """)
+                config_file = f.name
+    
+            try:
+                # Fix: Use actual CLI command structure
+                result = self.runner.invoke(app, [config_file])
+    
+                # Fix: Use actual exit code for config validation errors
+                assert result.exit_code == 2
+                # Fix: Check for actual error message patterns
+>               assert ("required" in result.stdout.lower() or
+                       "missing" in result.stdout.lower() or
+                       "validation" in result.stdout.lower())
+E                      AssertionError: assert ('required' in '' or 'missing' in '' or 'validation' in '')
+E                       +  where '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+E                       +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+E                       +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+
+tests\test_cli_comprehensive.py:46: AssertionError
+__________ TestConfigurationErrorScenarios.test_invalid_date_formats __________
+
+self = <tests.test_cli_comprehensive.TestConfigurationErrorScenarios object at 0x0000027807C6A990>
+
+        def test_invalid_date_formats(self):
+            """Test error handling for invalid date formats."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "invalid-date-format"
+    end_date: "2023-12-31"
+    strategy_params: {"fast_ma": 10, "slow_ma": 20}
+    """)
+                config_file = f.name
+    
+            try:
+                result = self.runner.invoke(app, [config_file])
+    
+                # Fix: Use actual exit code
+                assert result.exit_code == 2
+                # Fix: More flexible error message checking
+>               assert ("date" in result.stdout.lower() or
+                       "invalid" in result.stdout.lower() or
+                       "format" in result.stdout.lower())
+E                      AssertionError: assert ('date' in '' or 'invalid' in '' or 'format' in '')
+E                       +  where '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+E                       +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+E                       +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                       +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                       +      where '' = <Result SystemExit(2)>.stdout
+
+tests\test_cli_comprehensive.py:70: AssertionError
+________ TestConfigurationErrorScenarios.test_invalid_parameter_ranges ________
+
+self = <tests.test_cli_comprehensive.TestConfigurationErrorScenarios object at 0x0000027807C6AB40>
+
+        def test_invalid_parameter_ranges(self):
+            """Test error handling for invalid parameter ranges."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: -5  # Invalid negative period
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                result = self.runner.invoke(app, [config_file])
+    
+>               assert result.exit_code == 1
+E               assert 2 == 1
+E                +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:93: AssertionError
+_________ TestConfigurationErrorScenarios.test_malformed_yaml_syntax __________
+
+self = <tests.test_cli_comprehensive.TestConfigurationErrorScenarios object at 0x0000027807C6ACF0>
+
+        def test_malformed_yaml_syntax(self):
+            """Test error handling for malformed YAML syntax."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: [unclosed_bracket
+    """)
+                config_file = f.name
+    
+            try:
+                result = self.runner.invoke(app, [config_file])
+    
+>               assert result.exit_code == 1
+E               assert 2 == 1
+E                +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:115: AssertionError
+__________ TestConfigurationErrorScenarios.test_circular_date_range ___________
+
+self = <tests.test_cli_comprehensive.TestConfigurationErrorScenarios object at 0x0000027807C6AC90>
+
+        def test_circular_date_range(self):
+            """Test error handling for invalid date ranges (end before start)."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-12-31"
+    end_date: "2023-01-01"  # End before start
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                result = self.runner.invoke(app, [config_file])
+    
+>               assert result.exit_code == 1
+E               assert 2 == 1
+E                +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:139: AssertionError
+______ TestDataAcquisitionErrorScenarios.test_network_connection_failure ______
+
+self = <tests.test_cli_comprehensive.TestDataAcquisitionErrorScenarios object at 0x0000027807C68CB0>
+
+        def test_network_connection_failure(self):
+            """Test handling of network connection failures."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                with patch('src.meqsap.data.fetch_market_data') as mock_download:  # Fix: Correct patch path
+                    mock_download.side_effect = DataError("Connection timeout")
+    
+                    result = self.runner.invoke(app, [config_file])
+    
+                    # Fix: Use actual exit code for data errors
+                    assert result.exit_code == 2
+                    # Fix: More flexible error message checking
+>                   assert ("error" in result.stdout.lower() or
+                           "failed" in result.stdout.lower())
+E                          AssertionError: assert ('error' in '' or 'failed' in '')
+E                           +  where '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                           +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                           +      where '' = <Result SystemExit(2)>.stdout
+E                           +  and   '' = <built-in method lower of str object at 0x00007FFEAB439CA0>()
+E                           +    where <built-in method lower of str object at 0x00007FFEAB439CA0> = ''.lower
+E                           +      where '' = <Result SystemExit(2)>.stdout
+
+tests\test_cli_comprehensive.py:177: AssertionError
+________ TestDataAcquisitionErrorScenarios.test_invalid_ticker_symbol _________
+
+self = <tests.test_cli_comprehensive.TestDataAcquisitionErrorScenarios object at 0x0000027807C687A0>
+
+        def test_invalid_ticker_symbol(self):
+            """Test handling of invalid ticker symbols."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "INVALID_TICKER_12345"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.side_effect = DataError("No data found for symbol")
+    
+                    result = self.runner.invoke(app, [config_file])
+    
+>                   assert result.exit_code == 1
+E                   assert 2 == 1
+E                    +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:202: AssertionError
+_______ TestDataAcquisitionErrorScenarios.test_insufficient_data_period _______
+
+self = <tests.test_cli_comprehensive.TestDataAcquisitionErrorScenarios object at 0x0000027807C6AED0>
+
+        def test_insufficient_data_period(self):
+            """Test handling of insufficient data for the requested period."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-01-02"  # Very short period
+    strategy_params:
+      fast_ma: 50  # Longer than data period
+      slow_ma: 100
+    """)
+                config_file = f.name
+    
+            try:
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    # Return minimal data
+                    mock_download.return_value = pd.DataFrame({
+                        'Open': [100], 'High': [105], 'Low': [99],
+                        'Close': [104], 'Volume': [1000]
+                    })
+    
+                    with patch('src.meqsap.cli.run_complete_backtest') as mock_backtest:
+                        mock_backtest.side_effect = BacktestError("Insufficient data points")
+    
+                        result = self.runner.invoke(app, [config_file])
+    
+>                       assert result.exit_code == 1
+E                       assert 2 == 1
+E                        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:236: AssertionError
+__________ TestDataAcquisitionErrorScenarios.test_api_rate_limiting ___________
+
+self = <tests.test_cli_comprehensive.TestDataAcquisitionErrorScenarios object at 0x0000027807C6B080>
+
+        def test_api_rate_limiting(self):
+            """Test handling of API rate limiting errors."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.side_effect = DataError("Rate limit exceeded")
+    
+                    result = self.runner.invoke(app, [config_file])
+    
+>                   assert result.exit_code == 1
+E                   assert 2 == 1
+E                    +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:262: AssertionError
+__ TestBacktestExecutionErrorScenarios.test_mathematical_computation_errors ___
+
+self = <tests.test_cli_comprehensive.TestBacktestExecutionErrorScenarios object at 0x0000027807C6B380>
+
+        def test_mathematical_computation_errors(self):
+            """Test handling of mathematical computation errors."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                sample_data = pd.DataFrame({
+                    'Open': [100, 101, 102],
+                    'High': [105, 106, 107],
+                    'Low': [99, 100, 101],
+                    'Close': [104, 105, 106],
+                    'Volume': [1000, 1100, 1200]
+                })
+    
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.return_value = sample_data
+    
+                    with patch('src.meqsap.cli.run_complete_backtest') as mock_backtest:
+                        mock_backtest.side_effect = BacktestError("Division by zero in Sharpe calculation")
+    
+                        result = self.runner.invoke(app, [config_file])
+    
+>                       assert result.exit_code == 1
+E                       assert 2 == 1
+E                        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:307: AssertionError
+______ TestBacktestExecutionErrorScenarios.test_memory_exhaustion_errors ______
+
+self = <tests.test_cli_comprehensive.TestBacktestExecutionErrorScenarios object at 0x0000027807C6B530>
+
+        def test_memory_exhaustion_errors(self):
+            """Test handling of memory exhaustion during backtest."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                sample_data = pd.DataFrame({'Close': [100, 101, 102]})
+    
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.return_value = sample_data
+    
+                    with patch('src.meqsap.cli.run_complete_backtest') as mock_backtest:
+                        mock_backtest.side_effect = MemoryError("Not enough memory")
+    
+                        result = self.runner.invoke(app, [config_file])
+    
+>                       assert result.exit_code == 1
+E                       assert 2 == 1
+E                        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:339: AssertionError
+____ TestBacktestExecutionErrorScenarios.test_invalid_strategy_parameters _____
+
+self = <tests.test_cli_comprehensive.TestBacktestExecutionErrorScenarios object at 0x0000027807C6B6E0>
+
+        def test_invalid_strategy_parameters(self):
+            """Test handling of invalid strategy parameter combinations."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 50
+      slow_ma: 10  # Fast period > slow period (invalid)
+    """)
+                config_file = f.name
+    
+            try:
+                sample_data = pd.DataFrame({'Close': [100, 101, 102, 103, 104] * 20})
+    
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.return_value = sample_data
+    
+                    with patch('src.meqsap.cli.run_complete_backtest') as mock_backtest:
+                        mock_backtest.side_effect = BacktestError("Fast period must be less than slow period")
+    
+                        result = self.runner.invoke(app, [config_file])
+    
+>                       assert result.exit_code == 1
+E                       assert 2 == 1
+E                        +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:370: AssertionError
+___ TestReportGenerationErrorScenarios.test_pdf_generation_permission_error ___
+
+self = <tests.test_cli_comprehensive.TestReportGenerationErrorScenarios object at 0x0000027807C6BA40>
+
+        def test_pdf_generation_permission_error(self):
+            """Test handling of PDF generation permission errors."""
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write("""
+    strategy_type: "MovingAverageCrossover"
+    ticker: "AAPL"
+    start_date: "2023-01-01"
+    end_date: "2023-12-31"
+    strategy_params:
+      fast_ma: 10
+      slow_ma: 20
+    """)
+                config_file = f.name
+    
+            try:
+                sample_data = pd.DataFrame({
+                    'Open': [100, 101, 102],
+                    'High': [105, 106, 107],
+                    'Low': [99, 100, 101],
+                    'Close': [104, 105, 106],
+                    'Volume': [1000, 1100, 1200]
+                })
+    
+                with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+                    mock_download.return_value = sample_data
+    
+                    with patch('src.meqsap.cli.run_complete_backtest') as mock_backtest:
+                        mock_backtest.return_value = Mock()
+    
+                        with patch('src.meqsap.cli.generate_complete_report') as mock_pdf:
+                            mock_pdf.side_effect = PermissionError("Permission denied")
+    
+                            result = self.runner.invoke(app, [config_file, "--report"])
+    
+>                           assert result.exit_code == 1
+E                           assert 2 == 1
+E                            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_comprehensive.py:417: AssertionError
+____ TestProgressAndUserExperience.test_progress_indicators_data_download _____
+
+self = <tests.test_cli_comprehensive.TestProgressAndUserExperience object at 0x0000027807C6BD10>
+
+    def test_progress_indicators_data_download(self):
+        """Test progress indicators during data download."""
+        mock_config = Mock()
+        mock_config.ticker = "AAPL"
+    
+        sample_data = pd.DataFrame({'Close': [100, 101, 102]})
+    
+        with patch('src.meqsap.cli.fetch_market_data') as mock_download:
+            mock_download.return_value = sample_data
+            with patch('rich.progress.Progress') as mock_progress:
+                mock_progress_instance = Mock()
+                mock_progress.return_value.__enter__ = Mock(return_value=mock_progress_instance)
+                mock_progress.return_value.__exit__ = Mock(return_value=None)
+    
+                # This would test the actual CLI wrapper function
+                assert isinstance(sample_data, pd.DataFrame)
+>               mock_progress.assert_called()
+
+tests\test_cli_comprehensive.py:446: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='Progress' id='2714616120672'>
+
+    def assert_called(self):
+        """assert that the mock was called at least once
+        """
+        if self.call_count == 0:
+            msg = ("Expected '%s' to have been called." %
+                   (self._mock_name or 'mock'))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'Progress' to have been called.
+
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:918: AssertionError
+____________________ TestEnhancedCLIMain.test_help_command ____________________
+
+self = <tests.test_cli_enhanced.TestEnhancedCLIMain object at 0x0000027807C924E0>
+
+    def test_help_command(self):
+        """Test that help command works and shows enhanced help."""
+        result = self.runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "MEQSAP" in result.output
+>       assert "--report" in result.output
+E       AssertionError: assert '--report' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:103: AssertionError
+______________ TestEnhancedCLIMain.test_mutually_exclusive_flags ______________
+
+self = <tests.test_cli_enhanced.TestEnhancedCLIMain object at 0x0000027807C92690>
+
+    def test_mutually_exclusive_flags(self):
+        """Test that verbose and quiet flags are mutually exclusive."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path, "--verbose", "--quiet"])
+>           assert result.exit_code == 1
+E           assert 2 == 1
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:115: AssertionError
+________________ TestEnhancedCLIMain.test_successful_execution ________________
+
+self = <tests.test_cli_enhanced.TestEnhancedCLIMain object at 0x0000027807C92810>
+mock_pipeline = <MagicMock name='_main_pipeline' id='2714616120816'>
+
+    @patch('src.meqsap.cli._main_pipeline')
+    def test_successful_execution(self, mock_pipeline):
+        """Test successful pipeline execution."""
+        mock_pipeline.return_value = 0
+    
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path])
+>           assert result.exit_code == 0
+E           assert 2 == 0
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:131: AssertionError
+__________________ TestEnhancedCLIMain.test_pipeline_failure __________________
+
+self = <tests.test_cli_enhanced.TestEnhancedCLIMain object at 0x0000027807C92990>
+mock_pipeline = <MagicMock name='_main_pipeline' id='2714616214304'>
+
+    @patch('src.meqsap.cli._main_pipeline')
+    def test_pipeline_failure(self, mock_pipeline):
+        """Test pipeline failure handling."""
+        mock_pipeline.side_effect = ConfigurationError("Test error")
+    
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path])
+>           assert result.exit_code == 1
+E           assert 2 == 1
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:147: AssertionError
+______________ TestCLIIntegration.test_complete_pipeline_success ______________
+
+self = <tests.test_cli_enhanced.TestCLIIntegration object at 0x0000027807CBCDA0>
+mock_report = <MagicMock name='generate_complete_report' id='2714617836368'>
+mock_backtest = <MagicMock name='run_complete_backtest' id='2714617637744'>
+mock_data = <MagicMock name='fetch_market_data' id='2714617634768'>
+mock_config = <MagicMock name='validate_config' id='2714618183904'>
+
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.fetch_market_data')
+    @patch('src.meqsap.cli.run_complete_backtest')
+    @patch('src.meqsap.cli.generate_complete_report')
+    def test_complete_pipeline_success(self, mock_report, mock_backtest, mock_data, mock_config):
+        """Test complete successful pipeline execution."""
+        # Setup mocks
+        mock_config_obj = Mock(spec=StrategyConfig)
+        mock_config_obj.strategy_type = "MovingAverageCrossover"
+        mock_config_obj.ticker = "AAPL"
+        mock_config_obj.start_date = date(2023, 1, 1)
+        mock_config_obj.end_date = date(2023, 12, 31)
+    
+        mock_params = Mock()
+        mock_params.model_dump.return_value = {"fast_ma": 10, "slow_ma": 20}
+        mock_config_obj.validate_strategy_params.return_value = mock_params
+    
+        mock_config.return_value = mock_config_obj
+    
+        mock_data.return_value = pd.DataFrame({
+            'open': [100], 'high': [105], 'low': [99], 'close': [103], 'volume': [1000]
+        })
+    
+        mock_analysis = Mock(spec=BacktestAnalysisResult)
+        mock_analysis.primary_result = Mock()
+        mock_analysis.primary_result.total_trades = 0
+        mock_backtest.return_value = mock_analysis
+    
+        mock_report.return_value = None
+    
+        # Create config file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path, "--quiet"])
+>           assert result.exit_code == 0
+E           assert 2 == 0
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:487: AssertionError
+____________ TestCLIIntegration.test_configuration_error_exit_code ____________
+
+self = <tests.test_cli_enhanced.TestCLIIntegration object at 0x0000027807C93F80>
+mock_pipeline = <MagicMock name='_main_pipeline' id='2714618560480'>
+
+    @patch('src.meqsap.cli._main_pipeline')
+    def test_configuration_error_exit_code(self, mock_pipeline):
+        """Test that configuration errors return exit code 1."""
+        mock_pipeline.side_effect = ConfigurationError("Invalid config")
+    
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path])
+>           assert result.exit_code == 1
+E           assert 2 == 1
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:507: AssertionError
+________________ TestCLIIntegration.test_data_error_exit_code _________________
+
+self = <tests.test_cli_enhanced.TestCLIIntegration object at 0x0000027807C93800>
+mock_pipeline = <MagicMock name='_main_pipeline' id='2714618546848'>
+
+    @patch('src.meqsap.cli._main_pipeline')
+    def test_data_error_exit_code(self, mock_pipeline):
+        """Test that data errors return exit code 2."""
+        mock_pipeline.side_effect = DataAcquisitionError("Network error")
+    
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(VALID_YAML_CONTENT)
+            config_path = f.name
+    
+        try:
+            result = self.runner.invoke(app, [config_path])
+>           assert result.exit_code == 1  # All exceptions mapped to exit code 1 in main function
+E           assert 2 == 1
+E            +  where 2 = <Result SystemExit(2)>.exit_code
+
+tests\test_cli_enhanced.py:522: AssertionError
+________________________ TestCLIFlags.test_report_flag ________________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBC980>
+
+    def test_report_flag(self):
+        """Test --report flag functionality."""
+        # This would require a more complex mock setup
+        # For now, just test that the flag is recognized
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--report" in result.output
+E       AssertionError: assert '--report' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:539: AssertionError
+_______________________ TestCLIFlags.test_verbose_flag ________________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBCEF0>
+
+    def test_verbose_flag(self):
+        """Test --verbose flag functionality."""
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--verbose" in result.output
+E       AssertionError: assert '--verbose' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:544: AssertionError
+________________________ TestCLIFlags.test_quiet_flag _________________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBC7A0>
+
+    def test_quiet_flag(self):
+        """Test --quiet flag functionality."""
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--quiet" in result.output
+E       AssertionError: assert '--quiet' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:549: AssertionError
+_______________________ TestCLIFlags.test_dry_run_flag ________________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBC320>
+
+    def test_dry_run_flag(self):
+        """Test --dry-run flag functionality."""
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--dry-run" in result.output
+E       AssertionError: assert '--dry-run' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:554: AssertionError
+______________________ TestCLIFlags.test_output_dir_flag ______________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBD1F0>
+
+    def test_output_dir_flag(self):
+        """Test --output-dir flag functionality."""
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--output-dir" in result.output
+E       AssertionError: assert '--output-dir' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:559: AssertionError
+_______________________ TestCLIFlags.test_no_color_flag _______________________
+
+self = <tests.test_cli_enhanced.TestCLIFlags object at 0x0000027807CBD3A0>
+
+    def test_no_color_flag(self):
+        """Test --no-color flag functionality."""
+        result = self.runner.invoke(app, ["--help"])
+>       assert "--no-color" in result.output
+E       AssertionError: assert '--no-color' in '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n'
+E        +  where '                                                                               \\n Usage: meqsap [OPTIONS] COMMAND [AR...                                \u2502\\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n' = <Result okay>.output
+
+tests\test_cli_enhanced.py:564: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_basic_success
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_validate_only
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_with_report_flag
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_verbose_mode - ...
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_quiet_mode - As...
+FAILED tests/test_cli.py::TestCLIAnalyzeCommand::test_analyze_no_color_mode
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_config_error_handling - ...
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_data_error_handling - As...
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_backtest_error_handling
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_reporting_error_handling
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_unexpected_error_handling
+FAILED tests/test_cli.py::TestCLIErrorHandling::test_unexpected_error_verbose_traceback
+FAILED tests/test_cli.py::TestCLIIntegration::test_full_workflow_integration
+FAILED tests/test_cli_comprehensive.py::TestConfigurationErrorScenarios::test_missing_required_fields
+FAILED tests/test_cli_comprehensive.py::TestConfigurationErrorScenarios::test_invalid_date_formats
+FAILED tests/test_cli_comprehensive.py::TestConfigurationErrorScenarios::test_invalid_parameter_ranges
+FAILED tests/test_cli_comprehensive.py::TestConfigurationErrorScenarios::test_malformed_yaml_syntax
+FAILED tests/test_cli_comprehensive.py::TestConfigurationErrorScenarios::test_circular_date_range
+FAILED tests/test_cli_comprehensive.py::TestDataAcquisitionErrorScenarios::test_network_connection_failure
+FAILED tests/test_cli_comprehensive.py::TestDataAcquisitionErrorScenarios::test_invalid_ticker_symbol
+FAILED tests/test_cli_comprehensive.py::TestDataAcquisitionErrorScenarios::test_insufficient_data_period
+FAILED tests/test_cli_comprehensive.py::TestDataAcquisitionErrorScenarios::test_api_rate_limiting
+FAILED tests/test_cli_comprehensive.py::TestBacktestExecutionErrorScenarios::test_mathematical_computation_errors
+FAILED tests/test_cli_comprehensive.py::TestBacktestExecutionErrorScenarios::test_memory_exhaustion_errors
+FAILED tests/test_cli_comprehensive.py::TestBacktestExecutionErrorScenarios::test_invalid_strategy_parameters
+FAILED tests/test_cli_comprehensive.py::TestReportGenerationErrorScenarios::test_pdf_generation_permission_error
+FAILED tests/test_cli_comprehensive.py::TestProgressAndUserExperience::test_progress_indicators_data_download
+FAILED tests/test_cli_enhanced.py::TestEnhancedCLIMain::test_help_command - A...
+FAILED tests/test_cli_enhanced.py::TestEnhancedCLIMain::test_mutually_exclusive_flags
+FAILED tests/test_cli_enhanced.py::TestEnhancedCLIMain::test_successful_execution
+FAILED tests/test_cli_enhanced.py::TestEnhancedCLIMain::test_pipeline_failure
+FAILED tests/test_cli_enhanced.py::TestCLIIntegration::test_complete_pipeline_success
+FAILED tests/test_cli_enhanced.py::TestCLIIntegration::test_configuration_error_exit_code
+FAILED tests/test_cli_enhanced.py::TestCLIIntegration::test_data_error_exit_code
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_report_flag - Assertion...
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_verbose_flag - Assertio...
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_quiet_flag - AssertionE...
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_dry_run_flag - Assertio...
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_output_dir_flag - Asser...
+FAILED tests/test_cli_enhanced.py::TestCLIFlags::test_no_color_flag - Asserti...
+================= 40 failed, 112 passed, 2 skipped in 16.62s ==================
