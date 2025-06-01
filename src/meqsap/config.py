@@ -48,7 +48,16 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
 
 
 class StrategyConfig(BaseModel):
-    """Configuration for a trading strategy backtest."""
+    """
+    Configuration for a trading strategy backtest.
+    
+    Date Range Convention (per ADR-002):
+    - start_date: First day to include in analysis (inclusive)
+    - end_date: Last day to include in analysis (INCLUSIVE)
+    
+    Example: start_date="2022-01-01", end_date="2022-12-31" 
+    will analyze data from Jan 1 through Dec 31, 2022 (both days included).
+    """
 
     ticker: str = Field(..., description="Stock ticker symbol")
     start_date: date = Field(..., description="Backtest start date")

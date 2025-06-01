@@ -35,6 +35,22 @@ meqsap analyze path/to/your/config.yaml
     - `fast_ma`: The period for the fast moving average (must be > 0)
     - `slow_ma`: The period for the slow moving average (must be > fast_ma)
 
+## Configuration
+
+### Date Range Specification
+
+**Important**: All date ranges in MEQSAP use **INCLUSIVE** end dates.
+
+When you specify:
+```yaml
+start_date: 2022-01-01
+end_date: 2022-12-31
+```
+
+The system will fetch and analyze data from January 1, 2022 **through and including** December 31, 2022.
+
+This inclusive behavior is maintained automatically - the system handles the necessary adjustments when interfacing with data providers that use exclusive date ranges.
+
 ## Data Acquisition & Caching
 
 The data module handles acquisition of historical OHLCV market data using yfinance, with local caching to avoid redundant downloads.

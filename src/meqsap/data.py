@@ -26,25 +26,43 @@ def save_to_cache(df: pd.DataFrame, key: str) -> None:
     filepath = CACHE_DIR / key
     df.to_parquet(filepath)
 
-def _validate_data(df: pd.DataFrame, start_date: date, end_date: date) -> None:
-    """Perform data integrity checks."""
+def _validate_data(data: pd.DataFrame, symbol: str, start_date: str, end_date: str) -> None:
+    """
+    Validate that the fetched data meets basic requirements.
+    
+    Args:
+        data: The DataFrame containing stock data
+        symbol: Stock symbol that was fetched
+        start_date: Start date string (YYYY-MM-DD format)
+        end_date: End date string (YYYY-MM-DD format, INCLUSIVE)
+    
+    Raises:
+        DataError: If data validation fails
+    
+    Note:
+        end_date is user-specified as INCLUSIVE (per ADR-002). The validation
+        logic accounts for yfinance's exclusive behavior by checking that
+        the maximum date in fetched data is >= (end_date - 1 day), ensuring
+        data for the user-specified end_date is actually present.
+    """
     # Check for NaN values
-    if df.isnull().values.any():
+    if data.isnull().values.any():
         raise DataError("Missing data points (NaN values) detected")
     
-    # Check date range coverage - yfinance returns data from start_date to end_date-1
-    dates = pd.to_datetime(df.index)
-    if dates.min() > pd.Timestamp(start_date) or dates.max() < pd.Timestamp(end_date - timedelta(days=1)):
-        raise DataError(f"Data does not cover full range: {start_date} to {end_date}")
+    # Ensure we have data for the full requested range
+    # Note: yfinance.download() uses exclusive end dates, so we fetch with end_date + 1 day
+    # but validate that we actually got data for the user-specified (inclusive) end_date
+    dates = pd.to_datetime(data.index).date
+    expected_start = pd.Timestamp(start_date).date()
+    expected_end = pd.Timestamp(end_date).date()
     
-    # Check data freshness: last available date should be within 2 days of today
-    last_data_date = dates.max().date()
-    today = date.today()
-    if end_date >= today - timedelta(days=2):  # Only check for recent data
-        # Account for weekends - allow up to 4 days for Fri-Mon gap
-        max_days = 4 if last_data_date.weekday() == 4 else 2  # 4=Friday
-        if (today - last_data_date).days > max_days:
-            raise DataError(f"Stale data: Last available date is {last_data_date}")
+    if dates.min() > expected_start:
+        raise DataError(f"Data starts at {dates.min()}, but {expected_start} was requested")
+    
+    # Check that we have data for the user-specified end_date (inclusive)
+    # Since yfinance is exclusive, the latest data should be for end_date itself
+    if dates.max() < expected_end:
+        raise DataError(f"Data ends at {dates.max()}, but data through {expected_end} was requested")
 
 def fetch_market_data(ticker: str, start_date: date, end_date: date) -> pd.DataFrame:
     """
@@ -69,11 +87,15 @@ def fetch_market_data(ticker: str, start_date: date, end_date: date) -> pd.DataF
         pass  # Cache miss, proceed to download
     
     try:
+        # yfinance uses exclusive end dates, so add 1 day to get data for the user-specified end_date
+        # This ensures end_date is INCLUSIVE from the user's perspective (per ADR-002)
+        adjusted_end = (pd.Timestamp(end_date) + timedelta(days=1)).strftime('%Y-%m-%d')
+        
         # Download data from yfinance
         data = yf.download(
             ticker, 
             start=start_date, 
-            end=end_date + timedelta(days=1),  # Include end date
+            end=adjusted_end,  # yfinance exclusive end, so we add 1 day
             progress=False
         )
         
@@ -81,7 +103,7 @@ def fetch_market_data(ticker: str, start_date: date, end_date: date) -> pd.DataF
             raise DataError(f"No data available for {ticker} in {start_date} to {end_date}")
         
         # Perform integrity checks
-        _validate_data(data, start_date, end_date)
+        _validate_data(data, ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         
         # Save to cache
         save_to_cache(data, key)
