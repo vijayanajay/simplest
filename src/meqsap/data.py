@@ -3,12 +3,17 @@ import pandas as pd
 import yfinance as yf
 from datetime import date, datetime, timedelta
 from pathlib import Path
+import logging
 from .exceptions import DataError
 
 # Cache directory setup
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = PROJECT_ROOT / 'data' / 'cache'
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+
+MAX_ALLOWED_START_DATE_SLIP_DAYS = 5  # Allow data to start up to 5 calendar days after requested start
 
 def cache_key(ticker: str, start_date: date, end_date: date) -> str:
     """Generate cache key from ticker and date range."""
@@ -39,25 +44,45 @@ def _validate_data(data: pd.DataFrame, symbol: str, start_date: str, end_date: s
     Raises:
         DataError: If data validation fails
     
-    Note:
-        end_date is user-specified as INCLUSIVE (per ADR-002). The validation
-        logic accounts for yfinance's exclusive behavior by checking that
-        the maximum date in fetched data is >= (end_date - 1 day), ensuring
-        data for the user-specified end_date is actually present.
+    Note on start_date validation:
+        If the actual start of data (`dates.min()`) is after the `expected_start`,
+        a warning is issued if the slip is within `MAX_ALLOWED_START_DATE_SLIP_DAYS`.
+        This accounts for requested start dates falling on non-trading days.
+        An error is raised if the slip is larger.
+    
+    Note on end_date validation (per ADR-002):
+        `end_date` is user-specified as INCLUSIVE. `fetch_market_data` adjusts for
+        `yfinance`'s exclusive end date behavior by fetching up to `end_date + 1 day`.
+        This validation ensures data for the user-specified `end_date` is present.
     """
     # Check for NaN values
     if data.isnull().values.any():
         raise DataError("Missing data points (NaN values) detected")
     
     # Ensure we have data for the full requested range
-    # Note: yfinance.download() uses exclusive end dates, so we fetch with end_date + 1 day
-    # but validate that we actually got data for the user-specified (inclusive) end_date
     dates = pd.to_datetime(data.index).date
     expected_start = pd.Timestamp(start_date).date()
     expected_end = pd.Timestamp(end_date).date()
-    
-    if dates.min() > expected_start:
-        raise DataError(f"Data starts at {dates.min()}, but {expected_start} was requested")
+
+    actual_start = dates.min()
+    if actual_start < expected_start:
+        raise DataError(
+            f"Data for {symbol} starts at {actual_start}, which is before the requested start_date {expected_start}. Potential data integrity issue."
+        )
+    elif actual_start > expected_start:
+        delta = actual_start - expected_start
+        if delta.days <= MAX_ALLOWED_START_DATE_SLIP_DAYS:
+            logger.warning(
+                f"Data for {symbol} starts on {actual_start}, which is {delta.days} day(s) after the "
+                f"requested start_date {expected_start}. This may be due to the requested start date being a "
+                f"non-trading day. Proceeding with analysis using data from {actual_start}."
+            )
+        else:
+            raise DataError(
+                f"Data for {symbol} starts on {actual_start}, which is {delta.days} days after the requested "
+                f"start_date {expected_start}. This is beyond the acceptable slip of {MAX_ALLOWED_START_DATE_SLIP_DAYS} "
+                f"days. Data for the requested period might be unavailable or significantly delayed."
+            )
     
     # Check that we have data for the user-specified end_date (inclusive)
     # Since yfinance is exclusive, the latest data should be for end_date itself
