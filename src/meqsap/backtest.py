@@ -553,8 +553,8 @@ def perform_vibe_checks(
         else:
             messages.append(f"✗ Data coverage check: {len(data)} bars < {check_threshold_bars} (strategy needs {strategy_required_bars}, check uses 2x)")
     else:
-        data_coverage_pass = True  # Default pass for unknown strategies
-        messages.append("✓ Data coverage check: Passed (strategy does not declare a specific data coverage bar requirement).")
+        data_coverage_pass = False # Fail if requirement is not specified or is None
+        messages.append("✗ Data coverage check: FAILED - Strategy did not explicitly define data coverage bar requirements. This is a critical configuration or implementation error.")
     
     # Overall pass status
     overall_pass = min_trades_pass and signal_quality_pass and data_coverage_pass

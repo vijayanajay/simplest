@@ -9,7 +9,7 @@ This document tracks identified technical debt items, their context, impact, and
 **Debt Title:** Ambiguity in `run_backtest` Data/Signal Input Handling
 **Unique Identifier:** TD-20250601-001
 **Origin/Context:** Audit finding (2025-06-01). The `run_backtest` function in `src/meqsap/backtest.py` has a complex way of determining `prices_data` and `signals` when its `data` argument is a dictionary. If `run_complete_backtest` passes a dictionary to `run_backtest` that contains `'prices'` but omits `'signals'`, `run_backtest` will fail. The docstring is also slightly ambiguous about precedence.
-**Status (if updating existing):** NEW
+**Status (if updating existing):** NOT STARTED
 **Detailed Description:**
     Current: The `run_backtest` function allows `data` to be a dict or DataFrame. If dict, it expects `prices` and optionally `signals`. If the `signals` parameter to `run_backtest` is `None` (as it is when called by `run_complete_backtest`), it then tries to get `signals` from `data.get('signals')`. If `data` (the dict) doesn't have a `'signals'` key, it raises an error. This specific failure path for `run_complete_backtest` (if it were to pass a dict with only prices) is not explicitly documented or guarded against in `run_complete_backtest`.
     Ideal: The interaction between `run_complete_backtest` and `run_backtest` regarding data and signal passing should be crystal clear and robust. `run_backtest`'s docstring should precisely define behavior for all input combinations. `run_complete_backtest` should ensure it always calls `run_backtest` with valid arguments.
@@ -34,7 +34,7 @@ This document tracks identified technical debt items, their context, impact, and
 **Debt Title:** Overly Permissive `safe_float` Conversion
 **Unique Identifier:** TD-20250601-002
 **Origin/Context:** Audit finding (2025-06-01). The `safe_float` function in `src/meqsap/backtest.py` defaults to 0.0 and logs a warning for many types of conversion errors, including `None`, `NaN`, `inf`, `ValueError`, `TypeError`.
-**Status (if updating existing):** NEW
+**Status (if updating existing):** NOT STARTED
 **Detailed Description:**
     Current: `safe_float` converts various non-float inputs (or problematic floats like NaN/inf) to a default value (0.0) and logs a warning. This is used when parsing portfolio statistics from `vectorbt` and trade details.
     Ideal: While robust, this behavior might mask underlying data issues or changes in `vectorbt`'s output. For critical metrics, a failure to convert might indicate a more severe problem that should halt execution or be handled more explicitly than just defaulting to 0.0.
@@ -59,7 +59,7 @@ This document tracks identified technical debt items, their context, impact, and
 **Debt Title:** Fragile Close Price Column Discovery
 **Unique Identifier:** TD-20250601-003
 **Origin/Context:** Audit finding (2025-06-01). Both `src/meqsap/backtest.py::StrategySignalGenerator._generate_ma_crossover_signals` and `src/meqsap/backtest.py::run_backtest` use a multi-step `if/elif/else` logic to find the 'Close' price column.
-**Status (if updating existing):** NEW
+**Status (if updating existing):** NOT STARTED
 **Detailed Description:**
     Current: The logic `[col for col in data.columns if col.lower() == 'close']` and `[col for col in aligned_data.columns if 'price' in col.lower() or 'close' in col.lower()]` can be fragile. For example, 'Adjusted Close' would not be found by `col.lower() == 'close'`, and if there are multiple columns with 'price' (e.g. 'entry_price', 'exit_price', 'close_price'), it picks the first one found.
     Ideal: Data column names should be normalized early in the data ingestion pipeline (e.g., in `src/meqsap/data.py` after fetching from yfinance) to a consistent format (e.g., all lowercase: 'open', 'high', 'low', 'close', 'volume'). Downstream modules would then expect these consistent names.

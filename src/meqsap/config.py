@@ -18,14 +18,17 @@ from .exceptions import ConfigurationError
 class BaseStrategyParams(BaseModel):
     """Base class for all strategy parameters."""
 
-    def get_required_data_coverage_bars(self) -> Optional[int]:
+    def get_required_data_coverage_bars(self) -> int:
         """
         Returns the minimum number of data bars required by the strategy for its calculations.
         This is the raw requirement from the strategy's perspective (e.g., longest MA period).
         The vibe check framework might apply additional safety factors (e.g., 2x this value).
-        Returns None if no specific check is needed or handled differently by default.
+
+        This method MUST be overridden by concrete strategy parameter classes.
         """
-        return None
+        raise NotImplementedError(
+            "Strategy parameter classes must implement 'get_required_data_coverage_bars'."
+        )
 
 
 class MovingAverageCrossoverParams(BaseStrategyParams):
@@ -42,7 +45,7 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
             raise ValueError("slow_ma must be greater than fast_ma")
         return v
 
-    def get_required_data_coverage_bars(self) -> Optional[int]:
+    def get_required_data_coverage_bars(self) -> int:
         """Return the slow MA period as the minimum data requirement."""
         return self.slow_ma
 
