@@ -214,13 +214,21 @@ def _main_pipeline(
             console.print(f"\n[bold green]✓ MEQSAP analysis completed successfully in {elapsed_time:.2f} seconds[/bold green]")
         return 0
         
-    except ConfigurationError:
+    except ConfigurationError as e:
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+        console.print(error_msg)
         return 1  # Configuration errors
-    except DataAcquisitionError:
+    except DataAcquisitionError as e:
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+        console.print(error_msg)
         return 2  # Data acquisition failures
-    except BacktestExecutionError:
+    except BacktestExecutionError as e:
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+        console.print(error_msg)
         return 3  # Computation failures  
-    except ReportGenerationError:
+    except ReportGenerationError as e:
+        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+        console.print(error_msg)
         return 4  # Output generation failures
     except Exception as e:
         # Log the unexpected error for debugging
