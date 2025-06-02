@@ -70,16 +70,14 @@ class TestFloatConversions(unittest.TestCase):
         )
         
         # Prepare data and signals for backtesting
-        data_dict = {
-            'prices': self.test_data['close'],
-            'signals': pd.DataFrame({
-                'entry': np.random.choice([True, False], size=len(self.test_data)),
-                'exit': np.random.choice([True, False], size=len(self.test_data))
-            }, index=self.test_data.index)
-        }
+        prices_series = self.test_data['close']
+        signals_df = pd.DataFrame({
+            'entry': np.random.choice([True, False], size=len(self.test_data)),
+            'exit': np.random.choice([True, False], size=len(self.test_data))
+        }, index=self.test_data.index)
         
         # Should not raise an exception
-        result = run_backtest(data_dict)
+        result = run_backtest(prices_data=prices_series, signals_data=signals_df)
         self.assertIsNotNone(result)
         
     def test_string_values(self):
@@ -103,15 +101,12 @@ class TestFloatConversions(unittest.TestCase):
         )
         
         # Prepare data and signals for backtesting
-        data_dict = {
-            'prices': self.test_data['close'],
-            'signals': pd.DataFrame({
-                'entry': np.random.choice([True, False], size=len(self.test_data)),
-                'exit': np.random.choice([True, False], size=len(self.test_data))
-            }, index=self.test_data.index)
-        }
-          # Should not raise an exception
-        result = run_backtest(data_dict)
+        prices_series = self.test_data['close']
+        signals_df = pd.DataFrame({
+            'entry': np.random.choice([True, False], size=len(self.test_data)),
+            'exit': np.random.choice([True, False], size=len(self.test_data))
+        }, index=self.test_data.index)
+        result = run_backtest(prices_data=prices_series, signals_data=signals_df)
         self.assertIsNotNone(result)
         
     def test_mock_stats_with_non_numeric(self):

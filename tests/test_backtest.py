@@ -128,7 +128,7 @@ class TestRunBacktest:
         """Test successful backtest execution."""
         data, signals = self.create_sample_data_and_signals()
         
-        result = run_backtest(data, signals)
+        result = run_backtest(prices_data=data, signals_data=signals)
         
         assert isinstance(result, BacktestResult)
         assert result.total_trades >= 0
@@ -144,7 +144,7 @@ class TestRunBacktest:
         signals['entry'] = False
         signals['exit'] = False
         
-        result = run_backtest(data, signals)
+        result = run_backtest(prices_data=data, signals_data=signals)
         
         assert result.total_trades == 0
         assert result.total_return == 0.0
@@ -159,7 +159,7 @@ class TestRunBacktest:
         signals.index = different_dates
         
         with pytest.raises(BacktestError, match="No common dates"):
-            run_backtest(data, signals)
+            run_backtest(prices_data=data, signals_data=signals)
 
 
 class TestVibeChecks:
@@ -374,5 +374,7 @@ class TestErrorHandling(unittest.TestCase):
         data = self.create_sample_data()
         
         # Test with invalid initial_cash type
+        prices_df = self.test_data
+        signals_df = self.test_signals
         with self.assertRaises(BacktestError):
-            run_backtest(data, initial_cash="not a number")
+            run_backtest(prices_data=prices_df, signals_data=signals_df, initial_cash="not a number")

@@ -205,73 +205,53 @@ def safe_float(value, default=0.0):
         logger.warning(f"Could not convert '{value}' (type: {type(value).__name__}) to float, using default: {default}")
         return default
 
-def run_backtest(data, signals=None, initial_cash=10000, fees=0.001):
-    """Run a backtest with the given data and signals.
-    
+def run_backtest(
+    prices_data: pd.DataFrame,
+    signals_data: pd.DataFrame,
+    initial_cash: int = 10000,
+    fees: float = 0.001
+) -> BacktestResult:
+    """Run a backtest with the given price data and signals.
+
     Args:
-        data: OHLCV market data DataFrame or dictionary with 'prices' and optionally 'signals'
-        signals: DataFrame with 'entry' and 'exit' boolean columns (optional if provided in data)
-        initial_cash: Starting portfolio value (default: 10000)
-        fees: Transaction costs as a decimal (default: 0.001 = 0.1%)
-        
+        prices_data: OHLCV market data DataFrame. Must include a 'Close' column (case-insensitive check)
+                     or be a Series of close prices. Index must be datetime.
+        signals_data: DataFrame with 'entry' and 'exit' boolean columns. Index must be datetime and align with prices_data.
+        initial_cash: Starting portfolio value (default: 10000).
+        fees: Transaction costs as a decimal (default: 0.001 = 0.1%).
+
     Returns:
         BacktestResult object with performance metrics
-        
+
     Raises:
-        BacktestError: If backtesting execution fails
+        BacktestError: If backtesting execution fails, data is misaligned, or inputs are invalid.
     """
-    logger.debug(f"Starting run_backtest with data type: {type(data)}")
-    logger.debug(f"Data structure: {data.keys() if isinstance(data, dict) else 'Not a dict'}")
-    
+    logger.debug(f"Starting run_backtest with prices_data type: {type(prices_data)}, signals_data type: {type(signals_data)}")
+
     try:
-        # Handle different input formats
-        if isinstance(data, dict):
-            logger.debug("Data is dictionary format")
-            # Extract data from dictionary format
-            prices_data = data.get('prices')
-            logger.debug(f"Prices data type: {type(prices_data)}")
-            
-            if prices_data is None:
-                raise BacktestError("Dictionary data must contain 'prices' key")
-            
-            if signals is None:
-                signals = data.get('signals')
-                logger.debug(f"Signals data type: {type(signals)}")
-                if signals is None:
-                    raise BacktestError("No signals provided in data dictionary or as separate parameter")
-        else:
-            logger.debug("Data is direct DataFrame format")
-            # Assume data is a DataFrame with OHLCV columns
-            prices_data = data
-            if signals is None:
-                raise BacktestError("Signals must be provided when data is not a dictionary")
-        
-        logger.debug(f"Final prices_data type: {type(prices_data)}")
-        logger.debug(f"Final signals type: {type(signals)}")
-        
         # Verify we have the needed data
         if not isinstance(prices_data, (pd.DataFrame, pd.Series)):
             raise BacktestError(f"Price data must be a DataFrame or Series, got {type(prices_data).__name__}")
-        
-        if not isinstance(signals, (pd.DataFrame, pd.Series)):
-            raise BacktestError(f"Signals must be a DataFrame or Series, got {type(signals).__name__}")
-        
+
+        if not isinstance(signals_data, (pd.DataFrame, pd.Series)):
+            raise BacktestError(f"Signals data must be a DataFrame or Series, got {type(signals_data).__name__}")
+
         logger.debug(f"Prices data columns: {getattr(prices_data, 'columns', 'No columns (Series)')}")
-        logger.debug(f"Signals data columns: {getattr(signals, 'columns', 'No columns (Series)')}")
-        
+        logger.debug(f"Signals data columns: {getattr(signals_data, 'columns', 'No columns (Series)')}")
+
         # Align data and signals
         try:
-            common_index = prices_data.index.intersection(signals.index)
+            common_index = prices_data.index.intersection(signals_data.index)
             logger.debug(f"Common index length: {len(common_index)}")
         except AttributeError as e:
             raise BacktestError(f"Data alignment failed - ensure both prices and signals have proper index: {str(e)}")
-        
+
         if len(common_index) == 0:
             raise BacktestError("No common dates between data and signals")
-        
+
         aligned_data = prices_data.loc[common_index]
-        aligned_signals = signals.loc[common_index]
-        
+        aligned_signals = signals_data.loc[common_index]
+
         logger.debug(f"Aligned data shape: {aligned_data.shape}")
         logger.debug(f"Aligned signals shape: {aligned_signals.shape}")
         
@@ -585,12 +565,12 @@ def perform_robustness_checks(
     """
     try:
         # Baseline backtest (low fees)
-        baseline_result = run_backtest(data, signals, fees=0.001)  # 0.1%
+        baseline_result = run_backtest(prices_data=data, signals_data=signals, fees=0.001)  # 0.1%
         baseline_sharpe = baseline_result.sharpe_ratio
         baseline_return = baseline_result.annualized_return
         
         # High fees backtest
-        high_fees_result = run_backtest(data, signals, fees=0.01)  # 1.0%
+        high_fees_result = run_backtest(prices_data=data, signals_data=signals, fees=0.01)  # 1.0%
         high_fees_sharpe = high_fees_result.sharpe_ratio
         high_fees_return = high_fees_result.annualized_return
         
@@ -645,37 +625,36 @@ def perform_robustness_checks(
 def run_complete_backtest(strategy_config, data):
     """Execute complete backtest analysis including validation and robustness checks."""
     logger.debug(f"Starting complete backtest for ticker: {strategy_config.ticker}")
-    
+
     try:
-        # Handle different input formats
-        if isinstance(data, dict) and 'signals' in data:
+        # Determine actual prices DataFrame and signals DataFrame
+        if isinstance(data, dict):
+            actual_prices_df = data.get('prices')
+            if actual_prices_df is None:
+                raise BacktestError("Price data ('prices') missing from input dictionary.")
             # If signals are already provided in data dictionary
-            signals = data['signals']
-        else:
-            # Generate signals from data using the strategy config
-            signals = StrategySignalGenerator.generate_signals(data, strategy_config)
-        
-        # Package data for backtest
-        if isinstance(data, dict) and 'prices' in data:
-            backtest_data = data
-        else:
-            # Data is a DataFrame, package it for run_backtest
-            backtest_data = {'prices': data, 'signals': signals}
-        
+            if 'signals' in data:
+                actual_signals_df = data['signals']
+            else:
+                actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
+        else: # data is a DataFrame of prices
+            actual_prices_df = data
+            actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
+
         # Execute primary backtest
-        primary_result = run_backtest(backtest_data)
-        
+        primary_result = run_backtest(prices_data=actual_prices_df, signals_data=actual_signals_df)
+
         # Step 3: Perform vibe checks
-        vibe_checks = perform_vibe_checks(primary_result, 
-                                          data.get('prices') if isinstance(data, dict) else data, 
+        vibe_checks = perform_vibe_checks(primary_result,
+                                          actual_prices_df,
                                           strategy_config)
-        
+
         # Step 4: Perform robustness checks
         robustness_checks = perform_robustness_checks(
-            data.get('prices') if isinstance(data, dict) else data,
-            signals, 
+            actual_prices_df,
+            actual_signals_df,
             strategy_config)
-        
+
         # Step 5: Assemble comprehensive analysis
         return BacktestAnalysisResult(
             primary_result=primary_result,
@@ -683,7 +662,7 @@ def run_complete_backtest(strategy_config, data):
             robustness_checks=robustness_checks,
             strategy_config=strategy_config.model_dump()
         )
-        
+
     except Exception as e:
         logger.error(f"Complete backtest analysis failed: {str(e)}", exc_info=True)
         raise BacktestError(f"Complete backtest analysis failed: {str(e)}") from e
