@@ -70,18 +70,19 @@ def _validate_data(data: pd.DataFrame, symbol: str, start_date: str, end_date: s
             f"Data for {symbol} starts at {actual_start}, which is before the requested start_date {expected_start}. Potential data integrity issue."
         )
     elif actual_start > expected_start:
-        delta = actual_start - expected_start
-        if delta.days <= MAX_ALLOWED_START_DATE_SLIP_DAYS:
+        # Calculate slip in trading days (business days)
+        trading_days_slip = len(pd.bdate_range(expected_start, actual_start)) - 1  # exclude expected_start itself
+        if trading_days_slip <= MAX_ALLOWED_START_DATE_SLIP_DAYS:
             logger.warning(
-                f"Data for {symbol} starts on {actual_start}, which is {delta.days} day(s) after the "
+                f"Data for {symbol} starts on {actual_start}, which is {trading_days_slip} trading day(s) after the "
                 f"requested start_date {expected_start}. This may be due to the requested start date being a "
                 f"non-trading day. Proceeding with analysis using data from {actual_start}."
             )
         else:
             raise DataError(
-                f"Data for {symbol} starts on {actual_start}, which is {delta.days} days after the requested "
+                f"Data for {symbol} starts on {actual_start}, which is {trading_days_slip} trading days after the requested "
                 f"start_date {expected_start}. This is beyond the acceptable slip of {MAX_ALLOWED_START_DATE_SLIP_DAYS} "
-                f"days. Data for the requested period might be unavailable or significantly delayed."
+                f"trading days. Data for the requested period might be unavailable or significantly delayed."
             )
     
     # Check that we have data for the user-specified end_date (inclusive)

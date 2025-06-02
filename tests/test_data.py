@@ -119,7 +119,7 @@ def test_start_date_slip_logic(mock_yfinance_download, mock_cache, caplog):
 
     # Expected log based on pytest output:
     # WARNING  src.meqsap.data:data.py:75 Data for AAPL starts on 2023-01-03, which is 2 day(s) after the requested start_date 2023-01-01. This may be due to the requested start date being a non-trading day. Proceeding with analysis using data from 2023-01-03.
-    assert "Data for AAPL starts on 2023-01-03, which is 2 day(s) after the requested start_date 2023-01-01." in caplog.text
+    assert "Data for AAPL starts on 2023-01-03, which is 1 trading day(s) after the requested start_date 2023-01-01." in caplog.text
     assert "This may be due to the requested start date being a non-trading day." in caplog.text
     assert "Proceeding with analysis using data from 2023-01-03." in caplog.text
     assert any(record.levelno == logging.WARNING for record in caplog.records), "No WARNING level log found."
