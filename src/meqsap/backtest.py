@@ -139,28 +139,62 @@ class StrategySignalGenerator:
         if len(data) < slow_ma:
             raise BacktestError(f"Insufficient data: need at least {slow_ma} bars, got {len(data)}")
         
-        # Extract close prices - handle different column name cases
+        # Extract close prices - this variable will be used by ta.sma
+        _close_prices_intermediate: pd.Series | pd.DataFrame
         if 'Close' in data.columns:
-            close_prices = data['Close']
+            _close_prices_intermediate = data['Close']
         elif 'close' in data.columns:
-            close_prices = data['close']
+            _close_prices_intermediate = data['close']
         else:
             # Try to find a close price column with case-insensitive search
             close_columns = [col for col in data.columns if col.lower() == 'close']
             if close_columns:
-                close_prices = data[close_columns[0]]
+                _close_prices_intermediate = data[close_columns[0]]
             else:
                 raise BacktestError(f"No 'Close' or 'close' column found in data. Available columns: {list(data.columns)}")
-        
-        # Calculate moving averages using pandas-ta
-        fast_ma_series = ta.sma(close_prices, length=fast_ma)
-        slow_ma_series = ta.sma(close_prices, length=slow_ma)
-        
+
+        # Ensure _close_prices_intermediate is a Series for pandas-ta
+        close_prices_for_ta: pd.Series
+        if isinstance(_close_prices_intermediate, pd.DataFrame):
+            logger.warning(
+                f"Warning: Extracted close prices object is a DataFrame (shape: {_close_prices_intermediate.shape}). "
+                f"Attempting to convert to Series."
+            )
+            if _close_prices_intermediate.shape[1] == 1:
+                close_prices_for_ta = _close_prices_intermediate.iloc[:, 0]
+                logger.info(f"Successfully converted single-column DataFrame of close prices to Series ('{close_prices_for_ta.name}').")
+            else:
+                raise BacktestError(
+                    f"Extracted close prices object is a DataFrame with multiple columns ({_close_prices_intermediate.columns.tolist()}). "
+                    "Expected a Series or a single-column DataFrame."
+                )
+        elif isinstance(_close_prices_intermediate, pd.Series):
+            close_prices_for_ta = _close_prices_intermediate
+        else:
+            raise BacktestError(f"Extracted close prices object is not a pandas Series or DataFrame. Type: {type(_close_prices_intermediate)}")
+
+        fast_ma_series = ta.sma(close_prices_for_ta, length=fast_ma)
+        if fast_ma_series is None:
+            raise BacktestError(
+                f"Failed to calculate Fast MA (period {fast_ma}). "
+                "The technical indicator calculation returned None. This may be due to an empty, "
+                "all-NaN, or non-numeric input price series for the indicator."
+            )
+            
+        slow_ma_series = ta.sma(close_prices_for_ta, length=slow_ma)
+        if slow_ma_series is None:
+            raise BacktestError(
+                f"Failed to calculate Slow MA (period {slow_ma}). "
+                "The technical indicator calculation returned None. This may be due to an empty, "
+                "all-NaN, or non-numeric input price series for the indicator."
+            )
+            
         # Find valid index range where both MAs have non-NaN values
+        # This line is now safer due to the checks above.
         valid_mask = fast_ma_series.notna() & slow_ma_series.notna()
         valid_index = data.index[valid_mask]
         
-        if len(valid_index) == 0:
+        if len(valid_mask) == 0:
             raise BacktestError("No valid data points after moving average calculation")
         
         # Create signals DataFrame restricted to valid index range
@@ -322,15 +356,28 @@ def run_backtest(
                 freq='D'  # Daily frequency
             )
             logger.debug("Portfolio created successfully")
+
+            # Get the asset column name used by vectorbt for this portfolio.
+            # This is crucial if vectorbt treats the portfolio as multi-column internally,
+            # even if we logically have one asset.
+            if not portfolio.wrapper.columns.empty:
+                asset_col = portfolio.wrapper.columns[0]
+            else:
+                # Fallback or error if no columns found, though unlikely if portfolio was built
+                # and from_signals was successful.
+                raise BacktestError("Portfolio has no columns identified by vectorbt wrapper.")
         
         # Extract performance statistics
         logger.debug("Extracting portfolio stats...")
-        stats = portfolio.stats()
+        stats = portfolio.stats(column=asset_col) # Get stats for the specific asset column
         logger.debug(f"Stats type: {type(stats)}")
         logger.debug(f"Stats keys: {stats.keys() if hasattr(stats, 'keys') else 'No keys method'}")
-        
-        # Calculate additional metrics
-        returns = portfolio.returns()
+
+        portfolio_returns_data = portfolio.returns() # This may be a DataFrame or Series
+        if isinstance(portfolio_returns_data, pd.DataFrame):
+            returns = portfolio_returns_data[asset_col] # Ensure returns is a Series
+        else: # Assuming it's already a Series if not a DataFrame
+            returns = portfolio_returns_data
         logger.debug(f"Returns type: {type(returns)}")
         
         # Handle cases where no trades occurred
@@ -421,7 +468,10 @@ def run_backtest(
         # Calculate volatility
         try:
             volatility = float(returns.std() * np.sqrt(252) * 100)  # Annualized volatility
-            logger.debug(f"Volatility: {volatility}")
+            # If returns is a Series (due to column selection), returns.std() is a float.
+            # The float() call is redundant but harmless.
+            logger.debug(f"Volatility: {volatility}") # type: ignore
+
         except (ValueError, TypeError) as e:
             logger.warning(f"Could not calculate volatility: {str(e)}, using 0.0")
             volatility = 0.0
@@ -438,8 +488,8 @@ def run_backtest(
             for _, trade in trades.iterrows():
                 try:
                     trade_details.append({
-                        'entry_date': str(trade[entry_time_col]),
-                        'exit_date': str(trade[exit_time_col]),
+                        'entry_date': str(trade[entry_time_col]),  # Keep as str conversion
+                        'exit_date': str(trade[exit_time_col]),    # Keep as str conversion
                         'entry_price': safe_float(trade[entry_price_col]),
                         'exit_price': safe_float(trade[exit_price_col]),
                         'pnl': safe_float(trade[pnl_col]),
@@ -453,7 +503,16 @@ def run_backtest(
         logger.debug("Extracting portfolio values...")
         try:
             portfolio_values = portfolio.value()
-            portfolio_value_series = {str(date): safe_float(value) for date, value in portfolio_values.items()}
+            # Fix: Handle Series properly - portfolio_values is a Series, not a dict
+            if isinstance(portfolio_values, pd.Series):
+                portfolio_value_series = {str(idx): safe_float(val) for idx, val in portfolio_values.items()}
+            elif isinstance(portfolio_values, pd.DataFrame):
+                # If it's a DataFrame, get the first column
+                series_data = portfolio_values.iloc[:, 0]
+                portfolio_value_series = {str(idx): safe_float(val) for idx, val in series_data.items()}
+            else:
+                # Fallback for other types
+                portfolio_value_series = {str(date): safe_float(value) for date, value in portfolio_values.items()}
             logger.debug(f"Portfolio values extracted: {len(portfolio_value_series)} entries")
         except Exception as e:
             logger.warning(f"Error extracting portfolio values: {str(e)}")
