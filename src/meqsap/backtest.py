@@ -13,6 +13,9 @@ from datetime import date
 import warnings
 import logging
 
+# Set up a logger for debugging
+logger = logging.getLogger(__name__)
+
 # Suppress pandas_ta pkg_resources deprecation warning
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
 
@@ -210,8 +213,7 @@ class StrategySignalGenerator:
         # Entry: Fast MA crosses above Slow MA
         ma_cross_up = (fast_ma_valid > slow_ma_valid) & (fast_ma_valid.shift(1) <= slow_ma_valid.shift(1))
         signals.loc[ma_cross_up, 'entry'] = True
-        
-        # Exit: Fast MA crosses below Slow MA  
+          # Exit: Fast MA crosses below Slow MA  
         ma_cross_down = (fast_ma_valid < slow_ma_valid) & (fast_ma_valid.shift(1) >= slow_ma_valid.shift(1))
         signals.loc[ma_cross_down, 'exit'] = True
         
@@ -220,9 +222,6 @@ class StrategySignalGenerator:
         
         return signals
 
-
-# Set up a logger for debugging
-logger = logging.getLogger(__name__)
 
 def safe_float(value, default=0.0):
     """Safely convert a value to float, returning a default if conversion fails."""
