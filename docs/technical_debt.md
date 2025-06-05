@@ -33,8 +33,8 @@ This document tracks identified technical debt items, their context, impact, and
 **-- TECHNICAL DEBT ITEM (NEW/UPDATED) --**
 **Debt Title:** Overly Permissive `safe_float` Conversion
 **Unique Identifier:** TD-20250601-002
-**Origin/Context:** Audit finding (2025-06-01). The `safe_float` function in `src/meqsap/backtest.py` defaults to 0.0 and logs a warning for many types of conversion errors, including `None`, `NaN`, `inf`, `ValueError`, `TypeError`.
-**Status (if updating existing):** NOT STARTED
+**Origin/Context:** Audit finding (2025-06-01). The `safe_float` function in `src/meqsap/backtest.py` previously defaulted to 0.0 for many conversion errors. This was addressed by enhancing `safe_float` with `raise_on_type_error` for critical metrics and implementing stricter checks, as documented in `docs/memory.md` (Structural Issue Discovered 2025-06-06).
+**Status (if updating existing):** ADDRESSED
 **Detailed Description:**
     Current: `safe_float` converts various non-float inputs (or problematic floats like NaN/inf) to a default value (0.0) and logs a warning. This is used when parsing portfolio statistics from `vectorbt` and trade details.
     Ideal: While robust, this behavior might mask underlying data issues or changes in `vectorbt`'s output. For critical metrics, a failure to convert might indicate a more severe problem that should halt execution or be handled more explicitly than just defaulting to 0.0.

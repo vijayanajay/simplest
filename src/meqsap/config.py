@@ -43,7 +43,6 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
     @classmethod
     def ma_period_must_be_positive(cls, v: ParameterDefinitionType, info: Any) -> ParameterDefinitionType:
         """Validate that MA periods are positive when provided as fixed numeric values."""
-        print(f"DEBUG: ma_period_must_be_positive validator called with v={v}, field_name={info.field_name}")
         actual_value: Any = None
         is_fixed_numeric = False
 
@@ -55,9 +54,7 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
                 actual_value = v.value
                 is_fixed_numeric = True
 
-        print(f"DEBUG: actual_value={actual_value}, is_fixed_numeric={is_fixed_numeric}")
         if is_fixed_numeric and actual_value <= 0: # type: ignore
-            print(f"DEBUG: Raising 'must be positive' error because {actual_value} <= 0")
             raise ValueError(f"{info.field_name} must be positive when provided as a fixed numeric value")
         return v
     
@@ -65,26 +62,22 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
     @classmethod
     def slow_ma_must_be_greater_than_fast_ma(cls, v: ParameterDefinitionType, info: Any) -> ParameterDefinitionType:
         """Validate that slow_ma is greater than fast_ma."""
-        print(f"DEBUG: slow_ma_must_be_greater_than_fast_ma validator called with v={v}, info.data={info.data}")
         if "fast_ma" in info.data:
             fast_ma_param_def = info.data["fast_ma"]
             slow_ma_param_def = v
 
-            fast_val_numeric: Optional[float] = None
+            fast_val_numeric = None
+            slow_val_numeric = None
             if isinstance(fast_ma_param_def, (int, float)):
                 fast_val_numeric = float(fast_ma_param_def)
             elif isinstance(fast_ma_param_def, ParameterValue) and isinstance(fast_ma_param_def.value, (int, float)):
                 fast_val_numeric = float(fast_ma_param_def.value)
-
-            slow_val_numeric: Optional[float] = None
             if isinstance(slow_ma_param_def, (int, float)):
                 slow_val_numeric = float(slow_ma_param_def)
             elif isinstance(slow_ma_param_def, ParameterValue) and isinstance(slow_ma_param_def.value, (int, float)):
                 slow_val_numeric = float(slow_ma_param_def.value)
 
-            print(f"DEBUG: fast_val_numeric={fast_val_numeric}, slow_val_numeric={slow_val_numeric}")
             if fast_val_numeric is not None and slow_val_numeric is not None and slow_val_numeric <= fast_val_numeric:
-                print(f"DEBUG: Raising 'greater than' error because {slow_val_numeric} <= {fast_val_numeric}")
                 raise ValueError("slow_ma must be greater than fast_ma when both are fixed values")
         return v
 
