@@ -47,11 +47,6 @@ Corrected the example validation logic in `docs/adr/adr-002-date-range-handling.
 **Status:** RESOLVED
 **Resolution Date:** 2025-06-02
 **Summary of Resolution:**
-The `get_required_data_coverage_bars` method in `src/meqsap/config.py::BaseStrategyParams` has been made an abstract method, forcing all concrete strategy parameter classes to explicitly define their data coverage requirements. This prevents silent bypass of the data coverage vibe check.
-
----
-**Issue ID:** FLAW-20250602-002
-**Status:** RESOLVED
-**Resolution Date:** 2025-06-02
-**Summary of Resolution:**
-Modified `perform_vibe_checks` to explicitly fail the data coverage check if `get_required_data_coverage_bars` returns None, adding a clear "FAILED" message.
+The resolution for this issue involved two key changes:
+1. The `get_required_data_coverage_bars` method in `src/meqsap/config.py::BaseStrategyParams` was made an abstract method, forcing all concrete strategy parameter classes to explicitly define their data coverage requirements. This prevents silent bypass of the data coverage vibe check.
+2. The `perform_vibe_checks` function was modified to explicitly fail the data coverage check if `get_required_data_coverage_bars` returns `None`, adding a clear "FAILED" message. This ensures that strategies cannot pass the vibe check without declaring their minimum data requirements.

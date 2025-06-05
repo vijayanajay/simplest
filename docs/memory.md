@@ -125,3 +125,44 @@ When a Pydantic `field_validator` is applied to a field whose type is a `Union` 
 *   When writing Pydantic `field_validator`s for fields typed as `Union` which include other Pydantic models (e.g., `field: Union[int, MyModelA, MyModelB]`), always anticipate that the validator might receive an instance of `MyModelA` or `MyModelB` if the input data successfully parses into one of them.
 *   Ensure that any logic or helper functions within such validators correctly introspect or handle these Pydantic model instances to access the underlying values needed for validation, rather than assuming the input will always be a primitive type or a raw dictionary.
 *   Test validators with all possible input structures that Pydantic might parse into the `Union` type, including inputs that resolve to each of the Pydantic models within the `Union`.
+
+**Structural Issue Discovered (2025-06-06):** Overly Permissive Float Conversion in Backtest Metrics
+The `safe_float` utility in `src/meqsap/backtest.py` previously defaulted to 0.0 for various conversion errors (e.g., `ValueError`, `TypeError` when converting a string like "N/A" to float) and for `None`, `NaN`, or `inf` values. While intended for robustness, this behavior masked underlying data integrity issues, especially when parsing critical financial metrics from `vectorbt`'s output or trade logs. Incorrect or missing data for key metrics could be silently converted to 0.0, leading to misleading backtest analysis results and a false sense of validity. This was highlighted by technical debt item TD-20250601-002 and a skipped test `test_mock_stats_with_non_numeric`.
+
+**Nature of Fix / Design Principle Reinforced:**
+*   **Fix:** The `safe_float` function was enhanced with a `raise_on_type_error: bool` parameter and a `metric_name: Optional[str]` parameter. When `raise_on_type_error` is `True` (used for critical metrics), `safe_float` now raises a `BacktestError` if a `ValueError` or `TypeError` occurs during float conversion, instead of returning the default. Logging was also improved using `metric_name`. Calls to `safe_float` within `run_backtest` for critical statistics (e.g., Total Return, Sharpe Ratio, Final Value, PnL of individual trades) were updated to set `raise_on_type_error=True`. `None`, `NaN`, and `inf` values continue to be logged and defaulted, as these can be legitimate (though often undesirable) outputs from numerical libraries for certain scenarios. The skipped test `test_mock_stats_with_non_numeric` was implemented to verify this stricter error handling.
+*   **Principle Reinforced:** Critical data points and metrics must "fail loudly" if they are malformed or of an unexpected type. Silent defaulting for critical information can erode trust in system outputs and lead to flawed decision-making. Robustness should not come at the cost of obscuring potentially serious data issues for key analytical results.
+
+**Lesson Learned:**
+*   Distinguish between critical and non-critical data when designing error handling for data parsing and conversion utilities.
+*   For critical metrics, prefer raising an error for unexpected types or conversion failures over silent defaulting. This ensures data integrity issues are surfaced early.
+*   Use specific logging for data conversion issues, including the metric name, to aid debugging.
+*   Ensure test suites cover scenarios with malformed or unexpected data types for critical metrics, verifying that the system handles them by raising appropriate errors.
+
+## Inaccurate Mocking of External Library Interfaces
+
+**Structural Issue Discovered (2025-06-06):**
+The test `test_mock_stats_with_non_numeric` in `tests/test_float_handling.py` failed because a mock for `vectorbt.Portfolio.wrapper.columns` was incorrectly set to a plain Python `list` (`['asset']`) instead of a `pandas.Index` object (`pd.Index(['asset'])`). This caused an `AttributeError` (`'list' object has no attribute 'empty'`) in `src/meqsap/backtest.py` when the application code attempted to access the `.empty` attribute, which is only present on `pandas.Index` objects. This highlighted a mismatch between the test's mock behavior and the expected interface contract of the external `vectorbt` library.
+
+**Nature of Fix / Design Principle Reinforced:**
+*   **Fix:** The mock in `tests/test_float_handling.py` was updated to correctly return a `pandas.Index` object for `portfolio.wrapper.columns`, aligning the test's behavior with the actual `vectorbt` API contract.
+*   **Principle Reinforced:** Strict adherence to the interface contracts of external libraries, even when mocking. Mocks should accurately mimic the behavior and return types of the real objects they replace to ensure tests are valid and catch actual application logic errors, not just mock-induced type mismatches.
+
+**Lesson Learned:**
+*   When mocking external library objects, especially complex ones like `vectorbt`'s internal structures, always ensure that the mocked attributes and methods return types and behave in a manner consistent with the actual library's API.
+*   A mismatch in mock implementation can lead to misleading test failures that obscure the true root cause or falsely indicate issues in the application code.
+*   Verify the exact types and attributes of the objects being mocked, potentially by inspecting the actual library's behavior or documentation.
+
+## Data Type Enforcement for Intermediate Calculations
+
+**Structural Issue Discovered (2025-06-06):**
+The `run_backtest` function in `src/meqsap/backtest.py` assumed that the `PnL` and `Return [%]` columns within the `vectorbt` `trades.records_readable` DataFrame would always be numeric. This assumption was violated when these columns contained non-numeric data (e.g., strings), leading to `TypeError` during intermediate pandas operations (e.g., `trades[pnl_col] > 0` or `.sum()`) before `safe_float` could process individual trade details. This highlighted a gap in data type enforcement early in the trade processing pipeline.
+
+**Nature of Fix / Design Principle Reinforced:**
+*   **Fix:** Explicitly converted the `PnL` and `Return [%]` columns of the `trades` DataFrame to numeric types using `pd.to_numeric(errors='coerce')` immediately after retrieval from `vectorbt`. This ensures that subsequent pandas operations (comparisons, sums) work correctly, converting non-numeric values to `NaN`. The `safe_float` utility then correctly handles these `NaN`s when populating `trade_details`, defaulting them to 0.0 as per policy for `NaN`/`None`/`inf`.
+*   **Principle Reinforced:** Proactive data type enforcement and validation at the earliest possible stage for critical data structures. Assumptions about data types from external library outputs should be explicitly validated or coerced to prevent downstream `TypeError`s. The "fail loudly" principle for critical metrics applies to the *final extraction* via `safe_float` for unexpected types, but intermediate data processing requires robust handling of potentially non-numeric values.
+
+**Lesson Learned:**
+*   Always validate or coerce data types of critical columns immediately upon receiving them from external libraries, especially before performing mathematical operations or comparisons.
+*   Distinguish between data integrity checks that should "fail loudly" (e.g., `safe_float` for final metric extraction) and robust data preparation steps (e.g., `pd.to_numeric(errors='coerce')`) that ensure intermediate calculations proceed without type errors.
+*   Ensure test cases accurately reflect the intended error handling and data flow, especially when mocking external library outputs. If a utility function (like `safe_float`) is designed to default for certain values (`NaN`), tests should assert the default, not an error.

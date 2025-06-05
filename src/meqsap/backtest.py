@@ -268,20 +268,31 @@ class StrategySignalGenerator:
         return signals
 
 
-def safe_float(value, default=0.0):
+def safe_float(value, default=0.0, metric_name: Optional[str] = None, raise_on_type_error: bool = False):
     """Safely convert a value to float, returning a default if conversion fails."""
+    metric_log_name = f" for metric '{metric_name}'" if metric_name else ""
     if value is None:
+        logger.warning(f"Value is None{metric_log_name}, using default: {default}")
         return default
     try:
         result = float(value)
         # Check for NaN and infinite values
         if np.isnan(result) or np.isinf(result):
-            logger.warning(f"Value '{value}' converted to NaN or inf, using default: {default}")
+            logger.warning(f"Value '{value}'{metric_log_name} converted to NaN or inf, using default: {default}")
             return default
         return result
-    except (ValueError, TypeError):
-        logger.warning(f"Could not convert '{value}' (type: {type(value).__name__}) to float, using default: {default}")
-        return default
+    except (ValueError, TypeError) as e:
+        log_msg = f"Could not convert '{value}' (type: {type(value).__name__}) to float{metric_log_name}"
+        if raise_on_type_error:
+            logger.error(f"{log_msg}. Raising BacktestError as it's a critical metric.")
+            # Ensure the original exception type and message are preserved for clarity
+            if isinstance(e, ValueError):
+                raise BacktestError(f"{log_msg}: Invalid value for float conversion ('{value}').") from e
+            else: # TypeError
+                raise BacktestError(f"{log_msg}: Incorrect type for float conversion (got {type(value).__name__}).") from e
+        else:
+            logger.warning(f"{log_msg}, using default: {default}")
+            return default
 
 def run_backtest(
     prices_data: pd.DataFrame,
@@ -464,11 +475,21 @@ def run_backtest(
         
         logger.debug("Extracting performance metrics...")
         # Replace float conversions with safe_float where needed
-        total_return = safe_float(stats.get('Total Return [%]', 0.0))        
-        annualized_return = safe_float(stats.get('Annualized Return [%]', 0.0))
-        sharpe_ratio = safe_float(stats.get('Sharpe Ratio', 0.0))
-        max_drawdown = safe_float(stats.get('Max Drawdown [%]', 0.0))
-        final_value = safe_float(stats.get('End Value', initial_cash))
+        total_return = safe_float(stats.get('Total Return [%]'), default=0.0, 
+                                  metric_name="Total Return", raise_on_type_error=True)
+        annualized_return = safe_float(stats.get('Annualized Return [%]'), default=0.0,
+                                       metric_name="Annualized Return", raise_on_type_error=True)
+        # Sharpe can be legitimately 0 or negative. Defaulting to 0.0 if non-numeric is okay,
+        # but a string like "N/A" should raise an error.
+        sharpe_ratio = safe_float(stats.get('Sharpe Ratio'), default=0.0,
+                                  metric_name="Sharpe Ratio", raise_on_type_error=True)
+        # Max Drawdown is typically negative or zero.
+        max_drawdown = safe_float(stats.get('Max Drawdown [%]'), default=0.0,
+                                  metric_name="Max Drawdown", raise_on_type_error=True)
+        # Final value is critical. If it's missing from stats, initial_cash is a sensible default.
+        # If it's present but malformed (e.g. string "error"), it should raise.
+        final_value = safe_float(stats.get('End Value'), default=initial_cash,
+                                 metric_name="End Value", raise_on_type_error=True)
         logger.debug(f"Basic metrics extracted: TR={total_return}, AR={annualized_return}, SR={sharpe_ratio}")
         
         # Calculate win rate and profit factor
@@ -496,6 +517,10 @@ def run_backtest(
                                   if c in columns), columns[5] if len(columns) > 5 else 'Return [%]')
             
             logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, pnl={pnl_col}")
+            
+            # Ensure PnL and Return columns are numeric before calculations
+            trades[pnl_col] = pd.to_numeric(trades[pnl_col], errors='coerce')
+            trades[return_pct_col] = pd.to_numeric(trades[return_pct_col], errors='coerce')
             
             winning_trades = len(trades[trades[pnl_col] > 0])
             win_rate = (winning_trades / len(trades)) * 100
@@ -528,35 +553,38 @@ def run_backtest(
         logger.debug("Extracting trade details...")
         trade_details = []
         if len(trades) > 0:
-            # Column mappings are already defined above
-            for _, trade in trades.iterrows():
+            for idx, trade in trades.iterrows():
                 try:
                     trade_details.append({
                         'entry_date': str(trade[entry_time_col]),  # Keep as str conversion
                         'exit_date': str(trade[exit_time_col]),    # Keep as str conversion
-                        'entry_price': safe_float(trade[entry_price_col]),
-                        'exit_price': safe_float(trade[exit_price_col]),
-                        'pnl': safe_float(trade[pnl_col]),
-                        'return_pct': safe_float(trade[return_pct_col])
+                        'entry_price': safe_float(trade[entry_price_col], metric_name=f"Trade Entry Price (idx {idx})", raise_on_type_error=True),
+                        'exit_price': safe_float(trade[exit_price_col], metric_name=f"Trade Exit Price (idx {idx})", raise_on_type_error=True),
+                        'pnl': safe_float(trade[pnl_col], metric_name=f"Trade PnL (idx {idx})", raise_on_type_error=True),
+                        'return_pct': safe_float(trade[return_pct_col], metric_name=f"Trade Return % (idx {idx})", raise_on_type_error=True)
                     })
                 except Exception as e:
-                    logger.warning(f"Error processing trade: {str(e)}")
+                    logger.warning(f"Error processing trade at index {idx}: {str(e)}")
                     continue
         
         # Extract portfolio value series
         logger.debug("Extracting portfolio values...")
         try:
             portfolio_values = portfolio.value()
-            # Fix: Handle Series properly - portfolio_values is a Series, not a dict
+            # Ensure portfolio_values is iterable (Series or DataFrame)
+            if not hasattr(portfolio_values, 'items') and not isinstance(portfolio_values, (pd.Series, pd.DataFrame)):
+                raise BacktestError(f"Portfolio values are not in an iterable format (Series/DataFrame). Got: {type(portfolio_values)}")
+
             if isinstance(portfolio_values, pd.Series):
                 portfolio_value_series = {str(idx): safe_float(val) for idx, val in portfolio_values.items()}
             elif isinstance(portfolio_values, pd.DataFrame):
-                # If it's a DataFrame, get the first column
+                # Use the first column if DataFrame
                 series_data = portfolio_values.iloc[:, 0]
                 portfolio_value_series = {str(idx): safe_float(val) for idx, val in series_data.items()}
             else:
-                # Fallback for other types
-                portfolio_value_series = {str(date): safe_float(value) for date, value in portfolio_values.items()}
+                # This case should ideally not be hit if portfolio.value() behaves as expected
+                logger.warning(f"Unexpected type for portfolio_values: {type(portfolio_values)}. Attempting direct iteration.")
+                portfolio_value_series = {str(k): safe_float(v, metric_name=f"Portfolio Value ({k})", raise_on_type_error=True) for k, v in getattr(portfolio_values, 'items', lambda: {} )()}
             logger.debug(f"Portfolio values extracted: {len(portfolio_value_series)} entries")
         except Exception as e:
             logger.warning(f"Error extracting portfolio values: {str(e)}")

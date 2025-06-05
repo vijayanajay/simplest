@@ -6,6 +6,7 @@ import datetime
 from datetime import date
 from src.meqsap.backtest import run_backtest, BacktestError, safe_float, StrategySignalGenerator
 from src.meqsap.config import StrategyConfig, MovingAverageCrossoverParams
+from unittest.mock import patch, MagicMock
 
 # Suppress pandas_ta pkg_resources deprecation warning
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API", category=UserWarning)
@@ -109,9 +110,51 @@ class TestFloatConversions(unittest.TestCase):
         result = run_backtest(prices_data=prices_series, signals_data=signals_df)
         self.assertIsNotNone(result)
         
-    def test_mock_stats_with_non_numeric(self):
+    @patch('src.meqsap.backtest.vbt.Portfolio')
+    def test_mock_stats_with_non_numeric(self, mock_portfolio):
         """Test handling of non-numeric values in stats dictionary."""
-        self.skipTest("Skipping this test as it requires mocking")
+        # Mock the Portfolio.from_signals call and its subsequent .stats() and .trades calls
+        mock_portfolio_instance = MagicMock()
+
+        # Scenario 1: Critical stat is a non-convertible string
+        mock_stats_invalid_str = pd.Series({
+            'Total Return [%]': "SHOULD_BE_FLOAT", # Invalid string
+            'Annualized Return [%]': 10.0,
+            'Sharpe Ratio': 1.0,
+            'Max Drawdown [%]': -5.0,
+            'End Value': 11000.0,
+            'Total Trades': 1
+        })
+        mock_portfolio_instance.stats.return_value = mock_stats_invalid_str
+        mock_portfolio_instance.trades.records_readable = pd.DataFrame({ # Dummy trade
+            'Entry Time': [pd.Timestamp('2022-01-05')], 'Exit Time': [pd.Timestamp('2022-01-10')],
+            'Entry Price': [100.0], 'Exit Price': [105.0], 'PnL': [50.0], 'Return [%]': [5.0]
+        })
+        mock_portfolio_instance.returns.return_value = pd.Series([0.01, 0.02]) # Dummy returns
+        mock_portfolio_instance.value.return_value = pd.Series({pd.Timestamp('2022-01-01'): 10000.0})
+        mock_portfolio_instance.wrapper.columns = pd.Index(['asset'])
+
+        with patch('src.meqsap.backtest.vbt.Portfolio.from_signals', return_value=mock_portfolio_instance):
+            with self.assertRaisesRegex(BacktestError, "Could not convert 'SHOULD_BE_FLOAT'.*for metric 'Total Return'"):
+                run_backtest(prices_data=self.test_data['close'], signals_data=self.signals)
+
+        # Scenario 2: Critical stat from trades is non-convertible string
+        mock_stats_valid = pd.Series({
+            'Total Return [%]': 10.0, 'Annualized Return [%]': 10.0, 'Sharpe Ratio': 1.0,
+            'Max Drawdown [%]': -5.0, 'End Value': 11000.0, 'Total Trades': 1
+        })
+        mock_portfolio_instance.stats.return_value = mock_stats_valid
+        mock_portfolio_instance.trades.records_readable = pd.DataFrame({
+            'Entry Time': [pd.Timestamp('2022-01-05')], 'Exit Time': [pd.Timestamp('2022-01-10')],
+            'Entry Price': [100.0], 'Exit Price': [105.0], 'PnL': ["NOT_A_PNL"], 'Return [%]': [5.0]
+        })
+
+        with patch('src.meqsap.backtest.vbt.Portfolio.from_signals', return_value=mock_portfolio_instance):
+            # The test should now pass without raising an error for the PnL column,
+            # as it will be coerced to NaN and then defaulted by safe_float.
+            result = run_backtest(prices_data=self.test_data['close'], signals_data=self.signals)
+            self.assertIsNotNone(result)
+            self.assertEqual(result.trade_details[0]['pnl'], 0.0) # Assert it defaulted to 0.0
 
 class TestFloatHandling(unittest.TestCase):
     """Test safe float handling in backtesting operations."""
@@ -138,9 +181,20 @@ class TestFloatHandling(unittest.TestCase):
     def test_safe_float_with_nan_and_inf(self):
         """Test safe_float with NaN and infinite values."""
         self.assertEqual(safe_float(np.nan, default=0.0), 0.0)
-        # Note: inf values should be handled gracefully
-        result = safe_float(np.inf, default=0.0)
-        self.assertTrue(result == 0.0 or result == float('inf'))  # Allow either behavior
+        self.assertEqual(safe_float(np.inf, default=0.0), 0.0) # inf should also default
+        self.assertEqual(safe_float(-np.inf, default=0.0), 0.0) # -inf should also default
+
+    def test_safe_float_raise_on_type_error(self):
+        """Test safe_float with raise_on_type_error=True."""
+        with self.assertRaisesRegex(BacktestError, "Could not convert 'invalid_str'.*Invalid value for float conversion"):
+            safe_float("invalid_str", metric_name="CriticalMetric1", raise_on_type_error=True)
+        
+        with self.assertRaisesRegex(BacktestError, "Could not convert '\\['list'\\]'.*Incorrect type for float conversion"):
+            safe_float(['list'], metric_name="CriticalMetric2", raise_on_type_error=True)
+
+        # NaN/inf/None should still default even if raise_on_type_error is True
+        self.assertEqual(safe_float(np.nan, metric_name="NanTest", raise_on_type_error=True), 0.0)
+        self.assertEqual(safe_float(None, metric_name="NoneTest", raise_on_type_error=True), 0.0)
 
 if __name__ == '__main__':
     unittest.main()

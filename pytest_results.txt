@@ -3,19 +3,19 @@ platform win32 -- Python 3.12.10, pytest-8.3.5, pluggy-1.6.0
 cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
-collected 184 items
+collected 185 items
 
 tests\indicators_core\indicators\test_moving_average.py .....            [  2%]
 tests\indicators_core\indicators\test_rsi.py .....                       [  5%]
 tests\indicators_core\test_base.py .......                               [  9%]
 tests\indicators_core\test_parameters.py ............                    [ 15%]
 tests\test_backtest.py ............                                      [ 22%]
-tests\test_cli.py ..................                                     [ 32%]
+tests\test_cli.py ..................                                     [ 31%]
 tests\test_cli_comprehensive.py .......................                  [ 44%]
-tests\test_cli_enhanced.py ..................................            [ 63%]
-tests\test_config.py .............                                       [ 70%]
+tests\test_cli_enhanced.py ..................................            [ 62%]
+tests\test_config.py .............                                       [ 69%]
 tests\test_data.py .......                                               [ 73%]
-tests\test_float_handling.py s......                                     [ 77%]
+tests\test_float_handling.py ........                                    [ 77%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 182 passed, 2 skipped in 44.77s =======================
+======================= 184 passed, 1 skipped in 23.98s =======================
