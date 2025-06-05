@@ -20,3 +20,7 @@ seaborn>=0.11.0
 pytest>=7.0.0
 pytest-cov>=4.0.0
 mypy>=1.0.0
+
+# Optimization dependencies
+tqdm>=4.64.0  # Progress indicators for optimization
+scipy>=1.9.0  # Statistical analysis and constraint evaluation
