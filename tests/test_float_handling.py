@@ -19,11 +19,11 @@ class TestFloatConversions(unittest.TestCase):
         # Create sample test data
         dates = pd.date_range(start='2022-01-01', periods=100)
         self.test_data = pd.DataFrame({
-            'open': np.random.normal(100, 5, 100),
-            'high': np.random.normal(105, 5, 100),
-            'low': np.random.normal(95, 5, 100),
-            'close': np.random.normal(100, 5, 100),
-            'volume': np.random.normal(1000, 200, 100)
+            'open': np.random.normal(100, 5, 100),      # lowercase
+            'high': np.random.normal(105, 5, 100),     # lowercase
+            'low': np.random.normal(95, 5, 100),       # lowercase
+            'close': np.random.normal(100, 5, 100),    # lowercase
+            'volume': np.random.normal(1000, 200, 100) # lowercase
         }, index=dates)
         
         # Create signals data for testing

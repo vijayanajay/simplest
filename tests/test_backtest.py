@@ -43,11 +43,11 @@ class TestStrategySignalGenerator:
             prices.append(prices[-1] * (1 + ret))
         
         data = pd.DataFrame({
-            'Open': [p * 0.99 for p in prices],
-            'High': [p * 1.02 for p in prices],
-            'Low': [p * 0.98 for p in prices],
-            'Close': prices,
-            'Volume': np.random.randint(1000000, 5000000, days)
+            'open': [p * 0.99 for p in prices],
+            'high': [p * 1.02 for p in prices],
+            'low': [p * 0.98 for p in prices],
+            'close': prices,
+            'volume': np.random.randint(1000000, 5000000, days)
         }, index=dates)
         
         return data
@@ -107,11 +107,11 @@ class TestRunBacktest:
         # Create trending price data
         prices = [100 + i * 0.5 for i in range(50)]
         data = pd.DataFrame({
-            'Open': [p * 0.99 for p in prices],
-            'High': [p * 1.01 for p in prices],
-            'Low': [p * 0.98 for p in prices],
-            'Close': prices,
-            'Volume': [1000000] * 50
+            'open': [p * 0.99 for p in prices],
+            'high': [p * 1.01 for p in prices],
+            'low': [p * 0.98 for p in prices],
+            'close': prices,
+            'volume': [1000000] * 50
         }, index=dates)
         
         # Create simple signals - buy on day 10, sell on day 30
@@ -183,7 +183,7 @@ class TestVibeChecks:
         """Create sample data."""
         dates = pd.date_range(start='2023-01-01', periods=days, freq='D')
         return pd.DataFrame({
-            'Close': [100 + i * 0.1 for i in range(days)]
+            'close': [100 + i * 0.1 for i in range(days)]
         }, index=dates)
     
     def create_sample_config(self):
@@ -243,11 +243,11 @@ class TestRobustnessChecks:
         
         prices = [100 + i * 0.5 for i in range(50)]
         data = pd.DataFrame({
-            'Open': [p * 0.99 for p in prices],
-            'High': [p * 1.01 for p in prices],
-            'Low': [p * 0.98 for p in prices],
-            'Close': prices,
-            'Volume': [1000000] * 50
+            'open': [p * 0.99 for p in prices],
+            'high': [p * 1.01 for p in prices],
+            'low': [p * 0.98 for p in prices],
+            'close': prices,
+            'volume': [1000000] * 50
         }, index=dates)
         
         signals = pd.DataFrame({
@@ -299,11 +299,11 @@ class TestCompleteBacktest(unittest.TestCase):
             prices.append(prices[-1] * (1 + ret))
         
         self.test_data = pd.DataFrame({
-            'Open': [p * 0.99 for p in prices],
-            'High': [p * 1.02 for p in prices],
-            'Low': [p * 0.98 for p in prices],
-            'Close': prices,
-            'Volume': np.random.randint(1000000, 5000000, 100)
+            'open': [p * 0.99 for p in prices],
+            'high': [p * 1.02 for p in prices],
+            'low': [p * 0.98 for p in prices],
+            'close': prices,
+            'volume': np.random.randint(1000000, 5000000, 100)
         }, index=dates)
         
         # Create sample signals
@@ -349,11 +349,11 @@ class TestErrorHandling(unittest.TestCase):
         # Create sample test data with proper column names
         dates = pd.date_range(start='2022-01-01', periods=100)
         self.test_data = pd.DataFrame({
-            'Open': np.random.normal(100, 5, 100),
-            'High': np.random.normal(105, 5, 100),
-            'Low': np.random.normal(95, 5, 100),
-            'Close': np.random.normal(100, 5, 100),
-            'Volume': np.random.normal(1000, 200, 100)
+            'open': np.random.normal(100, 5, 100),
+            'high': np.random.normal(105, 5, 100),
+            'low': np.random.normal(95, 5, 100),
+            'close': np.random.normal(100, 5, 100),
+            'volume': np.random.normal(1000, 200, 100)
         }, index=dates)
         
         # Create sample signals

@@ -161,7 +161,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
     @patch('src.meqsap.cli.run_complete_backtest')
     @patch('src.meqsap.cli.fetch_market_data')
     def test_insufficient_data_period(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({'Open': [100], 'Close': [100]})
+        mock_fetch_market_data.return_value = pd.DataFrame({'open': [100], 'close': [100]})
         mock_run_complete_backtest.side_effect = BacktestError("Insufficient data points for MA 50/100")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
@@ -203,7 +203,10 @@ class TestBacktestExecutionErrorScenarios:
     @patch('src.meqsap.cli.run_complete_backtest')
     @patch('src.meqsap.cli.fetch_market_data')
     def test_mathematical_computation_errors(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({'Open':[100],'High':[100],'Low':[100],'Close':[100],'Volume':[100]})
+        mock_fetch_market_data.return_value = pd.DataFrame({
+            'open':[100],'high':[100],'low':[100],
+            'close':[100],'volume':[100]
+        })
         mock_run_complete_backtest.side_effect = BacktestError("Division by zero in Sharpe calculation")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
@@ -223,7 +226,10 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
     @patch('src.meqsap.cli.run_complete_backtest')
     @patch('src.meqsap.cli.fetch_market_data')
     def test_memory_exhaustion_errors(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({'Close': [100, 101, 102]})
+        mock_fetch_market_data.return_value = pd.DataFrame({
+            'open':[100,101,102],'high':[100,101,102],'low':[100,101,102],
+            'close':[100,101,102],'volume':[100,101,102]
+        })
         mock_run_complete_backtest.side_effect = MemoryError("Not enough memory")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
@@ -273,7 +279,7 @@ class TestReportGenerationErrorScenarios:
     @patch('src.meqsap.cli.run_complete_backtest')
     @patch('src.meqsap.cli.fetch_market_data')
     def test_pdf_generation_permission_error(self, mock_fetch_market_data, mock_run_complete_backtest, mock_generate_complete_report):
-        mock_fetch_market_data.return_value = pd.DataFrame({'Close': [100]})
+        mock_fetch_market_data.return_value = pd.DataFrame({'close': [100]})
         mock_run_complete_backtest.return_value = Mock(spec=BacktestAnalysisResult)
         mock_generate_complete_report.side_effect = ReportingError("Permission denied for PDF")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
@@ -298,7 +304,7 @@ class TestProgressAndUserExperience:
     @patch('src.meqsap.cli.Progress')
     @patch('src.meqsap.cli.fetch_market_data')
     def test_progress_indicators_data_download(self, mock_fetch_market_data, mock_progress_constructor):
-        mock_fetch_market_data.return_value = pd.DataFrame({'Close': [100, 101, 102]})
+        mock_fetch_market_data.return_value = pd.DataFrame({'close': [100, 101, 102]})
         mock_progress_instance = MagicMock()
         mock_progress_constructor.return_value.__enter__.return_value = mock_progress_instance
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:

@@ -62,8 +62,8 @@ def test_cache_miss(mock_yfinance_download, mock_cache):
     mock_load, mock_save = mock_cache
     mock_load.side_effect = FileNotFoundError
     # Create mock data that includes the full requested range (inclusive end_date)
-    mock_data = create_mock_data(date(2023, 1, 1), date(2023, 1, 10))  # Include end_date
-    mock_yfinance_download.return_value = mock_data
+    mock_yf_data = create_mock_data(date(2023, 1, 1), date(2023, 1, 10))  # Include end_date
+    mock_yfinance_download.return_value = mock_yf_data
 
     # Call function
     result = fetch_market_data('AAPL', date(2023, 1, 1), date(2023, 1, 10))
@@ -72,12 +72,19 @@ def test_cache_miss(mock_yfinance_download, mock_cache):
     mock_load.assert_called_once()
     mock_yfinance_download.assert_called_once()
     mock_save.assert_called_once()
-    pd.testing.assert_frame_equal(result, mock_data, check_dtype=False) # Allow different dtypes for index after read/write
+    
+    # Expected data should have lowercase columns
+    expected_data = mock_yf_data.copy()
+    expected_data.columns = [col.lower() for col in expected_data.columns]
+    
+    pd.testing.assert_frame_equal(result, expected_data, check_dtype=False) # Allow different dtypes for index after read/write
 
 def test_cache_hit(mock_yfinance_download, mock_cache):
     mock_load, mock_save = mock_cache
     mock_data = create_mock_data(date(2023, 1, 1), date(2023, 1, 10))
-    mock_load.return_value = mock_data
+    mock_cached_data = mock_data.copy()
+    mock_cached_data.columns = [col.lower() for col in mock_cached_data.columns] # Cache stores lowercase
+    mock_load.return_value = mock_cached_data
     
     # Call function
     result = fetch_market_data('AAPL', date(2023, 1, 1), date(2023, 1, 10))
@@ -86,7 +93,7 @@ def test_cache_hit(mock_yfinance_download, mock_cache):
     mock_load.assert_called_once()
     mock_yfinance_download.assert_not_called()
     mock_save.assert_not_called()
-    pd.testing.assert_frame_equal(result, mock_data, check_dtype=False)
+    pd.testing.assert_frame_equal(result, mock_cached_data, check_dtype=False)
 
 def test_nan_values_validation(mock_yfinance_download, mock_cache):
     mock_load, _ = mock_cache
@@ -104,8 +111,8 @@ def test_start_date_slip_logic(mock_yfinance_download, mock_cache, caplog):
     mock_load, mock_save = mock_cache
     mock_load.side_effect = FileNotFoundError
     # Create mock data that starts 2 days late
-    mock_data = create_mock_data(date(2023, 1, 3), date(2023, 1, 10))  # Starts on Jan 3
-    mock_yfinance_download.return_value = mock_data
+    mock_yf_data = create_mock_data(date(2023, 1, 3), date(2023, 1, 10))  # Starts on Jan 3
+    mock_yfinance_download.return_value = mock_yf_data
 
     caplog.clear()
     # Call function
@@ -115,7 +122,12 @@ def test_start_date_slip_logic(mock_yfinance_download, mock_cache, caplog):
     mock_load.assert_called_once()
     mock_yfinance_download.assert_called_once()
     mock_save.assert_called_once()
-    pd.testing.assert_frame_equal(result, mock_data, check_dtype=False)
+    
+    # Expected data should have lowercase columns
+    expected_data = mock_yf_data.copy()
+    expected_data.columns = [col.lower() for col in expected_data.columns]
+    
+    pd.testing.assert_frame_equal(result, expected_data, check_dtype=False)
 
     # Expected log based on pytest output:
     # WARNING  src.meqsap.data:data.py:75 Data for AAPL starts on 2023-01-03, which is 2 day(s) after the requested start_date 2023-01-01. This may be due to the requested start date being a non-trading day. Proceeding with analysis using data from 2023-01-03.
@@ -166,8 +178,8 @@ def test_end_date_inclusive_behavior():
         mock_load.side_effect = FileNotFoundError
         
         # Create mock data that includes both start and end dates
-        mock_data = create_mock_data(date(2022, 1, 3), date(2022, 1, 4))
-        mock_download.return_value = mock_data
+        mock_yf_data = create_mock_data(date(2022, 1, 3), date(2022, 1, 4))
+        mock_download.return_value = mock_yf_data
         
         # Call the correct function name
         data = fetch_market_data("AAPL", date(2022, 1, 3), date(2022, 1, 4))
@@ -194,3 +206,7 @@ def test_end_date_inclusive_behavior():
             end="2022-01-05",  # end_date + 1 day for yfinance exclusive behavior
             progress=False
         )
+
+        # The 'data' variable here should have lowercase columns
+        assert 'open' in data.columns
+        assert 'close' in data.columns

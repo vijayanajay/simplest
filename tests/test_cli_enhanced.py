@@ -102,7 +102,7 @@ class TestEnhancedCLIMain:
             'open': [100, 101, 102],
             'high': [105, 106, 107],
             'low': [99, 100, 101],
-            'close': [103, 104, 105],
+            'close': [103, 104, 105], # Already lowercase
             'volume': [1000, 1100, 1200]
         })
 
@@ -254,7 +254,7 @@ class TestDataAcquisition:
             'open': [100, 101, 102],
             'high': [105, 106, 107],
             'low': [99, 100, 101],
-            'close': [103, 104, 105],
+            'close': [103, 104, 105], # Already lowercase
             'volume': [1000, 1100, 1200]
         })
 
@@ -290,7 +290,7 @@ class TestBacktestExecution:
             'open': [100, 101, 102],
             'high': [105, 106, 107],
             'low': [99, 100, 101],
-            'close': [103, 104, 105],
+            'close': [103, 104, 105], # Already lowercase
             'volume': [1000, 1100, 1200]
         })
         
@@ -471,7 +471,8 @@ class TestCLIIntegration:
         mock_config.return_value = mock_config_obj
         
         mock_data.return_value = pd.DataFrame({
-            'open': [100], 'high': [105], 'low': [99], 'close': [103], 'volume': [1000]
+            'open': [100], 'high': [105], 'low': [99], 
+            'close': [103], 'volume': [1000] # Ensure lowercase
         })
         
         mock_analysis = Mock(spec=BacktestAnalysisResult)
@@ -601,7 +602,10 @@ class TestEnhancedCLIDynamicParams:
         mock_validate_config.return_value = mock_dynamic_config_obj
 
         # Setup other mocks
-        mock_market_data = pd.DataFrame({'Close': [100, 101, 102]}) # Dummy data
+        mock_market_data = pd.DataFrame({
+            'open':[100,101,102],'high':[100,101,102],'low':[100,101,102],
+            'close':[100,101,102],'volume':[100,101,102] # Ensure lowercase
+        }) # Dummy data
         mock_fetch_market_data.return_value = mock_market_data
         
         mock_analysis_result = Mock(spec=BacktestAnalysisResult) # Dummy result

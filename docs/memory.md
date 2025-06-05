@@ -1,89 +1,80 @@
-# MEQSAP Memory File
+# MEQSAP Memory File: Quick Reference Rules
 
-## What NOT To Do: Common AI-Induced Pitfalls
+## Package Structure & Imports
 
-### Import & Package Structure
-
-**DON'T** write tests for modules that don't exist or have incomplete package structure.
-- Always create `__init__.py` files for package hierarchy
-- Verify imports work before writing tests: `python -c "from src.meqsap.cli import app"`
-- Mock specifications must match actual return types (`spec=pd.DataFrame`, not `spec=Path`)
-
-**DON'T** rely on `if __name__ == "__main__":` for modules executed with `python -m`.
+### DO ✅
+- Create complete `__init__.py` files for package hierarchy
+- Verify imports work: `python -c "from src.meqsap.cli import app"`
+- Match mock specifications to actual return types (`spec=pd.DataFrame`)
 - Use dedicated `main()` function for CLI entry points
-- Test both direct execution and module execution patterns
 
-### CLI Testing Anti-Patterns
+### DON'T ❌
+- Write tests for incomplete package structures
+- Rely on `if __name__ == "__main__":` for `python -m` execution
+- Use incorrect mock types (e.g., `spec=Path` for DataFrame)
 
-**DON'T** test CLI help/commands without understanding the command structure.
-- Use proper subcommand syntax: `["analyze", config, "--flag"]`, not `[config, "--flag"]`
-- Test subcommand help with `["analyze", "--help"]`, not just `["--help"]`
-- Verify CLI structure before writing tests: `python -m src.meqsap.cli --help`
+## CLI Testing
 
-**DON'T** assume Typer API stability.
-- Remove deprecated arguments like `mix_stderr` from `CliRunner()`
-- Pin Typer versions or test against updates regularly
-
-**DON'T** mock functions to raise exceptions when testing return codes.
+### DO ✅
+- Use proper subcommand syntax: `["analyze", config, "--flag"]`
+- Test subcommand help: `["analyze", "--help"]`
 - Mock return values: `function.return_value = code`
-- Not exceptions: `function.side_effect = Exception()` (bypasses internal error handling)
+- Check CLI structure before testing: `python -m src.meqsap.cli --help`
 
-### Configuration & Schema Evolution
+### DON'T ❌
+- Use wrong command syntax: `[config, "--flag"]`
+- Mock exceptions when testing return codes: `function.side_effect = Exception()`
+- Use deprecated Typer arguments (`mix_stderr`)
+- Assert exact CLI help text (use key terms instead)
 
-**DON'T** update Pydantic models without updating all test fixtures.
-- Search project-wide for model instantiations when changing schemas
-- Use factory functions for complex models to centralize test data creation
-- Example: `MovingAverageCrossoverParams` field changes require updating all test helpers
+## Configuration & Models
 
-**DON'T** hardcode configuration values in tests.
-- Use constants for strategy types: `STRATEGY_TYPES = Literal["MovingAverageCrossover"]`
-- Keep naming conventions consistent: PascalCase for strategy types, not snake_case
+### DO ✅
+- Update ALL test fixtures when changing Pydantic models
+- Use factory functions for complex model creation
+- Keep PascalCase for strategy types consistently
+- Add explicit validators for Union types with numeric constraints
 
-### Exception Handling
+### DON'T ❌
+- Change schemas without updating dependent tests
+- Hardcode configuration values in tests
+- Mix naming conventions (snake_case vs PascalCase)
+- Assume Union type validation works automatically
 
-**DON'T** create duplicate exception classes.
-- Single source of truth: use `exceptions.py`, not local classes in modules
-- Import canonical exceptions: `from meqsap.exceptions import ConfigurationError`
-- Don't alias imports that create ambiguity
+## Exception Handling
 
-**DON'T** reference unimplemented methods in factory patterns.
-- Implement all factory methods before creating dependent code
-- Use `mypy` to catch missing method references early
+### DO ✅
+- Use canonical exceptions from `exceptions.py`
+- Define all imported exceptions before use
+- Run import tests: `python -c "from module import exception_class"`
+- Implement factory methods before referencing them
 
-## Exception Handling Anti-Patterns
+### DON'T ❌
+- Create duplicate exception classes in multiple modules
+- Alias imports that create ambiguity
+- Reference unimplemented methods
 
-### Missing Exception Definitions
-**Issue**: CLI module imports `ConfigError` from `config.py` but the exception class doesn't exist, causing import failures across all CLI tests.
+## Testing & Mocking
 
-**Root Cause**: Interface contract violation - dependent module expects exception class that isn't defined in the target module.
+### DO ✅
+- Mock at correct module boundaries
+- Match external library interfaces exactly (e.g., `pd.Index` not `list`)
+- Validate data types early: `pd.to_numeric(errors='coerce')`
+- Test with both direct and module execution patterns
 
-**Fix**: Define missing exception classes in their expected modules or update import statements to reference the correct location.
+### DON'T ❌
+- Mock with incorrect return types for external libraries
+- Assume test structure matches implementation without verification
+- Skip data type validation for critical columns
 
-**Prevention**: 
-- Verify all custom exceptions are defined before importing them
-- Use a dedicated `exceptions.py` module for shared exceptions when appropriate
-- Run basic import tests: `python -c "from module import exception_class"`
+## Debugging Pattern for CLI Failures (Exit Code 2)
 
-### Testing Fragility
+1. Check imports: `python -c "from module import app"`
+2. Check CLI help: `python -m module --help`
+3. Check subcommand structure: `python -m module subcommand --help`
+4. Check runtime with mocks
 
-**DON'T** assert exact CLI help text that depends on library formatting.
-- Check for key terms ("Error", "MEQSAP"), not exact message strings
-- Update test assertions when docstrings change
-
-**DON'T** assume test structure matches implementation without verification.
-- Inspect actual implementation before writing tests
-- Use `typer.testing.CliRunner` with actual command structure
-- Mock at module boundaries where functions are actually called
-
-### Debugging Pattern
-
-When CLI tests uniformly fail with exit code 2:
-1. **First** check imports: `python -c "from module import app"`
-2. **Then** check CLI help: `python -m module --help`  
-3. **Then** check command structure: `python -m module subcommand --help`
-4. **Finally** check runtime execution with mocks
-
-**Remember**: Exit code 2 indicates framework-level failures (imports, command registration, argument parsing), not logic errors.
+*Exit code 2 = framework failures (imports, registration, parsing), not logic errors*
 
 ## Indicator Instantiation and Parameter Handling
 
@@ -166,3 +157,61 @@ The `run_backtest` function in `src/meqsap/backtest.py` assumed that the `PnL` a
 *   Always validate or coerce data types of critical columns immediately upon receiving them from external libraries, especially before performing mathematical operations or comparisons.
 *   Distinguish between data integrity checks that should "fail loudly" (e.g., `safe_float` for final metric extraction) and robust data preparation steps (e.g., `pd.to_numeric(errors='coerce')`) that ensure intermediate calculations proceed without type errors.
 *   Ensure test cases accurately reflect the intended error handling and data flow, especially when mocking external library outputs. If a utility function (like `safe_float`) is designed to default for certain values (`NaN`), tests should assert the default, not an error.
+
+**Structural Issue Discovered (YYYY-MM-DD - Based on current task):** Incorrect Mocking of `__len__` Magic Method
+When mocking objects that are expected to support the `len()` built-in function (e.g., `Mock(spec=pd.DataFrame)`), attempting to set the length via `mock_instance.__len__.return_value = X` results in an `AttributeError: Mock object has no attribute '__len__'.`. This is because `__len__` is a magic method, not a standard attribute whose `return_value` can be directly set on a sub-mock in this manner.
+
+**Nature of Fix / Design Principle Reinforced:**
+*   **Fix:** Correctly mock the `__len__` magic method by assigning a `Mock` object to it directly: `mock_instance.__len__ = Mock(return_value=X)`. This ensures that when `len(mock_instance)` is called, the Python runtime invokes the mocked `__len__` method, which then returns the desired value.
+*   **Principle Reinforced:** Magic methods (dunder methods) on mocked objects require specific handling. They should typically be mocked by assigning a callable (like another `Mock` instance with a `return_value`) directly to the dunder attribute on the mock instance itself, rather than trying to access a sub-mock (e.g., `mock_instance.__len__`) and setting its `return_value`. Always consult `unittest.mock` documentation for mocking magic methods.
+
+**Lesson Learned:**
+*   To control the behavior of `len(mock_object)`, set `mock_object.__len__ = Mock(return_value=desired_length)`.
+*   Be cautious when using `spec` with `Mock`. While it helps catch attribute errors, it doesn't automatically set up mocks for all magic methods in a way that allows `mock_object.magic_method.return_value` assignment. Direct assignment to the magic method attribute on the mock is often necessary.
+
+## Technical Patterns
+
+### Indicator Framework
+
+### DO ✅
+- Instantiate indicators without arguments: `indicator = IndicatorCls()`
+- Pass parameters to `calculate()` method: `indicator.calculate(data, **params)`
+- Follow base class interface contracts strictly
+
+### DON'T ❌
+- Pass parameters to indicator `__init__()` unless explicitly designed for it
+- Assume documentation matches implementation without verification
+
+### Pydantic Validation
+
+### DO ✅
+- Handle Union types with explicit field validators
+- Check for Pydantic model instances in validators: `isinstance(v, ModelClass)`
+- Access model attributes for validation: `v.value` instead of raw input
+- Validate critical metrics with strict error handling
+
+### DON'T ❌
+- Assume Union validation works automatically for all types
+- Use helper functions expecting raw types on model instances
+- Silent-default critical financial metrics (use `raise_on_type_error=True`)
+
+### Data Type Safety
+
+### DO ✅
+- Coerce external library data early: `pd.to_numeric(errors='coerce')`
+- Distinguish critical vs non-critical data handling
+- Validate data types before mathematical operations
+- Use proper pandas types in mocks: `pd.Index` not `list`
+
+### DON'T ❌
+- Assume external library outputs are always correct types
+- Skip early data validation for critical calculations
+- Mock with incorrect types that break attribute access
+
+### Mocking Magic Methods
+
+#### DO ✅
+- Mock `__len__` directly: `mock_obj.__len__ = Mock(return_value=X)`
+
+#### DON'T ❌
+- Attempt to set `mock_obj.__len__.return_value = X` (causes `AttributeError`)

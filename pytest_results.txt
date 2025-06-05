@@ -18,4 +18,4 @@ tests\test_data.py .......                                               [ 75%]
 tests\test_float_handling.py ........                                    [ 79%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 198 passed, 1 skipped in 20.50s =======================
+======================= 198 passed, 1 skipped in 30.37s =======================

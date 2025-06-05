@@ -58,8 +58,8 @@ This document tracks identified technical debt items, their context, impact, and
 **-- TECHNICAL DEBT ITEM (NEW/UPDATED) --**
 **Debt Title:** Fragile Close Price Column Discovery
 **Unique Identifier:** TD-20250601-003
-**Origin/Context:** Audit finding (2025-06-01). Both `src/meqsap/backtest.py::StrategySignalGenerator._generate_ma_crossover_signals` and `src/meqsap/backtest.py::run_backtest` use a multi-step `if/elif/else` logic to find the 'Close' price column.
-**Status (if updating existing):** NOT STARTED
+**Origin/Context:** Audit finding (2025-06-01). Both `src/meqsap/backtest.py::StrategySignalGenerator._generate_ma_crossover_signals` and `src/meqsap/backtest.py::run_backtest` previously used a multi-step `if/elif/else` logic to find the 'Close' price column.
+**Status (if updating existing):** ADDRESSED
 **Detailed Description:**
     Current: The logic `[col for col in data.columns if col.lower() == 'close']` and `[col for col in aligned_data.columns if 'price' in col.lower() or 'close' in col.lower()]` can be fragile. For example, 'Adjusted Close' would not be found by `col.lower() == 'close'`, and if there are multiple columns with 'price' (e.g. 'entry_price', 'exit_price', 'close_price'), it picks the first one found.
     Ideal: Data column names should be normalized early in the data ingestion pipeline (e.g., in `src/meqsap/data.py` after fetching from yfinance) to a consistent format (e.g., all lowercase: 'open', 'high', 'low', 'close', 'volume'). Downstream modules would then expect these consistent names.

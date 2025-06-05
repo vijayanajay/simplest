@@ -128,6 +128,28 @@ def fetch_market_data(ticker: str, start_date: date, end_date: date) -> pd.DataF
         if data.empty:
             raise DataError(f"No data available for {ticker} in {start_date} to {end_date}")
         
+        # Normalize column names to lowercase
+        data.columns = [col.lower() for col in data.columns]
+        
+        # Define the standard OHLCV columns we expect after normalization
+        standard_ohlcv_cols = {'open', 'high', 'low', 'close', 'volume'}
+        
+        # Check if all standard columns are present
+        if not standard_ohlcv_cols.issubset(data.columns):
+            # A common case with yfinance is that 'adj close' might be present
+            # if auto_adjust=False, or if yfinance changes its default behavior.
+            # If 'adj close' is present and 'close' is missing, rename 'adj close' to 'close'.
+            if 'adj close' in data.columns and 'close' not in data.columns:
+                logger.info(f"Found 'adj close' column for {ticker}, renaming to 'close'.")
+                data.rename(columns={'adj close': 'close'}, inplace=True)
+            
+            # Re-check if all standard columns are present now
+            if not standard_ohlcv_cols.issubset(data.columns):
+                missing_cols = standard_ohlcv_cols - set(data.columns)
+                raise DataError(
+                    f"Downloaded data for {ticker} is missing standard OHLCV columns "
+                    f"after normalization: {missing_cols}. Available columns: {list(data.columns)}"
+                )
         # Perform integrity checks
         _validate_data(data, ticker, start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         

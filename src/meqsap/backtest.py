@@ -180,19 +180,11 @@ class StrategySignalGenerator:
         if len(data) < slow_ma_period:
             raise BacktestError(f"Insufficient data: need at least {slow_ma_period} bars, got {len(data)}")
         
-        # Extract close prices - this variable will be used by ta.sma
+        # Extract close prices - expects 'close' column after normalization in data.py
+        if 'close' not in data.columns:
+            raise BacktestError(f"Standardized 'close' column not found in data. Available columns: {list(data.columns)}")
         _close_prices_intermediate: pd.Series | pd.DataFrame
-        if 'Close' in data.columns:
-            _close_prices_intermediate = data['Close']
-        elif 'close' in data.columns:
-            _close_prices_intermediate = data['close']
-        else:
-            # Try to find a close price column with case-insensitive search
-            close_columns = [col for col in data.columns if col.lower() == 'close']
-            if close_columns:
-                _close_prices_intermediate = data[close_columns[0]]
-            else:
-                raise BacktestError(f"No 'Close' or 'close' column found in data. Available columns: {list(data.columns)}")
+        _close_prices_intermediate = data['close']
 
         # Ensure _close_prices_intermediate is a Series for pandas-ta
         close_prices_for_ta: pd.Series
@@ -344,27 +336,17 @@ def run_backtest(
         logger.debug(f"Aligned data shape: {aligned_data.shape}")
         logger.debug(f"Aligned signals shape: {aligned_signals.shape}")
         
-        # Extract close prices for vectorbt
+        # Extract close prices for vectorbt - expects 'close' column after normalization in data.py
         if isinstance(aligned_data, pd.DataFrame):
             logger.debug(f"Processing DataFrame with columns: {aligned_data.columns.tolist()}")
-            if 'Close' in aligned_data.columns:
-                close_prices = aligned_data['Close']
-                logger.debug("Using 'Close' column")
-            elif 'close' in aligned_data.columns:
-                close_prices = aligned_data['close']
-                logger.debug("Using 'close' column")
-            else:
-                # Try to find a price column
-                price_columns = [col for col in aligned_data.columns if 'price' in col.lower() or 'close' in col.lower()]
-                if price_columns:
-                    close_prices = aligned_data[price_columns[0]]
-                    logger.debug(f"Using price column: {price_columns[0]}")
-                else:
-                    raise BacktestError("No suitable price column found in DataFrame")
+            if 'close' not in aligned_data.columns:
+                raise BacktestError(f"Standardized 'close' column not found in aligned_data. Available columns: {list(aligned_data.columns)}")
+            close_prices = aligned_data['close']
+            logger.debug("Using standardized 'close' column")
         else:
-            # Assume it's already a Series
+            # Assume it's already a Series of close prices
             close_prices = aligned_data
-            logger.debug("Using data as Series directly")
+            logger.debug("Using aligned_data as Series directly (assumed to be close prices)")
         
         logger.debug(f"Close prices type: {type(close_prices)}")
         logger.debug(f"Close prices shape: {close_prices.shape}")
@@ -768,7 +750,7 @@ def run_complete_backtest(strategy_config, data):
                 actual_signals_df = data['signals']
             else:
                 actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
-        else: # data is a DataFrame of prices
+        else:  # data is a DataFrame of prices
             actual_prices_df = data
             actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
 

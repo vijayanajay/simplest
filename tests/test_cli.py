@@ -57,6 +57,9 @@ class TestCLIAnalyzeCommand:
         }
 
         self.mock_market_data = Mock(spec=pd.DataFrame)
+        # Ensure mock_market_data has lowercase columns if it's supposed to be
+        # the output of fetch_market_data
+        self.mock_market_data.columns = ['open', 'high', 'low', 'close', 'volume']
         self.mock_market_data.__len__ = Mock(return_value=252)
         self.mock_market_data.head.return_value = "DataFrame Head"
 
@@ -308,6 +311,9 @@ class TestCLIErrorHandling:
         mock_validate_config.return_value = self.mock_config_obj_for_errors
         mock_market_data = Mock(spec=pd.DataFrame)
         mock_market_data.__len__ = Mock(return_value=252)
+        # Ensure mock_market_data has lowercase columns if it's supposed to be
+        # the output of fetch_market_data
+        mock_market_data.columns = ['open', 'high', 'low', 'close', 'volume']
         mock_fetch_market_data.return_value = mock_market_data
         mock_run_complete_backtest.side_effect = BacktestError("Backtest execution failed")
 
@@ -454,6 +460,9 @@ class TestCLIIntegration:
         }
 
         self.mock_market_data_integ = Mock(spec=pd.DataFrame)
+        # Ensure mock_market_data_integ has lowercase columns if it's supposed to be
+        # the output of fetch_market_data
+        self.mock_market_data_integ.columns = ['open', 'high', 'low', 'close', 'volume']
         self.mock_market_data_integ.__len__ = Mock(return_value=252)
         self.mock_market_data_integ.head.return_value = "DataFrame Head Integ"
         
