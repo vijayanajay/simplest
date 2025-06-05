@@ -34,7 +34,7 @@ Here's a 10-phase roadmap:
     2.  **Update `StrategyConfig`**: Allow the YAML to specify these parameter search spaces.
     3.  **Adapt `StrategySignalGenerator`**: Modify `src/meqsap/backtest.py::StrategySignalGenerator` to accept concrete parameter sets (drawn from the search space) for generating signals.
     4.  **Documentation**: Update all relevant documentation (`architecture.md`, example YAMLs) to reflect this new parameter definition.
-* **Python Library Candidate**: `meqsap_indicators_core`
+* **Python Module**: `meqsap_indicators_core` (initially an internal module within `src/meqsap/`)
     * **Purpose**: Standardize definition of technical indicators, their parameters, and parameter search space descriptions.
     * **Modules**:
         * `indicator_definition.py`: Base classes like `IndicatorBase`, `ParameterDefinition`, `ParameterSpace`.

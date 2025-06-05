@@ -1,0 +1,36 @@
+# Sample MovingAverageCrossover strategy configuration
+# Demonstrates new parameter definition framework (v2.1+)
+
+ticker: AAPL
+start_date: 2023-01-01
+end_date: 2023-12-31
+strategy_type: MovingAverageCrossover
+
+# Strategy parameters can now be defined as fixed values,
+# ranges, choices, or explicit single values within a structure.
+# This prepares the strategy for future automated optimization.
+# For a single backtest run (without optimization), the system
+# will use default logic (e.g., first choice, start of range)
+# or an explicitly defined 'value' type.
+
+strategy_params:
+  # Example 1: Fast MA as a range, Slow MA as a fixed value
+  # fast_ma:
+  #   type: "range"
+  #   start: 5
+  #   stop: 15
+  #   step: 1
+  # slow_ma: 30 # Fixed value, backward compatible
+
+  # Example 2: Both MAs as choices
+  fast_ma:
+    type: "choices"
+    values: [10, 12, 15]
+  slow_ma:
+    type: "choices"
+    values: [30, 40, 50]
+
+  # Note: The validator `slow_ma > fast_ma` still applies.
+  # If using ranges/choices, this validation might be more complex
+  # or deferred until concrete values are selected for a run.
+  # For a single run, if fast_ma=15 (from choices) and slow_ma=30 (from choices), it's valid.

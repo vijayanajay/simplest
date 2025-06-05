@@ -13,6 +13,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
 
 from .exceptions import ConfigurationError
+from .indicators_core.parameters import ParameterDefinitionType, ParameterValue  # Updated import
 
 
 class BaseStrategyParams(BaseModel):
@@ -33,21 +34,81 @@ class BaseStrategyParams(BaseModel):
 
 class MovingAverageCrossoverParams(BaseStrategyParams):
     """Parameters for the Moving Average Crossover strategy."""
+    
+    fast_ma: ParameterDefinitionType = Field(..., description="Fast moving average period or definition.")
+    slow_ma: ParameterDefinitionType = Field(..., description="Slow moving average period or definition.")
+    
+    @field_validator("fast_ma", "slow_ma")
+    @classmethod
+    def ma_period_must_be_positive(cls, v: ParameterDefinitionType, info: Any) -> ParameterDefinitionType:
+        """Validate that MA periods are positive when provided as fixed numeric values."""
+        print(f"DEBUG: ma_period_must_be_positive validator called with v={v}, field_name={info.field_name}")
+        actual_value: Any = None
+        is_fixed_numeric = False
 
-    fast_ma: int = Field(..., gt=0, description="Fast moving average period")
-    slow_ma: int = Field(..., gt=0, description="Slow moving average period")
+        if isinstance(v, (int, float)):
+            actual_value = v
+            is_fixed_numeric = True
+        elif isinstance(v, ParameterValue): # Pydantic passes the model instance
+            if isinstance(v.value, (int, float)):
+                actual_value = v.value
+                is_fixed_numeric = True
 
+        print(f"DEBUG: actual_value={actual_value}, is_fixed_numeric={is_fixed_numeric}")
+        if is_fixed_numeric and actual_value <= 0: # type: ignore
+            print(f"DEBUG: Raising 'must be positive' error because {actual_value} <= 0")
+            raise ValueError(f"{info.field_name} must be positive when provided as a fixed numeric value")
+        return v
+    
     @field_validator("slow_ma")
     @classmethod
-    def slow_ma_must_be_greater_than_fast_ma(cls, v: int, info: Any) -> int:
+    def slow_ma_must_be_greater_than_fast_ma(cls, v: ParameterDefinitionType, info: Any) -> ParameterDefinitionType:
         """Validate that slow_ma is greater than fast_ma."""
-        if "fast_ma" in info.data and v <= info.data["fast_ma"]:
-            raise ValueError("slow_ma must be greater than fast_ma")
+        print(f"DEBUG: slow_ma_must_be_greater_than_fast_ma validator called with v={v}, info.data={info.data}")
+        if "fast_ma" in info.data:
+            fast_ma_param_def = info.data["fast_ma"]
+            slow_ma_param_def = v
+
+            fast_val_numeric: Optional[float] = None
+            if isinstance(fast_ma_param_def, (int, float)):
+                fast_val_numeric = float(fast_ma_param_def)
+            elif isinstance(fast_ma_param_def, ParameterValue) and isinstance(fast_ma_param_def.value, (int, float)):
+                fast_val_numeric = float(fast_ma_param_def.value)
+
+            slow_val_numeric: Optional[float] = None
+            if isinstance(slow_ma_param_def, (int, float)):
+                slow_val_numeric = float(slow_ma_param_def)
+            elif isinstance(slow_ma_param_def, ParameterValue) and isinstance(slow_ma_param_def.value, (int, float)):
+                slow_val_numeric = float(slow_ma_param_def.value)
+
+            print(f"DEBUG: fast_val_numeric={fast_val_numeric}, slow_val_numeric={slow_val_numeric}")
+            if fast_val_numeric is not None and slow_val_numeric is not None and slow_val_numeric <= fast_val_numeric:
+                print(f"DEBUG: Raising 'greater than' error because {slow_val_numeric} <= {fast_val_numeric}")
+                raise ValueError("slow_ma must be greater than fast_ma when both are fixed values")
         return v
 
     def get_required_data_coverage_bars(self) -> int:
         """Return the slow MA period as the minimum data requirement."""
-        return self.slow_ma
+        # Consider the maximum possible value if slow_ma is a range or choice
+        slow_ma_max = self._get_parameter_maximum(self.slow_ma)
+        return int(slow_ma_max)
+
+    def _get_parameter_maximum(self, param: ParameterDefinitionType) -> float:
+        """Extract maximum possible value from parameter definition."""
+        if isinstance(param, (int, float)):
+            return float(param)
+        elif isinstance(param, dict):
+            param_type = param.get("type")
+            if param_type == "range":
+                return float(param["stop"])
+            elif param_type == "choices":
+                # Ensure all choices are numeric before taking max
+                if not all(isinstance(val, (int, float)) for val in param["values"]):
+                    raise ConfigurationError(f"Non-numeric value found in choices for parameter: {param}")
+                return float(max(param["values"]))
+            elif param_type == "value":
+                return float(param["value"])
+        raise ConfigurationError(f"Unable to determine maximum value for parameter: {param}")
 
 
 class StrategyConfig(BaseModel):

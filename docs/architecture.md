@@ -85,7 +85,7 @@ The MEQSAP application is composed of the following primary modules:
 * **`config` Module:** Responsible for loading the strategy `.yaml` file. It now utilizes `meqsap_indicators_core` to interpret, validate, and manage indicator parameter definitions, including fixed values and search spaces (ranges, choices, steps) against a strict Pydantic schema. Handles `BaseStrategyParams` and `StrategyConfig` logic.
 * **`data` Module:** Handles acquisition and management of historical market data via `yfinance`, including caching and integrity checks. The calculation of `get_required_data_coverage_bars` now considers maximum lookback from parameter ranges defined in `config`.
 * **`meqsap_indicators_core` Module (New for v2.1):** A dedicated internal library/module responsible for:
-    * Standardized definition of technical indicators (e.g., via `IndicatorBase`).
+    * Standardized definition of technical indicators (e.g., via `IndicatorBase` in `base.py`).
     * Management of indicator parameters, their types (fixed, range, choice via `ParameterDefinition`), validation, and search space descriptions (`ParameterSpace`).
     * Providing calculation logic for indicators (wrapping `pandas-ta` or custom implementations).
     * A registry or mechanism for discovering and accessing available indicators.
@@ -93,7 +93,7 @@ The MEQSAP application is composed of the following primary modules:
     * Utilize `meqsap_indicators_core` to dynamically fetch indicator calculation logic.
     * Accept concrete parameter sets (which could be drawn from defined search spaces or be fixed values) for generating trading signals.
     * Executes the backtest (using `vectorbt`) and runs robustness "Vibe Checks".
-* **`reporting` Module:** Takes raw results from `backtest` for user-facing output (terminal verdict via `rich`, PDF report via `pyfolio`).
+* **`reporting` Module:** Takes raw results from `backtest` for user-facing output (terminal verdict via `rich`, PDF report via `pyfolio`). No direct interaction with `meqsap_indicators_core`.
 * **`cli` Module:** Main entry point, parses arguments, and orchestrates the workflow by calling other modules.
 
 This component-based structure is visualized below:
@@ -162,7 +162,8 @@ meqsap/
 │   └── prd.md                  # Product Requirements Document (v2.1)
 │   └── roadmap.md              # Project Roadmap
 ├── examples/
-│   └── ma_crossover_v2.1.yaml  # Example config with parameter spaces
+│   ├── ma_crossover.yaml
+│   └── ma_crossover_v2.1.yaml  # Example config with parameter spaces (NEW)
 ├── src/
 │   └── meqsap/
 │       ├── __init__.py
@@ -173,10 +174,11 @@ meqsap/
 │       ├── exceptions.py         # Custom application exceptions
 │       ├── reporting.py          # Terminal output and PDF generation
 │       ├── indicators_core/      # NEW: meqsap_indicators_core module
-│       │   ├── __init__.py
-│       │   ├── base.py             # IndicatorBase, ParameterDefinition, ParameterSpace
-│       │   ├── registry.py         # Indicator registry/factory
-│       │   └── indicators/         # Concrete indicator implementations (e.g., ma.py, rsi.py)
+│       │   ├── __init__.py       # Exports key components
+│       │   ├── base.py           # IndicatorBase, ParameterDefinition (metadata), ParameterSpace
+│       │   ├── parameters.py     # Pydantic models for ParameterRange, ParameterChoices, ParameterValue
+│       │   ├── registry.py       # Indicator registry/factory
+│       │   └── indicators/       # Concrete indicator implementations (e.g., moving_average.py, rsi.py)
 │       │       ├── __init__.py
 │       │       ├── ma.py
 │       │       └── rsi.py
@@ -185,7 +187,11 @@ meqsap/
 │   ├── __init__.py
 │   ├── test_backtest.py
 │   ├── test_config.py
-│   ├── test_indicators_core.py # NEW: Tests for the indicators module
+│   ├── indicators_core/        # NEW: Tests for the indicators_core module
+│   │   ├── __init__.py
+│   │   ├── test_parameters.py
+│   │   ├── test_base.py
+│   │   └── indicators/ ...
 │   └── ...
 ├── .gitignore
 ├── pyproject.toml
@@ -251,29 +257,29 @@ The primary data model is the strategy configuration. With v2.1, parameter defin
 
         # Parameter types that will be defined within meqsap_indicators_core
         # and used by BaseStrategyParams and its children.
-        class ParameterRange(BaseModel):
-            type: str = "range"
-            start: float
-            stop: float
-            step: float = 1.0
-            # Add validation: start < stop, step > 0
+        class ParameterRange(BaseModel): # Defined in meqsap.indicators_core.parameters
+             type: str = "range"
+             start: float
+             stop: float
+             step: float = 1.0
+             # Add validation: start < stop, step > 0
 
-        class ParameterChoices(BaseModel):
-            type: str = "choices"
-            values: List[Any]
-            # Add validation: non-empty list
+        class ParameterChoices(BaseModel): # Defined in meqsap.indicators_core.parameters
+             type: str = "choices"
+             values: List[Any]
+             # Add validation: non-empty list
 
-        class ParameterValue(BaseModel):
-            type: str = "value" # Explicit fixed value, can be used alongside optimization definitions
-            value: Any
+        class ParameterValue(BaseModel): # Defined in meqsap.indicators_core.parameters
+            type: str = "value"
+             value: Any
 
-        # Union type for parameter definitions
+         # Union type for parameter definitions
         ParameterDefinitionType = Union[float, int, str, bool, ParameterRange, ParameterChoices, ParameterValue]
 
         class MovingAverageCrossoverParams(BaseModel): # Child of BaseStrategyParams
             # Example: fast_ma can be a fixed number or a definition for a search space
-            fast_ma: ParameterDefinitionType = Field(..., description="Parameters for the fast moving average.")
-            slow_ma: ParameterDefinitionType = Field(..., description="Parameters for the slow moving average.")
+            fast_ma: ParameterDefinitionType = Field(..., description="Fast moving average period or definition.")
+            slow_ma: ParameterDefinitionType = Field(..., description="Slow moving average period or definition.")
             # other parameters...
 
             # Validator to ensure that if both are fixed numbers, slow_ma > fast_ma
@@ -285,20 +291,22 @@ The primary data model is the strategy configuration. With v2.1, parameter defin
             ticker: str
             start_date: str
             end_date: str
-            strategy_name: str # e.g., "MovingAverageCrossover"
-            strategy_params: Dict[str, Any] # This would be parsed into specific Param models
-                                             # like MovingAverageCrossoverParams, which in turn use
-                                             # ParameterDefinitionType for its fields.
+            strategy_type: str # e.g., "MovingAverageCrossover" (consistent with StrategyConfig)
+             strategy_params: Dict[str, Any] # This would be parsed into specific Param models
+                                              # like MovingAverageCrossoverParams, which in turn use
+                                              # ParameterDefinitionType for its fields.
             # The actual strategy_params field would likely be a Union of all
             # supported strategy parameter classes (e.g., Union[MovingAverageCrossoverParams, RSIParams])
             # or use a 'strategy_type' field to discriminate.
         ```
     * **Validation Rules:** Validation handled by Pydantic models. `meqsap_indicators_core` will provide robust models for `ParameterRange`, `ParameterChoices`, `ParameterValue` including attribute constraints (e.g., `start < stop`). `BaseStrategyParams` and its children will use these models for their parameter fields.
 
-* **Indicator & Parameter Definitions** (within `meqsap_indicators_core`)
-    * **`IndicatorBase`:** Abstract base class for all indicators.
-    * **`ParameterDefinition`:** Describes a single parameter (name, type, constraints, default value, search space if applicable).
-    * **`ParameterSpace`:** Defines the search space for a set of parameters for an indicator.
+* **Indicator & Parameter Definitions** (within `meqsap_indicators_core.base` and `meqsap_indicators_core.parameters`)
+    * **`IndicatorBase` (`base.py`):** Abstract base class for all indicators.
+    * **`ParameterDefinition` (`base.py`):** Describes metadata for a single parameter (name, type, constraints, default value).
+    * **`ParameterSpace` (`base.py`):** Defines the search space for a set of parameters for an indicator, using `ParameterDefinition` objects.
+    * **`ParameterRange`, `ParameterChoices`, `ParameterValue` (`parameters.py`):** Pydantic models for defining parameter values or search spaces in configurations.
+    * **`ParameterDefinitionType` (`parameters.py`):** Union type for all allowed parameter value/definition structures.
 
 ## Core Workflow / Sequence Diagrams
 
@@ -316,7 +324,7 @@ sequenceDiagram
 
     User->>CLI: Executes `meqsap --config path/to/strategy.yaml`
     CLI->>Config: load_and_validate_config(path)
-    Config->>IndicatorsCore: get_indicator_param_schema(strategy_name)
+    Config->>IndicatorsCore: (Internally) Uses indicator_core types for param validation
     IndicatorsCore-->>Config: Returns Pydantic models for params
     Config->>Config: validate_yaml_against_schema()
     Config-->>CLI: Returns StrategyConfig object (with parsed param spaces)
@@ -325,7 +333,7 @@ sequenceDiagram
     Data-->>CLI: Returns pandas DataFrame
 
     CLI->>Backtest: run_backtest(StrategyConfig, DataFrame)
-    Backtest->>IndicatorsCore: get_indicator_logic(strategy_name)
+    Backtest->>IndicatorsCore: get_indicator_logic(strategy_type)
     IndicatorsCore-->>Backtest: Returns indicator calculation function(s)
     Backtest->>Backtest: generate_signals(DataFrame, concrete_params, indicator_logic)
     Backtest-->>CLI: Returns BacktestResults

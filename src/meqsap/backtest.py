@@ -35,6 +35,7 @@ try:
     # For direct imports when used as a package
     from .config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams
     from .exceptions import BacktestError
+    from .indicators_core.registry import get_indicator_registry # New import
 except ImportError: # For imports when running tests or if structure changes
     from src.meqsap.config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams # type: ignore
     from src.meqsap.exceptions import BacktestError # type: ignore
@@ -102,13 +103,23 @@ class BacktestAnalysisResult(BaseModel):
 class StrategySignalGenerator:
     """Factory for generating trading signals based on strategy type."""
     
+    def __init__(self, indicator_registry=None):
+        """Initialize with an optional indicator registry."""
+        self.indicator_registry = indicator_registry or get_indicator_registry()
+    
     @staticmethod
-    def generate_signals(data: pd.DataFrame, strategy_config: StrategyConfig) -> pd.DataFrame:
+    def generate_signals(
+        data: pd.DataFrame, 
+        strategy_config: StrategyConfig,
+        concrete_params: Optional[Dict[str, Any]] = None
+    ) -> pd.DataFrame:
         """Generate trading signals based on strategy configuration.
         
         Args:
             data: OHLCV market data DataFrame
             strategy_config: Validated strategy configuration
+            concrete_params: Optional dictionary of concrete parameter values to use.
+                             If None, defaults will be extracted from strategy_config.
             
         Returns:
             DataFrame with 'entry' and 'exit' boolean columns
@@ -116,31 +127,58 @@ class StrategySignalGenerator:
         Raises:
             BacktestError: If signal generation fails
         """
+        # Instantiate self to access instance methods and registry
+        generator_instance = StrategySignalGenerator()
+        
         try:
+            if concrete_params is None:
+                # Extract concrete parameters if not provided (e.g., for a single run)
+                # This uses the strategy_params from the config, which might be complex types
+                validated_params_model = strategy_config.validate_strategy_params()
+                concrete_params = generator_instance._extract_concrete_params(validated_params_model)
+            
             if strategy_config.strategy_type == "MovingAverageCrossover":
-                return StrategySignalGenerator._generate_ma_crossover_signals(data, strategy_config)
+                return generator_instance._generate_ma_crossover_signals(data, concrete_params)
             else:
                 raise BacktestError(f"Unknown strategy type: {strategy_config.strategy_type}")
                 
         except Exception as e:
             raise BacktestError(f"Signal generation failed: {str(e)}") from e
     
-    @staticmethod
-    def _generate_ma_crossover_signals(data: pd.DataFrame, strategy_config: StrategyConfig) -> pd.DataFrame:
+    def _extract_concrete_params(self, strategy_params_model: BaseStrategyParams) -> Dict[str, Any]:
+        """
+        Extracts concrete parameter values from a strategy parameters model.
+        For complex types (range, choice), it picks a default (e.g., start of range, first choice).
+        """
+        concrete = {}
+        for param_name, param_def in strategy_params_model.model_dump().items(): # Use model_dump for Pydantic v2
+            if isinstance(param_def, (int, float, str, bool)):
+                concrete[param_name] = param_def
+            elif isinstance(param_def, dict): # Handles ParameterRange, ParameterChoices, ParameterValue
+                param_type = param_def.get("type")
+                if param_type == "value":
+                    concrete[param_name] = param_def["value"]
+                elif param_type == "choices":
+                    concrete[param_name] = param_def["values"][0] # Default to first choice
+                elif param_type == "range":
+                    concrete[param_name] = param_def["start"] # Default to start of range
+                else: # Assume it's a direct value if no type, or could raise error
+                    concrete[param_name] = param_def 
+            else: # Fallback for simple values not caught by initial isinstance
+                concrete[param_name] = param_def
+        return concrete
+
+    def _generate_ma_crossover_signals(self, data: pd.DataFrame, params: Dict[str, Any]) -> pd.DataFrame:
         """Generate Moving Average Crossover signals."""
-        # Validate strategy parameters
-        validated_params = strategy_config.validate_strategy_params()
-        if not isinstance(validated_params, MovingAverageCrossoverParams):
-            raise BacktestError("Invalid parameters for MovingAverageCrossover strategy")
-        fast_ma = validated_params.fast_ma
-        slow_ma = validated_params.slow_ma
+        fast_ma_period = params['fast_ma']
+        slow_ma_period = params['slow_ma']
           # Validate MA period ordering
-        if fast_ma >= slow_ma:
-            raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma}) must be less than slow_ma ({slow_ma})")
+        if fast_ma_period >= slow_ma_period:
+            raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma_period}) must be less than slow_ma ({slow_ma_period})")
         
         # Check data sufficiency
-        if len(data) < slow_ma:
-            raise BacktestError(f"Insufficient data: need at least {slow_ma} bars, got {len(data)}")
+        if len(data) < slow_ma_period:
+            raise BacktestError(f"Insufficient data: need at least {slow_ma_period} bars, got {len(data)}")
         
         # Extract close prices - this variable will be used by ta.sma
         _close_prices_intermediate: pd.Series | pd.DataFrame
@@ -175,19 +213,26 @@ class StrategySignalGenerator:
             close_prices_for_ta = _close_prices_intermediate
         else:
             raise BacktestError(f"Extracted close prices object is not a pandas Series or DataFrame. Type: {type(_close_prices_intermediate)}")
-
-        fast_ma_series = ta.sma(close_prices_for_ta, length=fast_ma)
+ 
+        # Get SMA indicator from registry
+        sma_indicator_cls = self.indicator_registry.get('simple_moving_average')
+        if sma_indicator_cls is None:
+            raise BacktestError("SimpleMovingAverage indicator not found in registry.")
+        
+        sma_instance = sma_indicator_cls() # Instantiate without params
+        fast_ma_series = sma_instance.calculate(close_prices_for_ta, period=fast_ma_period)
         if fast_ma_series is None:
             raise BacktestError(
-                f"Failed to calculate Fast MA (period {fast_ma}). "
+                f"Failed to calculate Fast MA (period {fast_ma_period}). "
                 "The technical indicator calculation returned None. This may be due to an empty, "
                 "all-NaN, or non-numeric input price series for the indicator."
             )
-            
-        slow_ma_series = ta.sma(close_prices_for_ta, length=slow_ma)
+
+        # Use the same instance for slow_ma or create a new one if state matters (it doesn't for SMA)
+        slow_ma_series = sma_instance.calculate(close_prices_for_ta, period=slow_ma_period)
         if slow_ma_series is None:
             raise BacktestError(
-                f"Failed to calculate Slow MA (period {slow_ma}). "
+                f"Failed to calculate Slow MA (period {slow_ma_period}). "
                 "The technical indicator calculation returned None. This may be due to an empty, "
                 "all-NaN, or non-numeric input price series for the indicator."
             )

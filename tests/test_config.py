@@ -218,3 +218,32 @@ def test_validate_strategy_params(valid_config_data):
     assert isinstance(params, MovingAverageCrossoverParams)
     assert params.fast_ma == 10
     assert params.slow_ma == 30
+
+
+def test_moving_average_crossover_params_positive_periods():
+    """Test that MA periods must be positive when fixed numeric values."""
+    # Valid
+    MovingAverageCrossoverParams(fast_ma=10, slow_ma=20)
+    MovingAverageCrossoverParams(fast_ma={"type": "value", "value": 10}, slow_ma={"type": "value", "value": 20})
+
+    # Invalid fast_ma
+    with pytest.raises(ConfigurationError, match="fast_ma must be positive"):
+        validate_config({
+            "ticker": "AAPL", "start_date": date(2020,1,1), "end_date": date(2021,1,1),
+            "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 0, "slow_ma": 20}
+        })
+    with pytest.raises(ConfigurationError, match="fast_ma must be positive"):
+        validate_config({
+            "ticker": "AAPL", "start_date": date(2020,1,1), "end_date": date(2021,1,1),
+            "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": {"type": "value", "value": -5}, "slow_ma": 20}
+        })
+
+    # Invalid slow_ma
+    with pytest.raises(ConfigurationError, match="slow_ma must be positive"):
+        validate_config({
+            "ticker": "AAPL", "start_date": date(2020,1,1), "end_date": date(2021,1,1),
+            "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {"fast_ma": 10, "slow_ma": -5}
+        })
