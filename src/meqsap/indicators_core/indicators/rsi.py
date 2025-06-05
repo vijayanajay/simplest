@@ -18,6 +18,15 @@ class RSIIndicator(IndicatorBase):
             ParameterDefinition(name="period", param_type=int, description="The time period for RSI calculation.", constraints={"gt": 0})
         ]
 
+    @classmethod
+    def get_required_data_coverage_bars(cls, **params: Any) -> int:
+        """Return minimum required historical data bars for RSI calculation."""
+        period = params.get("period")
+        if period is None or not isinstance(period, int) or period <= 0:
+            raise ValueError("RSI 'period' for coverage calculation must be a positive integer.")
+        # RSI typically needs 'period' bars for the initial smoothing.
+        return period
+
     def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
         """
         Calculates the Relative Strength Index.

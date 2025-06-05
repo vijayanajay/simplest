@@ -66,6 +66,13 @@ class MockIndicator(IndicatorBase):
             raise ValueError("'length' must be a positive integer.")
         return data.rolling(window=length).mean()
 
+    @classmethod
+    def get_required_data_coverage_bars(cls, **params: Any) -> int:
+        length = params.get("length")
+        if length is None or not isinstance(length, int) or length <= 0:
+            raise ValueError("'length' for coverage calculation must be a positive integer.")
+        return length
+
 class TestIndicatorBase:
     def test_mock_indicator_instantiation_and_calculation(self):
         # This indirectly tests IndicatorBase's structure if MockIndicator is used
@@ -74,3 +81,10 @@ class TestIndicatorBase:
         result = indicator_instance.calculate(data, length=3)
         expected = pd.Series([np.nan, np.nan, 2.0, 3.0, 4.0])
         pd.testing.assert_series_equal(result, expected, check_dtype=False)
+
+    def test_mock_indicator_get_required_data_coverage_bars(self):
+        assert MockIndicator.get_required_data_coverage_bars(length=10) == 10
+        with pytest.raises(ValueError, match="'length' for coverage calculation must be a positive integer."):
+            MockIndicator.get_required_data_coverage_bars(length=0)
+        with pytest.raises(ValueError, match="'length' for coverage calculation must be a positive integer."):
+            MockIndicator.get_required_data_coverage_bars()

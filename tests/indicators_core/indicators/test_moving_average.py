@@ -45,3 +45,17 @@ class TestSimpleMovingAverageIndicator:
         data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         with pytest.raises(ValueError, match="'period' must be a positive integer"):
             indicator.calculate(data) # Missing period
+
+    def test_get_required_data_coverage_bars_valid(self):
+        assert SimpleMovingAverageIndicator.get_required_data_coverage_bars(period=10) == 10
+        assert SimpleMovingAverageIndicator.get_required_data_coverage_bars(period=1) == 1
+
+    def test_get_required_data_coverage_bars_invalid_period(self):
+        with pytest.raises(ValueError, match="SMA 'period' for coverage calculation must be a positive integer."):
+            SimpleMovingAverageIndicator.get_required_data_coverage_bars(period=0)
+        with pytest.raises(ValueError, match="SMA 'period' for coverage calculation must be a positive integer."):
+            SimpleMovingAverageIndicator.get_required_data_coverage_bars(period=-5)
+
+    def test_get_required_data_coverage_bars_missing_period(self):
+        with pytest.raises(ValueError, match="SMA 'period' for coverage calculation must be a positive integer."):
+            SimpleMovingAverageIndicator.get_required_data_coverage_bars()

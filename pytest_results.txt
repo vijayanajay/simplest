@@ -3,19 +3,19 @@ platform win32 -- Python 3.12.10, pytest-8.3.5, pluggy-1.6.0
 cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
-collected 192 items
+collected 199 items
 
-tests\indicators_core\indicators\test_moving_average.py .....            [  2%]
-tests\indicators_core\indicators\test_rsi.py .....                       [  5%]
-tests\indicators_core\test_base.py .......                               [  8%]
-tests\indicators_core\test_parameters.py ............                    [ 15%]
-tests\test_backtest.py ............                                      [ 21%]
-tests\test_cli.py ..................                                     [ 30%]
-tests\test_cli_comprehensive.py .......................                  [ 42%]
-tests\test_cli_enhanced.py ...................................           [ 60%]
-tests\test_config.py ...................                                 [ 70%]
-tests\test_data.py .......                                               [ 74%]
-tests\test_float_handling.py ........                                    [ 78%]
+tests\indicators_core\indicators\test_moving_average.py ........         [  4%]
+tests\indicators_core\indicators\test_rsi.py ........                    [  8%]
+tests\indicators_core\test_base.py ........                              [ 12%]
+tests\indicators_core\test_parameters.py ............                    [ 18%]
+tests\test_backtest.py ............                                      [ 24%]
+tests\test_cli.py ..................                                     [ 33%]
+tests\test_cli_comprehensive.py .......................                  [ 44%]
+tests\test_cli_enhanced.py ...................................           [ 62%]
+tests\test_config.py ...................                                 [ 71%]
+tests\test_data.py .......                                               [ 75%]
+tests\test_float_handling.py ........                                    [ 79%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 191 passed, 1 skipped in 40.96s =======================
+======================= 198 passed, 1 skipped in 20.50s =======================

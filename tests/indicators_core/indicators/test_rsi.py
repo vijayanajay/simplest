@@ -48,3 +48,17 @@ class TestRSIIndicator:
         data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         with pytest.raises(ValueError, match="'period' must be a positive integer"):
             indicator.calculate(data) # Missing period
+
+    def test_get_required_data_coverage_bars_valid(self):
+        assert RSIIndicator.get_required_data_coverage_bars(period=14) == 14
+        assert RSIIndicator.get_required_data_coverage_bars(period=1) == 1
+
+    def test_get_required_data_coverage_bars_invalid_period(self):
+        with pytest.raises(ValueError, match="RSI 'period' for coverage calculation must be a positive integer."):
+            RSIIndicator.get_required_data_coverage_bars(period=0)
+        with pytest.raises(ValueError, match="RSI 'period' for coverage calculation must be a positive integer."):
+            RSIIndicator.get_required_data_coverage_bars(period=-5)
+
+    def test_get_required_data_coverage_bars_missing_period(self):
+        with pytest.raises(ValueError, match="RSI 'period' for coverage calculation must be a positive integer."):
+            RSIIndicator.get_required_data_coverage_bars()

@@ -62,6 +62,12 @@ class IndicatorBase(ABC):
         """Return a list of ParameterDefinition objects for this indicator."""
         pass
 
+    @classmethod
+    @abstractmethod
+    def get_required_data_coverage_bars(cls, **params: Any) -> int:
+        """Return minimum required historical data bars for calculation based on provided parameters."""
+        pass
+
     @abstractmethod
     def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
         """Calculate the indicator values on the provided data series (e.g., close prices)."""

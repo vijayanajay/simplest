@@ -18,6 +18,16 @@ class SimpleMovingAverageIndicator(IndicatorBase):
             ParameterDefinition(name="period", param_type=int, description="The time period for the SMA.", constraints={"gt": 0})
         ]
 
+    @classmethod
+    def get_required_data_coverage_bars(cls, **params: Any) -> int:
+        """Return minimum required historical data bars for SMA calculation."""
+        period = params.get("period")
+        if period is None or not isinstance(period, int) or period <= 0:
+            raise ValueError("SMA 'period' for coverage calculation must be a positive integer.")
+        # SMA needs 'period' bars to produce the first value.
+        # The first value is at index period-1. So, period bars are needed.
+        return period
+
     def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
         """
         Calculates the Simple Moving Average.
