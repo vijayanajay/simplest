@@ -1,102 +1,130 @@
-Okay, I'm Fred, your Architect. I understand the task. You want me to update the existing MEQSAP Architecture Document to incorporate the changes detailed in **Phase 1: Enhanced Indicator & Parameter Definition Framework** from the provided `roadmap.md` and reflected in the `prd.md` (v2.1).
-
-I will focus on making the architecture reflect these Phase 1 changes comprehensively, ensuring the system is well-prepared for subsequent phases of the roadmap.
-
-Here is the updated MEQSAP Architecture Document:
-
 ```markdown
-# MEQSAP Architecture Document - v2.1
+# MEQSAP Architecture Document - v2.2
 
 ## Technical Summary
 
 This document outlines the architecture for the Minimum Viable Quantitative Strategy Analysis Pipeline (MEQSAP). The system is designed as a command-line tool that orchestrates a suite of powerful, existing Python libraries to provide an end-to-end backtesting and analysis workflow. It takes a simple YAML configuration file as input, runs a backtest, performs a series of validation and robustness checks, and presents a clear verdict in the terminal.
 
-**Version 2.1 Update:** This version of the architecture incorporates **Phase 1: Enhanced Indicator & Parameter Definition Framework**. Key changes include:
-* The introduction of a new internal library/module, **`meqsap_indicators_core`**, to standardize the definition, parameterization (including ranges, choices, steps), and calculation logic of technical indicators.
-* Refactoring of core components (`config`, `backtest`) to utilize `meqsap_indicators_core` for enhanced modularity and to support flexible parameter definitions in preparation for future automated strategy optimization.
-* Updates to data models to accommodate these new parameter types.
+**Version 2.1 Update:** This version incorporated the **Enhanced Indicator & Parameter Definition Framework**, introducing `meqsap_indicators_core` for standardized indicator definition and flexible parameterization (ranges, choices, steps) to prepare for strategy optimization.
 
-The primary goal remains to validate a high-level orchestration approach, prioritizing rapid development and reliability by leveraging battle-tested components, now with an enhanced focus on modularity and extensibility for indicator management.
+**Version 2.2 Update (Current):** This version incorporates **Phase 2: Parameter Optimization Engine (Single Indicator)** as defined in PRD v2.2. Key architectural changes include:
+*   The introduction of a new internal module, **`meqsap_optimizer`**, responsible for automated parameter optimization of single-indicator strategies.
+*   Support for optimization algorithms like Grid Search and Random Search.
+*   An objective function framework within `meqsap_optimizer` to guide optimization, including support for constraints like target trade holding periods. This includes the explicit "SharpeWithHoldPeriodConstraint" objective function.
+*   Enhancements to `StrategyConfig` to include an `optimization_config` block, with validation for parameter space definitions.
+*   Updates to `BacktestResult` to include **mandatory** trade duration statistics.
+*   A new CLI command `meqsap optimize-single` to invoke the optimization engine, which will provide **progress indicators** for long runs.
+*   Reporting capabilities extended to summarize optimization outcomes, including **constraint adherence metrics** (especially hold period stats).
+*   Clear **error handling strategies** for failures within optimization loops, ensuring user-friendly messages as per PRD US10.
+
+The primary goal remains to validate a high-level orchestration approach, prioritizing rapid development and reliability by leveraging battle-tested components, now with capabilities for automated parameter tuning.
 
 ## High-Level Overview
 
-The MEQSAP application will be built as a **Monolithic** application contained within a **single repository**. This approach was chosen for the MVP to simplify development, dependency management, and deployment for a command-line tool. Version 2.1 maintains this overall structure but enhances internal modularity with the `meqsap_indicators_core` module.
+The MEQSAP application is built as a **Monolithic** application contained within a **single repository**. This approach simplifies development, dependency management, and deployment for a command-line tool. Version 2.2 introduces the `meqsap_optimizer` module, further enhancing internal modularity.
 
-The primary data flow is as follows:
-1.  The user invokes the CLI, providing a path to a strategy `.yaml` file. This YAML can now define fixed parameters as well as parameter search spaces (ranges, choices, steps) for indicators.
-2.  The application loads and validates this configuration using a Pydantic schema, leveraging `meqsap_indicators_core` for understanding and validating indicator-specific parameter definitions.
-3.  It then acquires historical market data via `yfinance`, utilizing a local file-based cache to speed up subsequent runs. The required data coverage calculation now considers potential maximums from parameter ranges.
-4.  The core backtesting engine, powered by `vectorbt`, processes the data and strategy rules (using indicator logic from `meqsap_indicators_core` and concrete parameter sets) to generate performance results.
-5.  Finally, a presentation layer uses `rich` to display a formatted "Executive Verdict" in the terminal and can optionally generate a detailed PDF tear sheet with `pyfolio`.
+The primary data flows are:
+
+1.  **Analysis Path (existing):**
+    *   User invokes `meqsap analyze`, providing a strategy `.yaml` file (with fixed or default parameters from search spaces).
+    *   Configuration is loaded and validated via `config` module (using `meqsap_indicators_core` for parameter understanding).
+    *   Market data is acquired via `data` module (using `yfinance` and caching).
+    *   Backtest is run by `backtest` module (using `vectorbt` and indicator logic from `meqsap_indicators_core`).
+    *   Results are presented by `reporting` module.
+
+2.  **Optimization Path (New for v2.2):**
+    *   User invokes `meqsap optimize-single`, providing a strategy `.yaml` file that includes parameter search spaces and an `optimization_config` block.
+    *   Configuration is loaded and validated by `config` module, including the `optimization_config` and parameter space definitions (e.g., range start < stop, step > 0; choices not empty).
+    *   The `meqsap_optimizer` module takes over:
+        *   It uses the defined parameter search spaces (from `meqsap_indicators_core` via `StrategyConfig`) and the `optimization_config`.
+        *   It iteratively generates parameter sets using the chosen algorithm (e.g., Grid Search), providing **progress feedback** to the user via the CLI during long runs.
+        *   For each parameter set, it invokes `run_complete_backtest` (from `meqsap.backtest`) to get performance and trade duration statistics. It **handles individual backtest failures gracefully** (e.g., logs error, skips combination, continues if feasible, or terminates with a summary of completed work and error details).
+        *   It evaluates these results against the specified objective function, which incorporates constraint handling (e.g., penalizing strategies violating hold period constraints).
+        *   It identifies and reports the best parameter set found.
+    *   Results, including the best parameters, their performance, and constraint adherence, are presented by the `reporting` module.
 
 ```mermaid
 graph TD
     subgraph "User Interaction"
-        A[Strategist] --invokes--> B{MEQSAP CLI};
+        A[Strategist] --invokes `analyze`--> B{MEQSAP CLI};
+        A --invokes `optimize-single`--> B;
     end
 
-    subgraph "MEQSAP Core Pipeline"
-        B --.yaml config (with param spaces)--> C[1. Load & Validate Config];
+    subgraph "MEQSAP Core - Analysis Path"
+        B --.yaml (fixed/default params)--> C[1. Load & Validate Config (config.py)];
         C --uses--> MIC((meqsap_indicators_core));
         C --uses--> D[Pydantic Schema];
-        C --on success--> E[2. Acquire Data];
+        C --on success--> E[2. Acquire Data (data.py)];
         E --checks--> F[(File Cache)];
         F --on miss--> G(yfinance API);
         G --stores--> F;
-        F --provides data--> H[3. Run Backtest];
+        F --provides data--> H[3. Run Backtest (backtest.py)];
         E --provides data--> H;
         H --uses vectorbt & indicator logic from--> MIC;
         H --generates--> I[Signals & Stats];
-        I --results--> J[4. Present Verdict & Report];
+        I --results--> J[4. Present Verdict & Report (reporting.py)];
+    end
+    
+    subgraph "MEQSAP Core - Optimization Path (v2.2)"
+        B --.yaml (param spaces & opt_config)--> C;
+        C --Validated Config & Opt Config--> Optimizer[meqsap_optimizer];
+        Optimizer --uses param spaces from (Config -> IndicatorsCore)--> MIC;
+        Optimizer --iteratively calls (with progress reporting & error handling)--> H;
+        H --BacktestAnalysisResult (incl. trade duration)--> Optimizer;
+        Optimizer --evaluates with Objective Function (incl. constraint checks)--> Optimizer;
+        Optimizer --Best Params & Results--> J;
     end
 
     subgraph "Output"
-        J --uses rich--> K[Formatted Terminal Verdict];
-        J --'--report' flag & uses pyfolio--> L((PDF Tear Sheet));
+        J --uses rich--> K[Formatted Terminal Verdict/Optimization Summary (incl. progress, constraint adherence)];
+        J --'--report' flag & uses pyfolio--> L((PDF Tear Sheet for best strategy));
     end
 ```
 
 ## Architectural / Design Patterns Adopted
 
-The following high-level patterns have been chosen to guide the system's design and ensure the project's goals are met efficiently.
+The following high-level patterns guide the system's design:
 
-* **Pattern 1: Modular Monolith**
-    * **Rationale:** The application is a single deployable unit (a monolith), ideal for a self-contained CLI tool. It's structured into distinct modules (`config`, `data`, `backtest`, `reporting`, and the new `indicators_core`) with clear boundaries. This enforces strong separation of concerns, making the codebase easier to maintain, test, and extend, especially with the formalized indicator management.
+*   **Pattern 1: Modular Monolith**
+    *   **Rationale:** A single deployable unit, ideal for a CLI tool. Structured into distinct modules (`config`, `data`, `backtest`, `reporting`, `indicators_core`, and new `optimizer`) with clear boundaries, promoting separation of concerns, maintainability, and testability.
 
-* **Pattern 2: Orchestration & Facade**
-    * **Rationale:** MEQSAP acts as a simplifying facade to underlying libraries (`vectorbt`, `pyfolio`, etc.) and now also to the `meqsap_indicators_core` for indicator logic. This supports rapid, high-level development.
+*   **Pattern 2: Orchestration & Facade**
+    *   **Rationale:** MEQSAP acts as a simplifying facade to underlying libraries (`vectorbt`, `pyfolio`, etc.) and internal modules (`meqsap_indicators_core`, `meqsap_optimizer`). Supports rapid, high-level development.
 
-* **Pattern 3: Declarative Configuration**
-    * **Rationale:** Users declare strategy parameters (now including search spaces) in a `.yaml` file. The application interprets this for execution, separating strategy definition from execution logic.
+*   **Pattern 3: Declarative Configuration**
+    *   **Rationale:** Users declare strategy parameters, search spaces, and optimization settings in `.yaml`. Application interprets this, separating definition from logic.
 
-* **Pattern 4: Schema-Driven Validation (using Data Transfer Objects)**
-    * **Rationale:** Pydantic defines strict schemas for YAML configuration (including new parameter types), ensuring input validation and clear error feedback. `meqsap_indicators_core` contributes to this by providing schemas/validation for indicator parameters.
+*   **Pattern 4: Schema-Driven Validation (using Data Transfer Objects)**
+    *   **Rationale:** Pydantic defines strict schemas for YAML (including parameter types, `optimization_config`, and parameter space definitions). `meqsap_indicators_core` contributes to indicator parameter validation. The `config` module validates parameter space structures. Ensures input integrity and clear error feedback.
 
-* **Pattern 5: Caching**
-    * **Rationale:** File-based caching for market data improves performance and reduces API calls.
+*   **Pattern 5: Caching**
+    *   **Rationale:** File-based caching for market data improves performance. (Future: Could cache optimization intermediate results).
 
-* **Pattern 6: Library-based Componentization (New/Enhanced for v2.1)**
-    * **Rationale:** The introduction of `meqsap_indicators_core` as a dedicated internal library/module for handling all aspects of technical indicators (definition, parameterization, calculation) promotes high cohesion for indicator logic and loose coupling with the main application flow. This directly enhances modularity, maintainability, and testability, and prepares the system for more advanced features like automated strategy discovery.
+*   **Pattern 6: Library-based Componentization**
+    *   **Rationale:** `meqsap_indicators_core` and `meqsap_optimizer` are dedicated internal modules/libraries promoting high cohesion for their respective domains and loose coupling with the main application flow. Enhances modularity and prepares for advanced features.
+
+*   **Pattern 7: Strategy Pattern (within Optimizer)**
+    *   **Rationale:** The `meqsap_optimizer` can use different optimization algorithms (Grid Search, Random Search) and objective functions interchangeably, fitting the Strategy design pattern. This supports future expansion with advanced algorithms (Roadmap Phase 9).
 
 ## Component View
 
-The MEQSAP application is composed of the following primary modules:
+The MEQSAP application comprises the following primary modules:
 
-* **`config` Module:** Responsible for loading the strategy `.yaml` file. It now utilizes `meqsap_indicators_core` to interpret, validate, and manage indicator parameter definitions, including fixed values and search spaces (ranges, choices, steps) against a strict Pydantic schema. Handles `BaseStrategyParams` and `StrategyConfig` logic.
-* **`data` Module:** Handles acquisition and management of historical market data via `yfinance`, including caching and integrity checks. The calculation of `get_required_data_coverage_bars` now considers maximum lookback from parameter ranges defined in `config`.
-* **`meqsap_indicators_core` Module (New for v2.1):** A dedicated internal library/module responsible for:
-    * Standardized definition of technical indicators (e.g., via `IndicatorBase` in `base.py`).
-    * Management of indicator parameters, their types (fixed, range, choice via `ParameterDefinition`), validation, and search space descriptions (`ParameterSpace`).
-    * Providing calculation logic for indicators (wrapping `pandas-ta` or custom implementations).
-    * A registry or mechanism for discovering and accessing available indicators.
-* **`backtest` Module:** The core engine. Takes prepared data and strategy configuration. The `StrategySignalGenerator` (or equivalent) is adapted to:
-    * Utilize `meqsap_indicators_core` to dynamically fetch indicator calculation logic.
-    * Accept concrete parameter sets (which could be drawn from defined search spaces or be fixed values) for generating trading signals.
-    * Executes the backtest (using `vectorbt`) and runs robustness "Vibe Checks".
-* **`reporting` Module:** Takes raw results from `backtest` for user-facing output (terminal verdict via `rich`, PDF report via `pyfolio`). No direct interaction with `meqsap_indicators_core`.
-* **`cli` Module:** Main entry point, parses arguments, and orchestrates the workflow by calling other modules.
-
-This component-based structure is visualized below:
+*   **`config` Module:** Loads strategy `.yaml` files. Utilizes `meqsap_indicators_core` for indicator parameter definitions. Parses and validates the `optimization_config` block. **Crucially, it validates the structure of parameter space definitions** (e.g., for a range: `start < stop`, `step > 0`; for choices: list is not empty) against Pydantic models and potentially against constraints defined in `IndicatorBase` if applicable at this stage.
+*   **`data` Module:** Handles market data acquisition (`yfinance`), caching, and integrity checks.
+*   **`meqsap_indicators_core` Module:** Standardizes definition, parameterization (fixed, range, choice), validation, and calculation logic for technical indicators. Used by `config` and `backtest`. This modularity supports easy expansion of the indicator suite (Roadmap Phase 4).
+*   **`backtest` Module:** Core backtesting engine.
+    *   `StrategySignalGenerator` uses `meqsap_indicators_core` for indicator logic and accepts concrete parameter sets.
+    *   Executes backtests using `vectorbt`.
+    *   `run_backtest` and `run_complete_backtest` now populate enhanced `BacktestResult` with **mandatory** trade duration statistics. Trade durations are calculated from `vectorbt`'s `trades.records_readable` (e.g., `(trades.exit_timestamp - trades.entry_timestamp).dt.days`). `avg_trade_duration_days` is the mean of these durations. `pct_trades_in_target_hold_period` is calculated by comparing each trade's duration against `min_hold_days` and `max_hold_days` (if provided in `objective_params`).
+*   **`meqsap_optimizer` Module (New for v2.2):** Responsible for automated parameter optimization for single-indicator strategies.
+    *   **Engine:** Orchestrates the optimization loop. Provides **progress reporting** to the CLI during long runs. **Handles individual backtest failures** within the loop gracefully (e.g., logs error, skips combination, continues if feasible, or terminates with a summary of completed work and error details, aligning with PRD US10).
+    *   **Algorithms:** Implements Grid Search, Random Search (initially).
+    *   **Objective Functions:** Defines and evaluates objectives. Includes the explicit **"SharpeWithHoldPeriodConstraint"** function. Objective functions integrate trade duration statistics from `BacktestResult` into their scoring. For example, `SharpeWithHoldPeriodConstraint` might apply a penalty (e.g., multiplicative factor like 0.5, or a large negative adjustment) to the Sharpe ratio if `avg_trade_duration_days` or `pct_trades_in_target_hold_period` fall outside configured `objective_params` (e.g., `min_hold_days`, `max_hold_days`). A registry (e.g., `OBJECTIVE_REGISTRY` dictionary in `objective_functions.py`) maps YAML names to function implementations.
+    *   Consumes `StrategyConfig` (parameter spaces from `indicators_core`, `optimization_config`).
+    *   Calls `run_complete_backtest` from `backtest` module for each parameter set.
+*   **`reporting` Module:** Presents results. For analysis path, shows standard backtest verdict. For optimization path, shows summary of optimization (best params, score, algorithm used, iterations) and detailed verdict for the best strategy. Optimization summary **explicitly includes constraint adherence metrics**, particularly hold period statistics (`avg_trade_duration_days`, `pct_trades_in_target_hold_period`) for the best strategy (PRD Epic4/Story6/AC4). Uses `rich` and `pyfolio`.
+*   **`cli` Module:** Main entry point. Parses arguments, orchestrates workflows. New `optimize-single` command delegates to `meqsap_optimizer` and is responsible for **displaying progress updates** from the optimizer.
 
 ```mermaid
 graph TD
@@ -109,6 +137,7 @@ graph TD
         IndicatorsCore[meqsap_indicators_core]
         DataModule[data]
         BacktestModule[backtest]
+        OptimizerModule[meqsap_optimizer]
         ReportingModule[reporting]
     end
 
@@ -120,23 +149,33 @@ graph TD
         vectorbt
         rich
         pyfolio
+        # Potentially scikit-optimize in future for OptimizerModule
     end
 
     subgraph "Output"
-        TerminalOutput[Terminal Verdict]
-        PDFReport((PDF Report))
+        TerminalOutput[Terminal Verdict / Opt. Summary (incl. progress, constraint adherence)]
+        PDFReport((PDF Report for Best Strategy))
     end
 
-    CLI --> ConfigModule
+    CLI -- "analyze" / "optimize-single" --> ConfigModule
     ConfigModule --uses--> Pydantic
     ConfigModule --uses for indicator defs & validation--> IndicatorsCore
     ConfigModule --Validated Config--> DataModule
+    ConfigModule --Validated Config & Opt.Settings--> OptimizerModule
+
     DataModule --uses--> yfinance
     DataModule --Market Data--> BacktestModule
+    
+    OptimizerModule --uses param spaces from (Config -> IndicatorsCore)--> IndicatorsCore
+    OptimizerModule --runs backtests for param sets via (with progress updates to CLI)--> BacktestModule
+    BacktestModule --BacktestAnalysisResult (incl. trade duration)--> OptimizerModule
+    OptimizerModule --Best params & results--> ReportingModule
+
     BacktestModule --uses for indicator logic & calculation--> IndicatorsCore
     IndicatorsCore --may wrap--> PandasTA
     BacktestModule --uses--> vectorbt
-    BacktestModule --Raw Results--> ReportingModule
+    BacktestModule --Raw Results (for analyze path)--> ReportingModule
+    
     ReportingModule --uses--> rich
     ReportingModule --uses--> pyfolio
     ReportingModule --> TerminalOutput
@@ -145,53 +184,61 @@ graph TD
 
 ## Project Structure
 
-The project will be organized using a standard `src` layout. The new `meqsap_indicators_core` module will initially reside within the main `meqsap` package structure but is designed for potential future separation.
+The project uses a standard `src` layout. `meqsap_indicators_core` and `meqsap_optimizer` are internal modules.
 
 ```plaintext
 meqsap/
 ├── .github/
 │   └── workflows/
 │       └── main.yml
-├── .venv/
 ├── docs/
 │   ├── adr/
-│   │   └── ...
 │   ├── policies/
-│   │   └── ...
-│   ├── architecture.md         # This architecture document (v2.1)
-│   └── prd.md                  # Product Requirements Document (v2.1)
+│   ├── architecture.md         # This architecture document (v2.2)
+│   ├── prd.md                  # Product Requirements Document (v2.2)
 │   └── roadmap.md              # Project Roadmap
 ├── examples/
 │   ├── ma_crossover.yaml
-│   └── ma_crossover_v2.1.yaml  # Example config with parameter spaces (NEW)
+│   ├── ma_crossover_v2.1.yaml
+│   └── ma_crossover_v2.2_optimizable.yaml # Example with optimization_config (NEW)
 ├── src/
 │   └── meqsap/
 │       ├── __init__.py
-│       ├── backtest.py           # Core backtesting, StrategySignalGenerator
-│       ├── cli.py                # Main CLI entrypoint
-│       ├── config.py             # Pydantic schema, YAML loading, BaseStrategyParams, StrategyConfig
+│       ├── backtest.py           # Core backtesting, StrategySignalGenerator, BacktestResult enhanced
+│       ├── cli.py                # Main CLI entrypoint, new 'optimize-single' command
+│       ├── config.py             # Pydantic schema, YAML loading, StrategyConfig with opt_config
 │       ├── data.py               # Data acquisition and caching
 │       ├── exceptions.py         # Custom application exceptions
-│       ├── reporting.py          # Terminal output and PDF generation
-│       ├── indicators_core/      # NEW: meqsap_indicators_core module
-│       │   ├── __init__.py       # Exports key components
-│       │   ├── base.py           # IndicatorBase, ParameterDefinition (metadata), ParameterSpace
-│       │   ├── parameters.py     # Pydantic models for ParameterRange, ParameterChoices, ParameterValue
-│       │   ├── registry.py       # Indicator registry/factory
-│       │   └── indicators/       # Concrete indicator implementations (e.g., moving_average.py, rsi.py)
-│       │       ├── __init__.py
-│       │       ├── ma.py
-│       │       └── rsi.py
+│       ├── reporting.py          # Terminal output and PDF generation, opt. summary
+│       ├── indicators_core/      # Indicator definitions and logic
+│       │   ├── __init__.py
+│       │   ├── base.py
+│       │   ├── parameters.py
+│       │   ├── registry.py
+│       │   └── indicators/
+│       │       └── ...
+│       ├── optimizer/            # NEW: meqsap_optimizer module
+│       │   ├── __init__.py
+│       │   ├── engine.py         # Core optimization engine
+│       │   ├── algorithms/       # GridSearch, RandomSearch implementations
+│       │   │   ├── __init__.py
+│       │   │   ├── base_optimizer.py
+│       │   │   ├── grid_search.py
+│       │   │   └── random_search.py
+│       │   ├── objective_functions.py # Sharpe, Calmar, custom, constraint handling, OBJECTIVE_REGISTRY
+│       │   └── opt_config_models.py   # Pydantic models for optimization_config block
 │       └── py.typed
 ├── tests/
 │   ├── __init__.py
 │   ├── test_backtest.py
 │   ├── test_config.py
-│   ├── indicators_core/        # NEW: Tests for the indicators_core module
+│   ├── indicators_core/
+│   │   └── ...
+│   ├── optimizer/              # NEW: Tests for the optimizer module
 │   │   ├── __init__.py
-│   │   ├── test_parameters.py
-│   │   ├── test_base.py
-│   │   └── indicators/ ...
+│   │   ├── test_engine.py
+│   │   ├── test_algorithms.py
+│   │   └── test_objective_functions.py
 │   └── ...
 ├── .gitignore
 ├── pyproject.toml
@@ -199,118 +246,75 @@ meqsap/
 └── requirements.txt
 ```
 
-### Key Directory Descriptions
-
-* **`docs/`**: Contains all project planning and reference documentation.
-* **`src/meqsap/`**: The main Python package.
-    * **`src/meqsap/indicators_core/`**: The new module for standardized indicator definition, parameterization, and calculation logic. It aims to be self-contained regarding indicator logic, potentially wrapping libraries like `pandas-ta`.
-* **`tests/`**: Contains all automated tests, mirroring the `src/meqsap` package structure, including new tests for `indicators_core`.
-* **`pyproject.toml`**: Project metadata and build configuration.
-* **`requirements.txt`**: Frozen project dependencies.
-
 ## Definitive Tech Stack Selections
 
-| Category                 | Technology                | Version / Details         | Description / Purpose                                                                                                | Justification (Optional)                                                                      |
-| :----------------------- | :------------------------ | :------------------------ | :------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
-| **Languages** | Python                    | 3.9+                      | Primary language for the entire application.                                                                       | Specified in project requirements.                                                          |
-| **CLI Framework** | Typer                     | Latest                    | For building a robust and user-friendly command-line interface.                                                      | Integrates well with Pydantic.                                                                |
-| **Data Handling** | pandas                    | Latest                    | Core data manipulation and analysis.                                                                                 | Industry standard.                                                                            |
-|                          | yfinance                  | Latest                    | To download historical OHLCV data.                                                                                   | Meets the project's data source requirement.                                                |
-| **Technical Analysis** | pandas-ta                 | Latest                    | To generate technical analysis indicators. Will be primarily wrapped/utilized by `meqsap_indicators_core`.       | Comprehensive library for TA.                                                                 |
-| **Backtesting** | vectorbt                  | Latest                    | Core library for running fast, vectorized backtests.                                                               | Powerful, modern library central to the project.                                            |
-| **Configuration** | PyYAML                    | Latest                    | To securely load the strategy `.yaml` configuration file.                                                          | Standard and secure.                                                                          |
-|                          | Pydantic                  | Latest                    | For defining a strict schema and validating configuration, including new parameter types and indicator definitions.  | Enforces data integrity and provides clear validation errors.                                 |
-| **Reporting & UI** | rich                      | Latest                    | To display formatted tables and text in the terminal.                                                              | Creates a polished CLI UX.                                                                    |
-|                          | pyfolio                   | Latest                    | To generate institutional-grade PDF tear sheets for analysis.                                                      | Industry standard for performance reporting.                                                  |
-| **Internal Components** | `meqsap_indicators_core`  | N/A (Internal Module)     | Standardizes indicator definition, parameter types (fixed, range, choice), search spaces, and calculation logic. | Enhances modularity, maintainability, and prepares for optimization (as per PRD v2.1).       |
-| **Testing** | pytest                    | Latest                    | Framework for writing and running unit and integration tests.                                                      | De facto standard for Python testing.                                                         |
-| **CI/CD** | GitHub Actions            | N/A                       | To automate testing and publishing to PyPI.                                                                        | Well-integrated for GitHub projects.                                                          |
+| Category                 | Technology                | Version / Details         | Description / Purpose                                                                                                | Justification                                                                         |
+| :----------------------- | :------------------------ | :------------------------ | :------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------ |
+| **Languages** | Python                    | 3.9+                      | Primary language.                                                                                                    | Specified.                                                                            |
+| **CLI Framework** | Typer                     | Latest                    | Robust CLI building.                                                                                                 | Integrates well with Pydantic.                                                        |
+| **Data Handling** | pandas                    | Latest                    | Core data manipulation.                                                                                              | Industry standard.                                                                    |
+|                          | yfinance                  | Latest                    | Historical OHLCV data.                                                                                               | Meets requirements.                                                                   |
+| **Technical Analysis** | pandas-ta                 | Latest                    | TA indicators, wrapped by `meqsap_indicators_core`.                                                                  | Comprehensive TA library.                                                             |
+| **Backtesting** | vectorbt                  | Latest                    | Core vectorized backtesting.                                                                                         | Powerful, modern.                                                                     |
+| **Configuration** | PyYAML                    | Latest                    | Secure YAML loading.                                                                                                 | Standard and secure.                                                                  |
+|                          | Pydantic                  | Latest                    | Schema definition and validation for config, params, and `optimization_config`.                                    | Enforces data integrity.                                                              |
+| **Reporting & UI** | rich                      | Latest                    | Formatted terminal output, progress indicators.                                                                      | Polished CLI UX.                                                                      |
+|                          | pyfolio                   | Latest                    | PDF tear sheets.                                                                                                     | Industry standard reporting.                                                          |
+| **Internal Components** | `meqsap_indicators_core`  | N/A (Internal)            | Standardizes indicator definition, parameter types, search spaces, calculation.                                      | Modularity, maintainability, optimization readiness.                                  |
+|                          | `meqsap_optimizer`        | N/A (Internal)            | Parameter optimization engine (Grid/Random Search, objectives, constraints).                                       | Implements Phase 2 (PRD v2.2) for automated parameter tuning.                         |
+| **Testing** | pytest                    | Latest                    | Unit and integration testing.                                                                                        | De facto standard.                                                                    |
+| **CI/CD** | GitHub Actions            | N/A                       | Automation.                                                                                                          | Well-integrated.                                                                      |
 
 ## API Reference
 
 ### External APIs Consumed
+*   **`yfinance` API**: For historical market data. (No change)
 
-* **`yfinance` API**
-    * **Purpose:** To acquire historical OHLCV market data.
-    * **Consumption Method:** Via the `yfinance` Python library.
-    * **Authentication:** Not required for public historical data.
-    * **Key Functions Used:** `yfinance.download()`.
-    * **Rate Limits:** Subject to Yahoo! Finance's terms; caching mitigates this.
-    * **Link to Official Docs:** [https://pypi.org/project/yfinance/](https://pypi.org/project/yfinance/)
-
-### Internal APIs Provided (If Applicable)
-
+### Internal APIs Provided
 Not applicable. MEQSAP is a self-contained command-line tool.
 
 ## Data Models
 
-The primary data model is the strategy configuration. With v2.1, parameter definitions are enhanced.
+Key data models are strategy configuration and backtest results.
 
-### Core Application Entities / Domain Objects
+*   **`StrategyConfig`** (`meqsap.config`):
+    *   Represents the complete configuration for a run, loaded from YAML.
+    *   Includes `ticker`, `start_date`, `end_date`, `strategy_type`, `strategy_params` (which can be fixed values or parameter space definitions from `meqsap_indicators_core.parameters`). Parameter space definitions are validated by Pydantic models in `meqsap.indicators_core.parameters` and potentially further by `config.py` if needed.
+    *   **New for v2.2:** Includes an optional `optimization_config: OptimizationConfig` block (defined in `meqsap.optimizer.opt_config_models`) when the `optimize-single` command is used. This block details algorithm, objective function, and their respective parameters.
 
-* **`StrategyConfig`** (within `meqsap.config`)
-    * **Description:** Represents the complete configuration for a backtest run, loaded from YAML. Now supports enhanced parameter definitions for strategy parameters.
-    * **Schema / Pydantic Definition (Conceptual Example for `MovingAverageCrossoverParams` within `StrategyConfig`):**
-        ```python
-        from pydantic import BaseModel, Field, validator
-        from typing import Union, List, Dict, Any
+*   **`OptimizationConfig`** (`meqsap.optimizer.opt_config_models` - New Pydantic model):
+    *   `active`: bool
+    *   `algorithm`: str (e.g., "GridSearch", "RandomSearch")
+    *   `objective_function`: str (e.g., "SharpeRatio", "SharpeWithHoldPeriodConstraint")
+    *   `objective_params`: Dict (e.g., `min_hold_days`, `max_hold_days`, penalty factors)
+    *   `algorithm_params`: Dict (e.g., `random_search_iterations`)
 
-        # Parameter types that will be defined within meqsap_indicators_core
-        # and used by BaseStrategyParams and its children.
-        class ParameterRange(BaseModel): # Defined in meqsap.indicators_core.parameters
-             type: str = "range"
-             start: float
-             stop: float
-             step: float = 1.0
-             # Add validation: start < stop, step > 0
+*   **Indicator & Parameter Definitions** (`meqsap_indicators_core`): (No change from v2.1, foundational for optimizer)
+    *   `IndicatorBase`, `ParameterDefinition`, `ParameterSpace`, `ParameterRange`, `ParameterChoices`, `ParameterValue`.
 
-        class ParameterChoices(BaseModel): # Defined in meqsap.indicators_core.parameters
-             type: str = "choices"
-             values: List[Any]
-             # Add validation: non-empty list
+*   **`BacktestResult`** (`meqsap.backtest`):
+    *   Holds detailed performance metrics from a single backtest run.
+    *   **Enhanced for v2.2 (Mandatory Fields):**
+        *   `avg_trade_duration_days: float`
+        *   `pct_trades_in_target_hold_period: float`
+        *   **Calculation Methodology:**
+            *   Trade durations are calculated from `vectorbt`'s `trades.records_readable` using `(trades.exit_timestamp - trades.entry_timestamp).dt.days`.
+            *   `avg_trade_duration_days` is the mean of these individual trade durations. If no trades, this can be 0.0 or NaN (to be handled by objective functions).
+            *   `pct_trades_in_target_hold_period` is calculated by iterating through `trade_details` (which store individual trade durations), comparing each duration against `min_hold_days` and `max_hold_days` (if these are provided via `objective_params` in the `optimization_config`), and then computing the percentage of trades falling within this target range. If no target range is specified, this can be 0.0 or NaN.
+        *   These trade duration statistics are crucial for enabling advanced objective functions and future features like the Strategy Doctor (Roadmap Phase 8).
 
-        class ParameterValue(BaseModel): # Defined in meqsap.indicators_core.parameters
-            type: str = "value"
-             value: Any
-
-         # Union type for parameter definitions
-        ParameterDefinitionType = Union[float, int, str, bool, ParameterRange, ParameterChoices, ParameterValue]
-
-        class MovingAverageCrossoverParams(BaseModel): # Child of BaseStrategyParams
-            # Example: fast_ma can be a fixed number or a definition for a search space
-            fast_ma: ParameterDefinitionType = Field(..., description="Fast moving average period or definition.")
-            slow_ma: ParameterDefinitionType = Field(..., description="Slow moving average period or definition.")
-            # other parameters...
-
-            # Validator to ensure that if both are fixed numbers, slow_ma > fast_ma
-            # Further validation will occur based on the 'type' field if dicts are provided.
-            # Actual Pydantic models in meqsap_indicators_core will handle detailed validation
-            # of range/choice structures.
-
-        class StrategyConfig(BaseModel):
-            ticker: str
-            start_date: str
-            end_date: str
-            strategy_type: str # e.g., "MovingAverageCrossover" (consistent with StrategyConfig)
-             strategy_params: Dict[str, Any] # This would be parsed into specific Param models
-                                              # like MovingAverageCrossoverParams, which in turn use
-                                              # ParameterDefinitionType for its fields.
-            # The actual strategy_params field would likely be a Union of all
-            # supported strategy parameter classes (e.g., Union[MovingAverageCrossoverParams, RSIParams])
-            # or use a 'strategy_type' field to discriminate.
-        ```
-    * **Validation Rules:** Validation handled by Pydantic models. `meqsap_indicators_core` will provide robust models for `ParameterRange`, `ParameterChoices`, `ParameterValue` including attribute constraints (e.g., `start < stop`). `BaseStrategyParams` and its children will use these models for their parameter fields.
-
-* **Indicator & Parameter Definitions** (within `meqsap_indicators_core.base` and `meqsap_indicators_core.parameters`)
-    * **`IndicatorBase` (`base.py`):** Abstract base class for all indicators.
-    * **`ParameterDefinition` (`base.py`):** Describes metadata for a single parameter (name, type, constraints, default value).
-    * **`ParameterSpace` (`base.py`):** Defines the search space for a set of parameters for an indicator, using `ParameterDefinition` objects.
-    * **`ParameterRange`, `ParameterChoices`, `ParameterValue` (`parameters.py`):** Pydantic models for defining parameter values or search spaces in configurations.
-    * **`ParameterDefinitionType` (`parameters.py`):** Union type for all allowed parameter value/definition structures.
+*   **`OptimizationResult`** (`meqsap_optimizer` - New Pydantic model):
+    *   Holds results from an optimization run.
+    *   `best_params`: Dict of the best parameter set found.
+    *   `best_score`: The objective score achieved by `best_params`.
+    *   `best_backtest_analysis_result`: Full `BacktestAnalysisResult` for the best parameters.
+    *   `optimization_summary`: Algorithm used, number of iterations, etc.
+    *   `constraint_adherence_report`: How well constraints like hold period were met by the best strategy (includes `avg_trade_duration_days` and `pct_trades_in_target_hold_period` for the best strategy).
 
 ## Core Workflow / Sequence Diagrams
 
-This sequence diagram illustrates interactions, including the new `meqsap_indicators_core`.
+### Analysis Path (`meqsap analyze`)
+(No change from v2.1 - this path uses fixed or default parameters)
 
 ```mermaid
 sequenceDiagram
@@ -322,48 +326,84 @@ sequenceDiagram
     participant Backtest as backtest
     participant Reporting as reporting
 
-    User->>CLI: Executes `meqsap --config path/to/strategy.yaml`
+    User->>CLI: `meqsap analyze --config strategy.yaml`
     CLI->>Config: load_and_validate_config(path)
-    Config->>IndicatorsCore: (Internally) Uses indicator_core types for param validation
-    IndicatorsCore-->>Config: Returns Pydantic models for params
-    Config->>Config: validate_yaml_against_schema()
-    Config-->>CLI: Returns StrategyConfig object (with parsed param spaces)
-
-    CLI->>Data: get_market_data(StrategyConfig) # Considers max lookback from param ranges
-    Data-->>CLI: Returns pandas DataFrame
-
-    CLI->>Backtest: run_backtest(StrategyConfig, DataFrame)
+    Config->>IndicatorsCore: (Internally) Uses types for param validation
+    Config-->>CLI: StrategyConfig (fixed/default params)
+    CLI->>Data: get_market_data(StrategyConfig)
+    Data-->>CLI: Market DataFrame
+    CLI->>Backtest: run_complete_backtest(StrategyConfig, DataFrame)
     Backtest->>IndicatorsCore: get_indicator_logic(strategy_type)
-    IndicatorsCore-->>Backtest: Returns indicator calculation function(s)
     Backtest->>Backtest: generate_signals(DataFrame, concrete_params, indicator_logic)
-    Backtest-->>CLI: Returns BacktestResults
+    Backtest-->>CLI: BacktestAnalysisResult
+    CLI->>Reporting: generate_output(BacktestAnalysisResult)
+    Reporting-->>User: Formatted verdict
+```
 
-    CLI->>Reporting: generate_output(BacktestResults)
-    Reporting-->>User: Prints formatted verdict to terminal
+### Optimization Path (`meqsap optimize-single`) - New for v2.2
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CLI as cli
+    participant Config as config
+    participant Optimizer as meqsap_optimizer
+    participant IndicatorsCore as meqsap_indicators_core
+    participant Data as data
+    participant Backtest as backtest_engine
+    participant Reporting as reporting
+
+    User->>CLI: `meqsap optimize-single --config strategy_optimizable.yaml`
+    CLI->>Config: load_and_validate_config(path) # Loads strategy_params (search spaces) & optimization_config
+    Config-->>CLI: StrategyConfig (with search spaces & opt_config)
+
+    CLI->>Data: get_market_data(StrategyConfig) # Fetched once
+    Data-->>CLI: Market DataFrame
+    
+    CLI->>Optimizer: run_optimization(StrategyConfig, Market DataFrame) # CLI shows progress from Optimizer
+    Optimizer->>Optimizer: Initialize (Algorithm, ObjectiveFunction from opt_config)
+    Optimizer->>IndicatorsCore: (via StrategyConfig) Get parameter search space definitions
+    
+    loop For each parameter combination
+        Optimizer->>Optimizer: Generate next parameter set
+        Optimizer->>Backtest: run_complete_backtest(StrategyConfig_with_concrete_params, Market DataFrame) # Optimizer handles errors here
+        Backtest->>IndicatorsCore: get_indicator_logic()
+        Backtest->>Backtest: generate_signals()
+        Backtest-->>Optimizer: BacktestAnalysisResult (incl. trade duration stats)
+        Optimizer->>Optimizer: Evaluate result with ObjectiveFunction (checks constraints)
+    end
+    
+    Optimizer-->>CLI: OptimizationResult (best_params, best_score, best_BacktestAnalysisResult)
+    
+    CLI->>Reporting: generate_optimization_summary_output(OptimizationResult)
+    Reporting-->>User: Formatted optimization summary & best strategy verdict (incl. constraint adherence)
 ```
 
 ## Coding Standards
-
-(No changes assumed from original, but `meqsap_indicators_core` will also adhere to these.)
-
-* **Naming Conventions:** `snake_case` for variables/functions, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants.
-* **Type Safety:** Python native type hints mandatory, `mypy` for static checking.
-* **Dependency Management:** Explicitly defined and frozen in `requirements.txt`.
-* **Logging:** Built-in `logging` module.
+(No changes from original: `snake_case`, `PascalCase`, type hints, `mypy`, `logging`.)
+The new `meqsap_optimizer` module will also adhere to these standards.
 
 ## Overall Testing Strategy
-
-(No changes assumed from original scope, but new tests will be added.)
-
-* **Tools:** `pytest`.
-* **Unit Tests:** For custom orchestration logic in `meqsap` and for all logic within `meqsap_indicators_core` (e.g., parameter validation, indicator calculation wrappers).
-* **Integration Tests:** Test interactions between `meqsap` modules and `meqsap_indicators_core`.
-* **End-to-End (E2E) Tests:** Validate complete CLI flow with example YAMLs using new parameter definitions.
+(No major changes to strategy, but new test scope.)
+*   **Tools:** `pytest`.
+*   **Unit Tests:** For `meqsap_optimizer` components (algorithms, objective functions, engine logic), `config` (parsing `optimization_config` and parameter space validation), `backtest` (trade duration stats).
+*   **Integration Tests:** Test interactions between `cli`, `optimizer`, `backtest`, `config`.
+*   **End-to-End (E2E) Tests:** Validate `optimize-single` CLI flow with example YAMLs, including progress reporting and error handling within loops.
 
 ## Security Best Practices
+(No changes from original: Pydantic for YAML validation, `yaml.safe_load()`.)
+Validation of `optimization_config` values and parameter space definitions is important.
 
-(No changes assumed from original.)
+## Future Considerations & Technical Debt
 
-* **Robust Input Validation:** Pydantic for YAML, now including validation for parameter space definitions via `meqsap_indicators_core`.
-* **Safe Configuration Parsing:** Use `yaml.safe_load()`.
+*   **Parallel Execution for Optimization:** The current design for `meqsap_optimizer` is single-threaded. For larger parameter spaces or more complex objective functions, parallel execution of backtests within the optimization loop will be necessary to reduce runtime. This is planned for a future phase (e.g., Roadmap Phase 6) and is considered **technical debt (TD-ARCH-20250605-001)**. The architecture should be amenable to adding a parallel execution layer (e.g., using `joblib` or `multiprocessing`) within the `OptimizerEngine`.
+*   **Advanced Optimization Algorithms:** While the Strategy Pattern in the optimizer supports new algorithms, implementing more advanced ones (Bayesian, Genetic) is deferred (Roadmap Phase 9).
+*   **Optimization State Persistence:** The ability to interrupt and resume long optimization runs is out of scope for v2.2.
+
+## Roadmap Linkages
+
+The architectural decisions in v2.2 pave the way for future roadmap phases:
+*   **Modular Indicators (`meqsap_indicators_core`):** Directly supports **Phase 4 (Expanding Indicator Suite)** by providing a standardized way to add and manage new indicators.
+*   **Trade Duration Stats (in `BacktestResult`):** Essential for **Phase 8 (Automated Strategy Improvement - Heuristic Diagnostics & Modifications)**, as the "Strategy Doctor" will need detailed trade characteristics to diagnose issues and suggest improvements related to holding periods.
+*   **Optimizer's Strategy Pattern:** The flexible design for algorithms and objective functions in `meqsap_optimizer` facilitates the integration of **Phase 9 (Advanced Optimization Techniques)**.
 ```
