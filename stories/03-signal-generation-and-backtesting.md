@@ -447,6 +447,9 @@ class RSIStrategy(BaseStrategyParams):
         if "oversold_threshold" in info.data and v <= info.data["oversold_threshold"]:
             raise ValueError("overbought_threshold must be greater than oversold_threshold")
         return v
+    
+    def get_required_data_coverage_bars(self) -> int:
+        return self.rsi_period * 2 # Example: RSI needs at least its period, add a buffer
 ```
 
 ### 2. Update StrategyConfig to Support New Strategy

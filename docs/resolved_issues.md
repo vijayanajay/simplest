@@ -3,6 +3,7 @@
 This file tracks issues that have been resolved, including their re-open history.
 
 **Last Updated:** 2025-06-02
+**Updated:** YYYY-MM-DD
 
 ---
 **Issue ID:** FLAW-20250601-001
@@ -41,3 +42,16 @@ Corrected the example validation logic in `docs/adr/adr-002-date-range-handling.
 **Last Reopened Date:**
 **Last Resolution Summary (Concise):** Corrected exit codes to 10 in `_main_pipeline` and `analyze_command` for generic exceptions. Fixed `_generate_error_message` call in `_main_pipeline`. Updated type hints for `_generate_error_message` and `_get_recovery_suggestions` to accept `Exception`.
 **Date Last Resolved:** 2025-06-02
+---
+**Issue ID:** FLAW-20250602-002
+**Status:** RESOLVED
+**Resolution Date:** 2025-06-02
+**Summary of Resolution:**
+The `get_required_data_coverage_bars` method in `src/meqsap/config.py::BaseStrategyParams` has been made an abstract method, forcing all concrete strategy parameter classes to explicitly define their data coverage requirements. This prevents silent bypass of the data coverage vibe check.
+
+---
+**Issue ID:** FLAW-20250602-002
+**Status:** RESOLVED
+**Resolution Date:** 2025-06-02
+**Summary of Resolution:**
+Modified `perform_vibe_checks` to explicitly fail the data coverage check if `get_required_data_coverage_bars` returns None, adding a clear "FAILED" message.

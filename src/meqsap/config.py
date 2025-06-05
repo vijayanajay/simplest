@@ -4,21 +4,24 @@ Configuration module for MEQSAP.
 This module handles loading and validation of strategy configurations from YAML files.
 """
 
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Literal, Optional, Type
 from datetime import date
 import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
+from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
 from .indicators_core.parameters import ParameterDefinitionType, ParameterValue  # Updated import
 
 
-class BaseStrategyParams(BaseModel):
+class BaseStrategyParams(BaseModel, ABC):
     """Base class for all strategy parameters."""
 
+    @abstractmethod
     def get_required_data_coverage_bars(self) -> int:
         """
         Returns the minimum number of data bars required by the strategy for its calculations.
@@ -27,9 +30,7 @@ class BaseStrategyParams(BaseModel):
 
         This method MUST be overridden by concrete strategy parameter classes.
         """
-        raise NotImplementedError(
-            "Strategy parameter classes must implement 'get_required_data_coverage_bars'."
-        )
+        pass
 
 
 class MovingAverageCrossoverParams(BaseStrategyParams):
