@@ -247,3 +247,46 @@ def test_moving_average_crossover_params_positive_periods():
             "strategy_type": "MovingAverageCrossover",
             "strategy_params": {"fast_ma": 10, "slow_ma": -5}
         })
+
+
+class TestMovingAverageCrossoverParamsCoverage:
+    def test_get_required_data_coverage_bars_fixed_values(self):
+        params = MovingAverageCrossoverParams(fast_ma=10, slow_ma=50)
+        assert params.get_required_data_coverage_bars() == 50
+
+    def test_get_required_data_coverage_bars_range_type(self):
+        params = MovingAverageCrossoverParams(
+            fast_ma={"type": "range", "start": 5, "stop": 15, "step": 1},
+            slow_ma={"type": "range", "start": 20, "stop": 60, "step": 5} # Max slow_ma is 60
+        )
+        assert params.get_required_data_coverage_bars() == 60
+
+    def test_get_required_data_coverage_bars_choices_type(self):
+        params = MovingAverageCrossoverParams(
+            fast_ma={"type": "choices", "values": [8, 10, 12]},
+            slow_ma={"type": "choices", "values": [25, 30, 70]} # Max slow_ma is 70
+        )
+        assert params.get_required_data_coverage_bars() == 70
+
+    def test_get_required_data_coverage_bars_value_type(self):
+        params = MovingAverageCrossoverParams(
+            fast_ma={"type": "value", "value": 7},
+            slow_ma={"type": "value", "value": 23} # Max slow_ma is 23
+        )
+        assert params.get_required_data_coverage_bars() == 23
+
+    def test_get_required_data_coverage_bars_mixed_types(self):
+        params = MovingAverageCrossoverParams(
+            fast_ma=5, # Fixed primitive
+            slow_ma={"type": "range", "start": 15, "stop": 35, "step": 1} # Max slow_ma is 35
+        )
+        assert params.get_required_data_coverage_bars() == 35
+
+    def test_get_required_data_coverage_bars_error_non_numeric_choice(self):
+        with pytest.raises(ConfigurationError, match="Non-numeric value found in choices"):
+            params = MovingAverageCrossoverParams(
+                fast_ma=5,
+                slow_ma={"type": "choices", "values": [20, "thirty", 40]}
+            )
+            # The error is raised when get_required_data_coverage_bars calls _get_parameter_maximum
+            params.get_required_data_coverage_bars()

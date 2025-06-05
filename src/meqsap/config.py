@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
-from .indicators_core.parameters import ParameterDefinitionType, ParameterValue  # Updated import
+from .indicators_core.parameters import ParameterDefinitionType, ParameterValue, ParameterRange, ParameterChoices  # Updated import
 
 
 class BaseStrategyParams(BaseModel, ABC):
@@ -96,20 +96,34 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
 
     def _get_parameter_maximum(self, param: ParameterDefinitionType) -> float:
         """Extract maximum possible value from parameter definition."""
+        # Check for Pydantic model instances first
+        if isinstance(param, ParameterRange):
+            return float(param.stop)
+        elif isinstance(param, ParameterChoices):
+            if not all(isinstance(val, (int, float)) for val in param.values):
+                raise ConfigurationError(f"Non-numeric value found in choices for parameter: {param}")
+            return float(max(param.values))
+        elif isinstance(param, ParameterValue):
+            if not isinstance(param.value, (int, float)):
+                raise ConfigurationError(f"Non-numeric value found in ParameterValue for parameter: {param}")
+            return float(param.value)
+        # Handle direct primitive types
         if isinstance(param, (int, float)):
             return float(param)
+        # Fallback for dict representation (e.g. from model_dump or direct dict in tests)
         elif isinstance(param, dict):
             param_type = param.get("type")
             if param_type == "range":
                 return float(param["stop"])
             elif param_type == "choices":
-                # Ensure all choices are numeric before taking max
                 if not all(isinstance(val, (int, float)) for val in param["values"]):
                     raise ConfigurationError(f"Non-numeric value found in choices for parameter: {param}")
                 return float(max(param["values"]))
             elif param_type == "value":
+                if not isinstance(param["value"], (int, float)):
+                    raise ConfigurationError(f"Non-numeric value found in ParameterValue dict for parameter: {param}")
                 return float(param["value"])
-        raise ConfigurationError(f"Unable to determine maximum value for parameter: {param}")
+        raise ConfigurationError(f"Unable to determine maximum value for parameter: {param} of type {type(param)}")
 
 
 class StrategyConfig(BaseModel):

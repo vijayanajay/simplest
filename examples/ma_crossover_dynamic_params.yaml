@@ -1,0 +1,18 @@
+# Sample MovingAverageCrossover strategy configuration
+# Demonstrates new parameter definition framework (v2.1+)
+# Used for CLI integration testing with dynamic parameters.
+
+ticker: DUMMYTICKER # Mocked in tests, won't actually fetch
+start_date: 2023-01-01
+end_date: 2023-03-31 # Short period for faster test
+strategy_type: MovingAverageCrossover
+
+strategy_params:
+  fast_ma:
+    type: "range"
+    start: 5
+    stop: 10 # Max fast_ma is 10
+    step: 1
+  slow_ma:
+    type: "choices"
+    values: [20, 30, 40] # Max slow_ma is 40

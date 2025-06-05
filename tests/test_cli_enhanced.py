@@ -59,6 +59,17 @@ strategy_params:
   slow_ma: [broken yaml
 """
 
+DUMMY_DYNAMIC_PARAMS_YAML_CONTENT = yaml.dump({
+    "ticker": "DUMMYTICKER", # Mocked, won't fetch
+    "start_date": "2023-01-01",
+    "end_date": "2023-03-31",
+    "strategy_type": "MovingAverageCrossover",
+    "strategy_params": {
+        "fast_ma": {"type": "range", "start": 5, "stop": 10, "step": 1},
+        "slow_ma": {"type": "choices", "values": [20, 30, 40]}
+    }
+})
+
 
 class TestEnhancedCLIMain:
     """Test the enhanced main CLI command with all new features."""
@@ -549,3 +560,63 @@ class TestCLIFlags:
         """Test --no-color flag functionality."""
         result = self.runner.invoke(app, ["analyze", "--help"])
         assert "--no-color" in result.output
+
+
+class TestEnhancedCLIDynamicParams:
+    """Test enhanced CLI with dynamic parameter YAML files."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch('src.meqsap.cli.generate_complete_report')
+    @patch('src.meqsap.cli.run_complete_backtest')
+    @patch('src.meqsap.cli.fetch_market_data')
+    @patch('src.meqsap.cli.validate_config')
+    @patch('src.meqsap.cli.load_yaml_config')
+    def test_analyze_with_dynamic_params_yaml(
+        self, mock_load_yaml, mock_validate_config, mock_fetch_market_data,
+        mock_run_complete_backtest, mock_generate_complete_report
+    ):
+        """Test CLI with YAML using dynamic parameter definitions (range/choice)."""
+        
+        # Simulate loading the dynamic params YAML content
+        parsed_dynamic_config_data = yaml.safe_load(DUMMY_DYNAMIC_PARAMS_YAML_CONTENT)
+        mock_load_yaml.return_value = parsed_dynamic_config_data
+
+        # Create a mock StrategyConfig that would result from parsing DUMMY_DYNAMIC_PARAMS_YAML_CONTENT
+        # This allows the real Pydantic validation to occur if validate_strategy_params is called on it.
+        mock_dynamic_config_obj = StrategyConfig(
+            ticker="DUMMYTICKER",
+            start_date=date(2023, 1, 1),
+            end_date=date(2023, 3, 31),
+            strategy_type="MovingAverageCrossover",
+            strategy_params={ # This will be a dict
+                "fast_ma": {"type": "range", "start": 5, "stop": 10, "step": 1},
+                "slow_ma": {"type": "choices", "values": [20, 30, 40]}
+            }
+        )
+        # When _validate_and_load_config calls config.validate_strategy_params(),
+        # it will use the real Pydantic parsing on the dict above.
+        mock_validate_config.return_value = mock_dynamic_config_obj
+
+        # Setup other mocks
+        mock_market_data = pd.DataFrame({'Close': [100, 101, 102]}) # Dummy data
+        mock_fetch_market_data.return_value = mock_market_data
+        
+        mock_analysis_result = Mock(spec=BacktestAnalysisResult) # Dummy result
+        mock_run_complete_backtest.return_value = mock_analysis_result
+        mock_generate_complete_report.return_value = None
+
+        with self.runner.isolated_filesystem() as temp_dir:
+            config_file_path = Path(temp_dir) / "dynamic_config.yaml"
+            with open(config_file_path, "w") as f:
+                f.write(DUMMY_DYNAMIC_PARAMS_YAML_CONTENT)
+            
+            result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
+
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+        mock_load_yaml.assert_called_once_with(config_file_path)
+        mock_validate_config.assert_called_once_with(parsed_dynamic_config_data)
+        mock_fetch_market_data.assert_called_once_with("DUMMYTICKER", date(2023, 1, 1), date(2023, 3, 31))
+        mock_run_complete_backtest.assert_called_once_with(mock_dynamic_config_obj, mock_market_data)
