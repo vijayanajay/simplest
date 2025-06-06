@@ -60,6 +60,11 @@ class BacktestResult(BaseModel):
     # Trade details
     trade_details: List[Dict[str, Any]] = Field(default_factory=list, description="Individual trade details")
     portfolio_value_series: Dict[str, float] = Field(default_factory=dict, description="Daily portfolio values")
+    
+    # Trade duration statistics
+    avg_trade_duration_days: Optional[float] = Field(None, description="Average trade duration in days")
+    pct_trades_in_target_hold_period: Optional[float] = Field(None, description="Percentage of trades within target hold period")
+    trade_durations_days: Optional[List[int]] = Field(None, description="List of individual trade durations in days")
 
 
 class VibeCheckResults(BaseModel):
@@ -511,9 +516,19 @@ def run_backtest(
             gross_loss = abs(trades[trades[pnl_col] < 0][pnl_col].sum())
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
             logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")
+
+            # Calculate trade duration statistics
+            trades[entry_time_col] = pd.to_datetime(trades[entry_time_col])
+            trades[exit_time_col] = pd.to_datetime(trades[exit_time_col])
+            trade_durations = (trades[exit_time_col] - trades[entry_time_col]).dt.days
+            avg_trade_duration_days = trade_durations.mean()
+            trade_durations_list = trade_durations.tolist()
+            logger.debug(f"Trade duration stats: avg={avg_trade_duration_days:.2f} days")
         else:
             win_rate = 0.0
             profit_factor = 0.0
+            avg_trade_duration_days = None
+            trade_durations_list = None
             logger.debug("No trades for win rate calculation")
         
         # Calculate volatility
@@ -585,6 +600,8 @@ def run_backtest(
             volatility=volatility,
             calmar_ratio=calmar_ratio,
             trade_details=trade_details,
+            avg_trade_duration_days=avg_trade_duration_days,
+            trade_durations_days=trade_durations_list,
             portfolio_value_series=portfolio_value_series
         )
         logger.debug("BacktestResult created successfully")
@@ -735,7 +752,7 @@ def perform_robustness_checks(
         )
 
 
-def run_complete_backtest(strategy_config, data):
+def run_complete_backtest(strategy_config, data, concrete_params=None, objective_params=None):
     """Execute complete backtest analysis including validation and robustness checks."""
     logger.debug(f"Starting complete backtest for ticker: {strategy_config.ticker}")
 
@@ -749,13 +766,24 @@ def run_complete_backtest(strategy_config, data):
             if 'signals' in data:
                 actual_signals_df = data['signals']
             else:
-                actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
+                actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config, concrete_params)
         else:  # data is a DataFrame of prices
             actual_prices_df = data
-            actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
+            actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config, concrete_params)
 
         # Execute primary backtest
         primary_result = run_backtest(prices_data=actual_prices_df, signals_data=actual_signals_df)
+
+        # Calculate pct_trades_in_target_hold_period if applicable
+        if primary_result.trade_durations_days and objective_params:
+            min_hold = objective_params.get('min_hold_days')
+            max_hold = objective_params.get('max_hold_days')
+            if min_hold is not None and max_hold is not None:
+                in_range_count = sum(1 for d in primary_result.trade_durations_days if min_hold <= d <= max_hold)
+                if primary_result.total_trades > 0:
+                    primary_result.pct_trades_in_target_hold_period = (in_range_count / primary_result.total_trades) * 100
+                else:
+                    primary_result.pct_trades_in_target_hold_period = 0.0
 
         # Step 3: Perform vibe checks
         vibe_checks = perform_vibe_checks(primary_result,

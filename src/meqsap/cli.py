@@ -619,6 +619,11 @@ def version_command():
     console.print(f"MEQSAP version: {__version__}")
 
 
+# Add optimization commands
+from src.meqsap.cli.commands import optimize_app
+app.add_typer(optimize_app, name="optimize")
+
+
 def cli_main():
     """
     Main entry point for the CLI application.

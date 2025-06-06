@@ -4,6 +4,40 @@
 **Architecture Alignment:** MEQSAP Architecture v2.3 (Revised)  
 **Generation Date:** Generated based on PRD v2.2 and Architecture v2.3 (Revised)
 
+## Directory Structure (as of implementation)
+
+```
+src/
+    meqsap/
+        __init__.py
+        backtest.py
+        cli.py
+        config.py
+        data.py
+        exceptions.py
+        reporting.py
+        cli/
+            optimization_ui.py
+            commands/
+                optimize.py
+        optimizer/
+            __init__.py
+            engine.py
+            models.py
+            interruption.py
+
+tests/
+    __init__.py
+    test_backtest.py
+    test_cli.py
+    test_config.py
+    test_data.py
+    test_optimization_error_handling.py
+    test_reporting.py
+    test_optimizer/
+        ...
+```
+
 ## Overview
 
 This document provides comprehensive pseudocode for implementing real-time progress reporting, robust error handling, and graceful interruption for optimization runs. The implementation follows the architecture's emphasis on "orchestration over implementation" and leverages Optuna's callback system with `rich` progress bars.
