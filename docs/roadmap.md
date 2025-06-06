@@ -5,16 +5,16 @@ The envisioned system will empower analysts by automating significant parts of t
 1.  **Define a problem space**: Specify target stocks, a set of preferred indicators (or allow the system to choose from a broader library), desired holding periods (e.g., > 3 days, < 1 month), and a baseline strategy for comparison. This is done via an enhanced YAML configuration.
 2.  **Initiate Automated Discovery**: Run a command like `meqsap discover-strategy config.yaml`.
 3.  **System Execution**:
-    * The system explores indicator parameters and combinations, guided by optimization algorithms.
+    * The system explores indicator parameters and combinations, guided by optimization algorithms (leveraging `Optuna` for efficiency and advanced techniques).
     * It continuously backtests generated strategies, focusing on the target hold period and comparing against the baseline.
-    * If a strategy underperforms, the **Strategy Doctor** module analyzes *why* (e.g., "Excessive whipsaws in non-trending conditions for stock X," "Trades not aligning with target hold period due to premature exits triggered by Y indicator parameter").
+    * If a strategy underperforms, the **Strategy Doctor** module analyzes *why* (e.g., "Excessive whipsaws in non-trending conditions for stock X," "Trades not aligning with target hold period due to premature exits triggered by Y indicator parameter"). This analysis could be enhanced by `Mlfinlab` features in the future.
     * Based on diagnostics, it proposes modifications (e.g., "Add ADX filter," "Optimize RSI exit levels for stock X's volatility profile," "Adjust MA periods to target longer hold times").
     * It iteratively refines strategies, attempting to beat the baseline and meet objectives.
 4.  **Review & Refine**: The analyst receives:
     * The best strategy configuration(s) found.
-    * A report detailing the optimization path, diagnostic insights, and performance comparisons.
+    * A report detailing the optimization path, diagnostic insights, and performance comparisons (enhanced by `QuantStats`).
     * The system might present several candidates that meet different trade-offs (e.g., one with higher Sharpe but fewer trades, another with more trades aligning with the hold period).
-5.  **Iterative Collaboration**: The analyst can then take these system-generated strategies, perhaps tweak them further based on their domain expertise, or use them as new starting points for further automated discovery.
+5.  **Iterative Collaboration**: The analyst can then take these system-generated strategies, perhaps tweak them further based on their domain expertise, or use them as new starting points for further automated discovery. Portfolio construction for multiple strategies could leverage `skfolio`.
 
 The analyst's role shifts from manual iteration to defining constraints, objectives, and overseeing an automated discovery process, with the system providing explanations for its choices.
 
@@ -55,13 +55,13 @@ Here's a 10-phase roadmap:
             * The objective function will then heavily penalize strategies where the average hold period or majority of trades fall outside the desired range.
     2.  **Optimization Algorithms**:
         * Implement initial algorithms: Grid Search and Random Search.
-    3.  **Optimization Engine Core**:
+        * These will be implemented by leveraging `Optuna` for its efficient sampling and trial management.
+    3.  **Optimization Engine Core (`meqsap_optimizer`)**:
         * Takes a strategy with defined parameter spaces (from Phase 1).
-        * Iterates through parameter combinations using the chosen algorithm.
+        * Iterates through parameter combinations using the chosen algorithm (via `Optuna`'s study/trial mechanism).
         * For each combination, calls `run_complete_backtest` (from `meqsap.backtest`).
         * Evaluates results using the objective function.
         * Tracks the best-performing parameter set.
-    4.  **CLI Integration**: Add a new command (e.g., `meqsap optimize-single config.yaml`) to `meqsap.cli`.
     5.  **Reporting**:
         * Output the best parameters found and their detailed performance.
         * Log the optimization process (parameters tested, scores).
@@ -69,10 +69,11 @@ Here's a 10-phase roadmap:
 * **Python Library Candidate**: `meqsap_optimizer`
     * **Purpose**: Provide a generic optimization framework.
     * **Modules**:
-        * `algorithms/`: `grid_search.py`, `random_search.py`.
+        * `algorithms/`: `grid_search.py`, `random_search.py`. These will be wrappers or direct utilizers of `Optuna`'s samplers.
         * `objective_functions.py`: Standard financial metrics and a framework for custom objectives incorporating hold period stats.
-        * `engine.py`: Core optimization loop logic.
-    * **Integration**: `meqsap.cli` would invoke this engine. The engine uses `meqsap.backtest`.
+        * `engine.py`: Core optimization loop logic, orchestrating `Optuna` studies.
+    * **Integration**: `meqsap.cli` (via `optimize-single` command) would invoke this engine. The engine uses `meqsap.backtest`.
+    * **CLI Integration**: Add a new command (e.g., `meqsap optimize-single config.yaml`) to `meqsap.cli`.
 
 ---
 ### Phase 3: Baseline Definition and Comparative Analysis
@@ -86,9 +87,9 @@ Here's a 10-phase roadmap:
     2.  **Automated Baseline Run**: The system (CLI/optimization engine) automatically runs the backtest for the baseline strategy.
     3.  **Enhanced Reporting**:
         * Modify `BacktestAnalysisResult` or create a new `ComparativeAnalysisResult` to hold results for both the candidate strategy and the baseline.
-        * Update `meqsap.reporting` to generate side-by-side comparison tables and visualizations.
+        * Update `meqsap.reporting` to generate side-by-side comparison tables (using `rich`) and visualizations. Leverage `QuantStats` for comprehensive HTML reports, advanced portfolio analytics, and statistical tear sheets, complementing `pyfolio` for PDF reports.
         * Clearly indicate if the candidate strategy "beats" the baseline based on the primary objective function and other key metrics (including hold period alignment).
-* **Python Library Candidate**: Initially part of `meqsap.reporting`. If comparison logic becomes very sophisticated (e.g., statistical significance testing), it could spin off to `meqsap_evaluator`.
+* **Python Library Candidate**: Initially part of `meqsap.reporting` (enhanced with `QuantStats`). If comparison logic becomes very sophisticated (e.g., statistical significance testing), it could spin off to `meqsap_evaluator`.
 
 ---
 ### Phase 4: Expanding Indicator Suite & Generic Signal Logic
@@ -146,7 +147,7 @@ Here's a 10-phase roadmap:
 * **Building on**: Phase 2 (`meqsap_optimizer`), Phase 5 (`meqsap_signal_combiner`).
 * **Details**:
     1.  **Expanded Parameter Space**: The optimizer now needs to handle a combined parameter space from all components of the strategy. If `ma_cross` has 2 tunable params and `rsi_filter` has 1, the search space is 3-dimensional.
-    2.  **Optimizer Adaptation**: `meqsap_optimizer`'s `engine.py` should be capable of handling these larger, structured parameter sets.
+    2.  **Optimizer Adaptation**: `meqsap_optimizer`'s `engine.py` (using `Optuna`) should be capable of handling these larger, structured parameter sets.
     3.  **Objective Function & Constraints**: The objective function (including hold period considerations) remains central.
 * **Python Library Candidate**: `meqsap_optimizer` (enhancements).
 
@@ -191,7 +192,7 @@ Here's a 10-phase roadmap:
 ---
 ### Phase 8: Automated Strategy Improvement - Heuristic Diagnostics & Modifications
 
-* **Goal**: Implement the first version of the automated improvement loop. If a strategy underperforms its baseline, the system attempts to diagnose issues and heuristically apply modifications.
+* **Goal**: Implement the first version of the automated improvement loop. If a strategy underperforms its baseline, the system attempts to diagnose issues and heuristically apply modifications. This phase could start leveraging `Mlfinlab` for advanced financial feature engineering and analysis to inform diagnostics.
 * **Building on**: Phase 3 (Baseline), Phase 6 (Combined Strategy Tuning), Phase 7 (Regimes).
 * **Details**:
     1.  **Diagnostic Engine**:
@@ -219,7 +220,7 @@ Here's a 10-phase roadmap:
 * **Python Library Candidate**: `meqsap_strategy_doctor`
     * **Purpose**: Diagnose strategy weaknesses and suggest/apply heuristic improvements.
     * **Modules**:
-        * `diagnostics.py`: Contains rules and functions for analyzing backtest results and trade patterns, including hold period adherence.
+        * `diagnostics.py`: Contains rules and functions for analyzing backtest results and trade patterns, including hold period adherence. Could use `Mlfinlab` for feature extraction.
         * `modification_rules.py`: Knowledge base of heuristic modifications linked to diagnoses.
         * `improvement_engine.py`: Orchestrates the diagnose-modify-retest-compare loop.
     * **Integration**: Called by `meqsap.cli` after an initial optimization run if further improvement is desired. Uses all other modules.
@@ -232,17 +233,18 @@ Here's a 10-phase roadmap:
 * **Details**:
     1.  **Advanced Optimizers**:
         * Integrate Bayesian Optimization, Genetic Algorithms, or Particle Swarm Optimization into `meqsap_optimizer`. These can be more efficient for the potentially large and complex parameter spaces of combined, regime-aware strategies.
-    2.  **Enhanced Explainability**:
+        * This will be achieved by leveraging the advanced samplers and algorithms available within `Optuna`.
+    2.  **Enhanced Explainability (Leveraging `Optuna`'s visualization tools where applicable)**:
         * Improve `meqsap_strategy_doctor`'s diagnostic output: Provide more detailed reasoning for identified flaws and chosen modifications.
         * Log the decision tree/path of the improvement loop: "Strategy A failed due to X. Tried modification M1, performance became P1. Tried M2, performance became P2. Selected M2 because..."
-        * Visualization: If possible, visualize parameter sensitivity or feature importance (if any ML components are ever added, though current plan is heuristic).
+        * Visualization: If possible, visualize parameter sensitivity or feature importance (if any ML components are ever added, though current plan is heuristic). `Optuna` offers plots like parameter importance, optimization history, etc.
         * Reporting: The final report should clearly articulate the "story" of how the strategy was improved, citing specific data points (e.g., "Reduced whipsaw losses by 15% by adding ADX filter, improving Sharpe from 0.5 to 0.8 in ranging periods for MSFT.").
 * **Python Library Candidate**: `meqsap_optimizer` (enhancements), `meqsap_strategy_doctor` (enhancements).
 
 ---
 ### Phase 10: Analyst-in-the-Loop Interface & Strategy Management
 
-* **Goal**: Provide a more refined interface for analysts to guide the automated discovery, review system suggestions, and manage the library of generated strategies.
+* **Goal**: Provide a more refined interface for analysts to guide the automated discovery, review system suggestions, and manage the library of generated strategies. This phase could also introduce advanced portfolio construction techniques using `skfolio`.
 * **Building on**: All previous phases.
 * **Details**:
     1.  **Interactive CLI Enhancements (if not a web UI)**:
@@ -256,7 +258,8 @@ Here's a 10-phase roadmap:
         * Reports that summarize the entire discovery process: what was explored, what worked, what didn't, and why.
         * Comparative views of multiple auto-generated strategies.
     4.  **Override Mechanism**: Allow analysts to "lock" certain parameters or rules if they have strong convictions, while letting the system optimize others.
-* **Python Library Candidate**: Primarily enhancements to `meqsap.cli` and `meqsap.reporting`. A new small utility `meqsap_strategy_manager` could handle saving/loading/versioning of strategy templates if it becomes complex.
+    5.  **(New) Portfolio Construction**: Integrate `skfolio` to allow users to combine multiple discovered strategies into an optimized portfolio, considering correlations and risk targets.
+* **Python Library Candidate**: Primarily enhancements to `meqsap.cli` and `meqsap.reporting`. A new small utility `meqsap_strategy_manager` could handle saving/loading/versioning of strategy templates if it becomes complex. `skfolio` would be a direct dependency for portfolio construction features.
 
 
 ## Proposed Python Libraries
@@ -283,7 +286,7 @@ Here are the libraries envisioned to modularize the advanced automation features
 ---
 ### 2. `meqsap_optimizer` 📈
 
-* **Core Features**:
+* **Core Features (Leveraging `Optuna`)**:
     * Implementation of various parameter optimization algorithms (e.g., Grid Search, Random Search, Bayesian Optimization, Genetic Algorithms).
     * A framework for defining and using objective functions (e.g., Sharpe Ratio, Calmar Ratio, custom scores).
     * Integration with the backtesting engine to evaluate different parameter sets.
@@ -292,13 +295,13 @@ Here are the libraries envisioned to modularize the advanced automation features
 * **Key Inputs**:
     * A strategy configuration object that includes parameter search spaces (from `meqsap_indicators_core` or combined strategy definitions).
     * A reference to the backtesting function (`run_complete_backtest` from the main MEQSAP project).
-    * An objective function to maximize or minimize.
+    * An objective function (defined within `meqsap_optimizer`) to maximize or minimize.
     * Market data (passed through to the backtester).
     * Optimization algorithm choice and its settings (e.g., number of iterations).
 * **Key Outputs**:
     * The set of best-performing parameters found.
     * The performance score achieved by the best parameters.
-    * Optionally, a history or log of the optimization process (e.g., all parameters tried and their scores).
+    * Optionally, a history or log of the optimization process (e.g., all parameters tried and their scores), potentially using `Optuna`'s study history.
 
 ---
 ### 3. `meqsap_signal_combiner` 🔗
@@ -364,5 +367,24 @@ Here are the libraries envisioned to modularize the advanced automation features
     * Stored strategy files/records.
     * Loaded strategy configuration objects.
     * Lists of available saved strategies.
+
+---
+### 7. `mlfinlab` 🧠 (Future Integration)
+*   **Core Features**: Financial machine learning tools.
+*   **Potential Uses**:
+    *   Financial data structures (tick/volume/dollar bars).
+    *   Meta-labeling, triple-barrier method.
+    *   Feature importance analysis.
+    *   Fractional differentiation for stationarity.
+    *   Bet sizing strategies.
+
+---
+### 8. `skfolio` 💼 (Future Integration)
+*   **Core Features**: Portfolio optimization and risk management.
+*   **Potential Uses**:
+    *   Mean-Variance Optimization, CVaR optimization.
+    *   Risk Parity, Hierarchical Risk Parity (HRP).
+    *   Factor models, risk contribution analysis.
+    *   Backtesting of portfolio allocation strategies.
 
 These libraries would allow MEQSAP's main `src/meqsap/` codebase (especially `cli.py`, `backtest.py`, and `config.py`) to orchestrate these more advanced capabilities by calling functions and classes from these specialized, independently developed, and testable modules.

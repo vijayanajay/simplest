@@ -12,6 +12,7 @@
     *   Added **Epic 4: Parameter Optimization Engine (Single Indicator)**.
     *   Updated User Stories, Functional Requirements, Non-Functional Requirements (Modularity for `meqsap_optimizer`), and Technical Assumptions.
 *   **v2.1 (June 4, 2025):** Incorporates Phase 1 of the Automated Strategy Discovery roadmap.
+    *   This version laid the groundwork for optimization by enhancing the parameter definition framework.
     *   Enhanced parameter definition framework supporting ranges, choices, and steps for strategy parameters.
     *   Refactored `BaseStrategyParams`, `StrategyConfig`, and `StrategySignalGenerator` to accommodate the new parameterization.
     *   Introduced the design and planned integration of the `meqsap_indicators_core` library for modular indicator management.
@@ -123,7 +124,10 @@ The system must be able to:
 
 *   **Repository & Service Architecture:** (No change) Monolith, single repository.
 *   **Core Libraries:** (Updated for v2.2) `yfinance`, `vectorbt`, `pyyaml`, `pydantic`, `pandas`, `pandas-ta`, `rich`, `pyfolio`. The `meqsap_indicators_core` module is established.
-    *   **New for v2.2:** A new internal library/module, `meqsap_optimizer`, will be developed. It will house algorithms (Grid Search, Random Search), objective function definitions, and the main optimization engine logic.
+    *   **Parameter Optimization (Phase 2 & 9):** `Optuna` will be the primary library for implementing optimization algorithms (Grid Search, Random Search, and advanced techniques like Bayesian optimization in future phases) within the `meqsap_optimizer` module.
+    *   **Enhanced Reporting & Analytics (Phase 3):** `QuantStats` will be integrated for generating comprehensive HTML reports, advanced portfolio analytics, and statistical tear sheets, complementing `pyfolio`'s PDF capabilities.
+    *   **Machine Learning Based Features (Future Phases):** `Mlfinlab` (for financial data structures, labeling, feature engineering) and `skfolio` (for advanced portfolio optimization) are planned for integration in later roadmap phases.
+    *   **Internal Modules:** `meqsap_optimizer` will be developed, leveraging `Optuna`.
 *   **Language:** (No change) Python 3.9+.
 *   **Platform:** (No change) Command-line tool.
 
@@ -137,7 +141,7 @@ The system must be able to:
 *   **Goal:** To implement an automated parameter optimization engine for single-indicator strategies, enabling users to find optimal parameters based on defined objectives and constraints, particularly target trade holding periods.
 *   **User Stories for Epic 4:**
     1.  **As a developer, I want to enhance `BacktestResult` to include detailed trade duration statistics** (e.g., average hold time, percentage of trades within a target range) **so that** this data is available for objective functions.
-        *   **Acceptance Criteria:**
+        *   **Acceptance Criteria (No change):**
             *   AC1: `BacktestResult` Pydantic model in `meqsap.backtest.py` includes new fields like `avg_trade_duration_days: Optional[float]` and `pct_trades_in_target_hold_period: Optional[float]`.
             *   AC2: The `run_backtest` function calculates and populates these new duration statistics from `vectorbt`'s trade records.
             *   AC3: Unit tests verify the correct calculation of these duration statistics.
@@ -148,13 +152,14 @@ The system must be able to:
             *   AC3: At least one objective function (e.g., "SharpeWithHoldPeriodConstraint") is implemented that uses the new trade duration statistics from `BacktestResult` to penalize or filter strategies not meeting hold period criteria specified in `optimization_config.objective_params`.
             *   AC4: The framework allows for easy addition of new objective functions.
     3.  **As a developer, I want to implement Grid Search and Random Search algorithms** within the `meqsap_optimizer.algorithms` submodule, **so that** users have basic methods to explore parameter spaces defined via `meqsap_indicators_core`.
+        *   **Note**: These algorithms will be implemented leveraging the `Optuna` library.
         *   **Acceptance Criteria:**
-            *   AC1: `GridSearchOptimizer` class/function correctly generates all parameter combinations from the defined space.
-            *   AC2: `RandomSearchOptimizer` class/function correctly samples a specified number of combinations.
-            *   AC3: Both optimizers can correctly interpret parameter spaces (ranges, choices) from `StrategyConfig` (which uses `meqsap_indicators_core` definitions).
+            *   AC1: `GridSearchOptimizer` (using Optuna's grid sampler) correctly generates all parameter combinations.
+            *   AC2: `RandomSearchOptimizer` (using Optuna's random sampler) correctly samples a specified number of combinations.
+            *   AC3: Both optimizers integrate with Optuna's study and trial objects and correctly interpret parameter spaces.
     4.  **As a developer, I want to build an `OptimizationEngine` core within `meqsap_optimizer.engine`** that orchestrates the optimization process. It should take a strategy configuration, an objective function, and an algorithm, then run backtests for parameter combinations and identify the best set, **so that** the optimization workflow is managed.
         *   **Acceptance Criteria:**
-            *   AC1: `OptimizationEngine` can be initialized with a `StrategyConfig` (containing parameter spaces and `optimization_config`), a selected objective function instance, and a selected algorithm instance.
+            *   AC1: `OptimizationEngine` can be initialized with a `StrategyConfig` (containing parameter spaces and `optimization_config`), a selected objective function instance, and a selected algorithm instance (which internally uses `Optuna`).
             *   AC2: The engine correctly iterates/samples parameter sets using the chosen algorithm.
             *   AC3: For each parameter set, the engine calls `run_complete_backtest` (from `meqsap.backtest`) to get `BacktestAnalysisResult`.
             *   AC4: The engine evaluates each `BacktestAnalysisResult` using the provided objective function.
@@ -178,10 +183,11 @@ The system must be able to:
 
 To ensure focus, the following are **not** part of the v2.2 update:
 
-*   **Advanced Optimization Algorithms:** Bayesian optimization, Genetic Algorithms, PSO (these are planned for later phases as per roadmap). v2.2 focuses on Grid and Random Search.
+*   **Advanced Optimization Algorithms:** Bayesian optimization, Genetic Algorithms, PSO (these are planned for later phases as per roadmap, leveraging advanced features of `Optuna`). v2.2 focuses on Grid and Random Search via `Optuna`.
 *   **Optimization for Multi-Signal/Indicator Strategies:** Phase 2 is strictly for single-indicator strategies where parameters are directly tied to one indicator's definition (e.g., optimizing `fast_ma` and `slow_ma` for `MovingAverageCrossover`). Combined strategy optimization is Phase 6.
-*   **Automated Strategy Discovery/Modification:** The "Strategy Doctor" concept (Phase 8) is out of scope. This phase only finds optimal parameters for a *given* strategy structure.
+*   **Automated Strategy Discovery/Modification & ML Features:** The "Strategy Doctor" concept (Phase 8) and integration of `Mlfinlab` or `skfolio` for ML-driven features are out of scope for v2.2. This phase only finds optimal parameters for a *given* strategy structure.
 *   **Sophisticated UI for Optimization:** All interactions are CLI-driven.
 *   **Distributed/Parallel Execution of Optimization:** While desirable for performance, implementing robust parallel execution for optimization runs is a separate effort, deferred to keep v2.2 focused. The underlying `run_complete_backtest` should remain efficient.
 *   **Optimization State Persistence & Resumption:** The ability to interrupt and resume long optimization runs is out of scope for this phase. Each `optimize-single` run is self-contained.
 *   **Out-of-Sample/Walk-Forward Validation within Optimization Loop:** While important, integrating these complex validation schemes directly into the v2.2 optimization loop is deferred. The focus is on in-sample optimization first. Standard robustness checks will still apply to the *best found* strategy.
+*   **Full QuantStats Reporting Integration:** While `QuantStats` is identified as a key library for Phase 3, its full integration for HTML reports and advanced analytics is deferred. Phase 2 reporting focuses on summarizing optimization results.
