@@ -12,7 +12,6 @@ import numpy as np
 from datetime import date
 import warnings
 import logging
-from dataclasses import dataclass
 
 # Set up a logger for debugging
 logger = logging.getLogger(__name__)
@@ -42,19 +41,6 @@ except ImportError: # For imports when running tests or if structure changes
     from src.meqsap.exceptions import BacktestError # type: ignore
 
 
-@dataclass
-class TradeDurationStats:
-    """Trade duration statistics for backtest results."""
-    average_hold_days: float
-    median_hold_days: float
-    percentage_within_target: float
-    total_trades: int
-    trades_within_target: int
-    min_hold_days: float
-    max_hold_days: float
-    std_hold_days: float
-
-
 class BacktestResult(BaseModel):
     """Results from a backtest execution."""
     
@@ -74,20 +60,6 @@ class BacktestResult(BaseModel):
     # Trade details
     trade_details: List[Dict[str, Any]] = Field(default_factory=list, description="Individual trade details")
     portfolio_value_series: Dict[str, float] = Field(default_factory=dict, description="Daily portfolio values")
-    trade_duration_stats: Optional[TradeDurationStats] = None
-    trades_df: Optional[pd.DataFrame] = None
-    
-    def __post_init__(self):
-        """Calculate trade duration statistics after initialization."""
-        if self.trades_df is not None and not self.trades_df.empty:
-            self.trade_duration_stats = self._calculate_trade_duration_stats()
-    
-    def _calculate_trade_duration_stats(self) -> TradeDurationStats:
-        """Calculate trade duration statistics from trades DataFrame."""
-        from meqsap.optimizer.constraints import TradeDurationAnalyzer
-        
-        analyzer = TradeDurationAnalyzer()
-        return analyzer.analyze_trade_durations(self.trades_df)
 
 
 class VibeCheckResults(BaseModel):
@@ -613,8 +585,7 @@ def run_backtest(
             volatility=volatility,
             calmar_ratio=calmar_ratio,
             trade_details=trade_details,
-            portfolio_value_series=portfolio_value_series,
-            trades_df=trades
+            portfolio_value_series=portfolio_value_series
         )
         logger.debug("BacktestResult created successfully")
         return result

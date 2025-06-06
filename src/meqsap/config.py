@@ -5,18 +5,17 @@ This module handles loading and validation of strategy configurations from YAML 
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, List, Optional, Type
+from typing import Any, Dict, Literal, Optional, Type
 from datetime import date
 import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
 from .indicators_core.parameters import ParameterDefinitionType, ParameterValue, ParameterRange, ParameterChoices  # Updated import
-from meqsap.optimizer.config import OptimizationConfig
 
 
 class BaseStrategyParams(BaseModel, ABC):
@@ -120,30 +119,6 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
         raise ConfigurationError(f"Unable to determine maximum value for parameter: {param} of type {type(param)}")
 
 
-class ObjectiveParams(BaseModel):
-    """Parameters for objective function configuration."""
-    
-    # Risk and return parameters
-    risk_free_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk-free rate for Sharpe ratio calculation")
-    
-    # Constraint parameters
-    target_hold_period_days: List[int] = Field(default=[5, 20], description="Target holding period range [min, max] in days")
-    min_trades: int = Field(default=10, ge=1, description="Minimum number of trades required")
-    min_pct_within_target: float = Field(default=70.0, ge=0.0, le=100.0, description="Minimum percentage of trades within target hold period")
-    
-    # Validation
-    @validator('target_hold_period_days')
-    def validate_target_hold_period(cls, v):
-        """Validate target holding period range."""
-        if len(v) != 2:
-            raise ValueError("target_hold_period_days must contain exactly 2 values [min, max]")
-        if v[0] >= v[1]:
-            raise ValueError("target_hold_period_days min must be less than max")
-        if v[0] <= 0:
-            raise ValueError("target_hold_period_days min must be positive")
-        return v
-
-
 class StrategyConfig(BaseModel):
     """
     Configuration for a trading strategy backtest.
@@ -164,10 +139,6 @@ class StrategyConfig(BaseModel):
     )
     strategy_params: Dict[str, Any] = Field(
         ..., description="Strategy-specific parameters"
-    )
-    optimization_config: Optional[OptimizationConfig] = Field(
-        default=None,
-        description="Optional optimization configuration"
     )
 
     @field_validator("ticker")

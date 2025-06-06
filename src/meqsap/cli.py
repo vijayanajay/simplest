@@ -6,7 +6,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple
 import importlib.metadata
 
 import pandas as pd
@@ -38,8 +38,6 @@ from src.meqsap.exceptions import (
     ReportingError, # For catching from reporting module
     ReportGenerationError,
 )
-from src.meqsap.optimizer import OptimizationEngine
-from src.meqsap.optimizer.config import OptimizationConfig
 
 # Create the main app with proper command structure
 app = typer.Typer(
@@ -619,128 +617,6 @@ def _get_recovery_suggestions(exception: Exception) -> list[str]:
 def version_command():
     """Display version information."""
     console.print(f"MEQSAP version: {__version__}")
-
-
-@app.command("optimize-single")
-def optimize_single(
-    config_file: Path = typer.Argument(..., help="Path to strategy configuration file"),
-    optimization_config_file: Optional[Path] = typer.Option(None, help="Path to optimization configuration file"),
-    output_dir: Path = typer.Option("optimization_results", help="Results output directory"),
-    verbose: bool = typer.Option(False, help="Verbose optimization logging")
-):
-    """Run parameter optimization for single-indicator strategy configuration.
-    
-    The optimization configuration should be defined in the strategy config file
-    under 'optimization_config' or provided separately via optimization_config_file.
-    The optimization_config contains all settings including algorithm, objective_function,
-    constraints, and algorithm_params.
-    """
-    from rich.console import Console
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from .config import load_config
-    from .optimizer.engine import OptimizationEngine, generate_optimization_report
-    from .optimizer.config import OptimizationConfig
-    from .optimizer.algorithms import OptimizationProgress
-    
-    console = Console()
-    
-    # Set up logging
-    if verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-    
-    try:
-        console.print("[bold blue]MEQSAP Parameter Optimization[/bold blue]")
-        console.print(f"Strategy config: {config_file}")
-        
-        # Load strategy configuration
-        if not config_file.exists():
-            console.print(f"[red]Error:[/red] Configuration file not found: {config_file}")
-            raise typer.Exit(1)
-            
-        strategy_config = load_config(config_file)
-        console.print(f"Strategy: {strategy_config.strategy_type}")
-        
-        # Load optimization configuration
-        optimization_config = None
-        if optimization_config_file:
-            if not optimization_config_file.exists():
-                console.print(f"[red]Error:[/red] Optimization config file not found: {optimization_config_file}")
-                raise typer.Exit(1)
-            # Load separate optimization config
-            optimization_config = OptimizationConfig.from_yaml(optimization_config_file)
-        elif hasattr(strategy_config, 'optimization_config') and strategy_config.optimization_config:
-            # Use optimization config from strategy file
-            optimization_config = strategy_config.optimization_config
-        else:
-            console.print("[red]Error:[/red] No optimization configuration found")
-            console.print("Please provide optimization_config in the strategy file or use --optimization-config-file")
-            raise typer.Exit(1)
-            
-        console.print(f"Algorithm: {optimization_config.algorithm}")
-        console.print(f"Objective: {optimization_config.objective_function}")
-        
-        # Progress tracking
-        current_progress = {"value": 0, "total": 100}
-        
-        def progress_callback(progress: OptimizationProgress):
-            current_progress["value"] = progress.current_iteration
-            current_progress["total"] = progress.total_iterations
-            
-        # Create optimization engine with progress callback
-        engine = OptimizationEngine(progress_callback=progress_callback)
-        
-        # Run optimization with progress display
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-            transient=True
-        ) as progress:
-            task = progress.add_task("Running optimization...", total=None)
-            
-            try:
-                result = engine.run_single_indicator_optimization(
-                    strategy_config=strategy_config,
-                    optimization_config=optimization_config
-                )
-                progress.update(task, description="Optimization completed!")
-                
-            except Exception as e:
-                progress.update(task, description="Optimization failed!")
-                console.print(f"[red]Optimization failed:[/red] {str(e)}")
-                if verbose:
-                    console.print_exception()
-                raise typer.Exit(1)
-        
-        # Display results
-        console.print("\n[bold green]Optimization Results:[/bold green]")
-        console.print(f"Best Value: {result.best_value:.6f}")
-        console.print(f"Best Parameters: {result.best_parameters}")
-        console.print(f"Total Evaluations: {result.total_iterations}")
-        console.print(f"Success Rate: {result.success_rate:.2%}")
-        
-        if result.constraint_adherence:
-            console.print("\n[bold yellow]Constraint Adherence:[/bold yellow]")
-            for constraint, adherence in result.constraint_adherence.items():
-                console.print(f"  {constraint}: {adherence:.2%}")
-        
-        # Generate detailed report
-        console.print(f"\n[bold blue]Generating detailed report...[/bold blue]")
-        generate_optimization_report(result, Path(output_dir))
-        console.print(f"Report saved to: {output_dir}")
-        
-        console.print("\n[bold green]✓ Optimization completed successfully![/bold green]")
-        
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Optimization interrupted by user[/yellow]")
-        raise typer.Exit(130)
-    except Exception as e:
-        console.print(f"\n[red]Unexpected error:[/red] {str(e)}")
-        if verbose:
-            console.print_exception()
-        raise typer.Exit(1)
 
 
 def cli_main():
