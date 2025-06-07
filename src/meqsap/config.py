@@ -5,7 +5,7 @@ This module handles loading and validation of strategy configurations from YAML 
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Optional, Type
+from typing import Any, Dict, Literal, Optional, Type, Union
 from datetime import date
 import re
 from pathlib import Path
@@ -57,7 +57,7 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
         if is_fixed_numeric and actual_value <= 0: # type: ignore
             raise ValueError(f"{info.field_name} must be positive when provided as a fixed numeric value")
         return v
-    
+
     @field_validator("slow_ma")
     @classmethod
     def slow_ma_must_be_greater_than_fast_ma(cls, v: ParameterDefinitionType, info: Any) -> ParameterDefinitionType:
@@ -119,6 +119,11 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
         raise ConfigurationError(f"Unable to determine maximum value for parameter: {param} of type {type(param)}")
 
 
+# Type alias for all possible strategy parameter types (for use in raw YAML data)
+# This represents the unvalidated parameter dictionary that comes from YAML parsing,
+# which gets converted to concrete BaseStrategyParams instances via validate_strategy_params()
+StrategyParamsDict = Dict[str, Any]
+
 class StrategyConfig(BaseModel):
     """
     Configuration for a trading strategy backtest.
@@ -130,14 +135,14 @@ class StrategyConfig(BaseModel):
     Example: start_date="2022-01-01", end_date="2022-12-31" 
     will analyze data from Jan 1 through Dec 31, 2022 (both days included).
     """
-
+    
     ticker: str = Field(..., description="Stock ticker symbol")
     start_date: date = Field(..., description="Backtest start date")
     end_date: date = Field(..., description="Backtest end date")
     strategy_type: Literal["MovingAverageCrossover"] = Field(
         ..., description="Type of trading strategy to backtest"
     )
-    strategy_params: Dict[str, Any] = Field(
+    strategy_params: StrategyParamsDict = Field(
         ..., description="Strategy-specific parameters"
     )
 

@@ -6,7 +6,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 import pandas as pd
 import typer
@@ -19,7 +19,7 @@ from rich.table import Table
 # Core application modules
 from .. import __version__
 from ..backtest import BacktestAnalysisResult, run_complete_backtest
-from ..config import StrategyConfig, load_yaml_config, validate_config
+from ..config import StrategyConfig, load_yaml_config, validate_config, BaseStrategyParams
 from ..data import fetch_market_data
 from ..exceptions import (MEQSAPError, ConfigurationError, DataError,
                           DataAcquisitionError, BacktestError,
@@ -190,7 +190,7 @@ def _main_pipeline(
         return 10
 
 
-def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> tuple[StrategyConfig, Any]:
+def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> tuple[StrategyConfig, BaseStrategyParams]:
     if not quiet:
         console.print(f"Loading configuration from: [cyan]{config_file}[/cyan]")
     try:
@@ -248,7 +248,7 @@ def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool)
         raise DataAcquisitionError(f"Unexpected error during data acquisition: {e}")
 
 
-def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, strategy_params: Any, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
+def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, strategy_params: BaseStrategyParams, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
     try:
         if not quiet:
             console.print("\nRunning backtest analysis...")

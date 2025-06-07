@@ -95,10 +95,33 @@ class OptimizationEngine:
         elif pruner_type == "successive_halving":
             return optuna.pruners.SuccessiveHalvingPruner()
         elif pruner_type == "hyperband":
-            return optuna.pruners.HyperbandPruner()
+            return optuna.pruners.HyperbandPruner()        
         else:
             logger.warning(f"Unknown pruner type: {pruner_type}, using no pruning")
             return None
+    
+    def _validate_and_normalize_direction(self, direction: str) -> str:
+        """Validate and normalize optimization direction.
+        
+        Args:
+            direction: Direction string from algorithm parameters
+            
+        Returns:
+            Normalized direction string ("maximize" or "minimize")
+            
+        Raises:
+            ConfigurationError: If direction is invalid
+        """
+        if not isinstance(direction, str):
+            raise ConfigurationError(f"Direction must be a string, got {type(direction).__name__}")
+        
+        normalized = direction.strip().lower()
+        
+        if normalized not in ("maximize", "minimize"):
+            logger.warning(f"Invalid direction '{direction}', falling back to default 'maximize'")
+            return "maximize"
+        
+        return normalized
       
     def run_optimization(self, market_data: pd.DataFrame, progress_callback: Optional[Callable[[ProgressData], None]] = None,
                         interruption_event=None, n_trials: Optional[int] = None) -> OptimizationResult:
@@ -112,12 +135,12 @@ class OptimizationEngine:
             
         Returns:
             OptimizationResult with best parameters and comprehensive statistics
-        """
+        """    
         self._progress_callback = progress_callback
         self._interruption_event = interruption_event
         
         # Use n_trials from parameter or fall back to algorithm_params default
-        effective_n_trials = n_trials or self.algorithm_params.get("n_trials", 100)
+        effective_n_trials = n_trials if n_trials is not None else self.algorithm_params.get("n_trials", 100)
         self._total_trials = effective_n_trials
         self._market_data = market_data
 
@@ -127,11 +150,11 @@ class OptimizationEngine:
         self._successful_trials = 0
         self._best_score = None
         self._failed_trials_by_type = defaultdict(int)
-        
         logger.info(f"Starting optimization with {effective_n_trials} trials")
         
         # Configure Optuna study based on algorithm parameters
-        direction = self.algorithm_params.get("direction", "maximize")
+        raw_direction = self.algorithm_params.get("direction", "maximize")
+        direction = self._validate_and_normalize_direction(raw_direction)
         sampler = self._get_sampler()
         pruner = self._get_pruner()
         
@@ -147,14 +170,13 @@ class OptimizationEngine:
         
         # Set timeout if specified
         timeout = self.algorithm_params.get("timeout")
-        
         try:
             # Run optimization with configured parameters
             study.optimize(
                 lambda trial: self._run_single_trial(trial, market_data),
                 n_trials=effective_n_trials,
                 timeout=timeout,
-                callbacks=[self._trial_callback] if progress_callback else None
+                callbacks=[self._trial_callback] if progress_callback else []
             )
                 
         except KeyboardInterrupt:
