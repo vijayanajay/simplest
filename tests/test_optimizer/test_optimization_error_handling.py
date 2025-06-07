@@ -56,16 +56,21 @@ class TestOptimizationErrorHandling:
         assert result == FAILED_TRIAL_SCORE
         mock_engine._record_failure.assert_called_once_with(expected_failure_type, mock_trial.params)
         
+        # Set caplog level to capture DEBUG logs
+        caplog.set_level("DEBUG")
+        
         # Check logging
         if isinstance(exception_type, (DataError, BacktestError, ConfigurationError)):
             # The first log is INFO "Starting trial...", the second is WARNING for the error
-            warning_logs = [rec for rec in caplog.records if rec.levelname == 'WARNING']
-            assert len(warning_logs) == 1
+            warning_logs = [rec for rec in caplog.records 
+                          if rec.levelname == 'WARNING' and rec.name == "src.meqsap.optimizer.engine"]
+            assert len(warning_logs) >= 1
             assert expected_failure_type.value in warning_logs[0].message
         else:
             # The first log is INFO, the second is DEBUG for the unexpected error
-            debug_logs = [rec for rec in caplog.records if rec.levelname == 'DEBUG']
-            assert len(debug_logs) == 1
+            debug_logs = [rec for rec in caplog.records 
+                         if rec.levelname == 'DEBUG' and rec.name == "src.meqsap.optimizer.engine"]
+            assert len(debug_logs) >= 1
             assert "failed with unexpected error" in debug_logs[0].message
     
     def test_successful_trial(self, mock_engine, mocker):

@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 class OptimizationEngine:
     """Core optimization engine with progress tracking and error handling."""
-    
     def __init__(self, strategy_config: Dict[str, Any], objective_function: Callable, 
                  objective_params: Optional[Dict[str, Any]] = None,
                  algorithm_params: Optional[Dict[str, Any]] = None):
@@ -32,7 +31,13 @@ class OptimizationEngine:
             strategy_config: Strategy configuration including parameter spaces
             objective_function: Function to evaluate backtest results
             objective_params: Additional parameters for objective function
-            algorithm_params: Parameters for the optimization algorithm (e.g., n_trials)
+            algorithm_params: Parameters for the optimization algorithm. Supported keys:
+                - n_trials: Default number of trials (overridden by run_optimization param)
+                - sampler: Optuna sampler type ('tpe', 'random', 'grid', 'cmaes')
+                - pruner: Optuna pruner type ('median', 'successive_halving', 'hyperband')
+                - random_seed: Random seed for reproducibility
+                - timeout: Timeout in seconds for optimization
+                - direction: Optimization direction ('maximize' or 'minimize')
         """
         self.strategy_config = strategy_config
         self.objective_function = objective_function
@@ -46,10 +51,55 @@ class OptimizationEngine:
         self._market_data = None
         self._start_time: float = 0.0
         self._current_trial: int = 0
-        self._successful_trials: int = 0
+        self._successful_trials: int = 0        
         self._best_score: Optional[float] = None
         self._failed_trials_by_type: Dict[TrialFailureType, int] = defaultdict(int)
     
+    def _get_sampler(self) -> Optional[optuna.samplers.BaseSampler]:
+        """Get Optuna sampler based on algorithm parameters.
+        
+        Returns:
+            Configured sampler or None for default
+        """
+        sampler_type = self.algorithm_params.get("sampler", "tpe").lower()
+        random_seed = self.algorithm_params.get("random_seed")
+        
+        if sampler_type == "random":
+            return optuna.samplers.RandomSampler(seed=random_seed)
+        elif sampler_type == "grid":
+            # Grid sampler requires search space definition
+            # For now, return None and let Optuna use default
+            logger.info("Grid sampler requested but not yet implemented with parameter spaces")
+            return None
+        elif sampler_type == "cmaes":
+            return optuna.samplers.CmaEsSampler(seed=random_seed)
+        elif sampler_type == "tpe":
+            return optuna.samplers.TPESampler(seed=random_seed)
+        else:
+            logger.warning(f"Unknown sampler type: {sampler_type}, using default TPE")
+            return optuna.samplers.TPESampler(seed=random_seed)
+    
+    def _get_pruner(self) -> Optional[optuna.pruners.BasePruner]:
+        """Get Optuna pruner based on algorithm parameters.
+        
+        Returns:
+            Configured pruner or None for no pruning
+        """
+        pruner_type = self.algorithm_params.get("pruner")
+        if not pruner_type:
+            return None
+            
+        pruner_type = pruner_type.lower()
+        if pruner_type == "median":
+            return optuna.pruners.MedianPruner()
+        elif pruner_type == "successive_halving":
+            return optuna.pruners.SuccessiveHalvingPruner()
+        elif pruner_type == "hyperband":
+            return optuna.pruners.HyperbandPruner()
+        else:
+            logger.warning(f"Unknown pruner type: {pruner_type}, using no pruning")
+            return None
+      
     def run_optimization(self, market_data: pd.DataFrame, progress_callback: Optional[Callable[[ProgressData], None]] = None,
                         interruption_event=None, n_trials: Optional[int] = None) -> OptimizationResult:
         """Run optimization with progress tracking and error handling.
@@ -58,14 +108,17 @@ class OptimizationEngine:
             market_data: Market data DataFrame for backtesting
             progress_callback: Callback for progress updates
             interruption_event: Event for graceful interruption
-            n_trials: Number of trials for random search (None for grid search)
+            n_trials: Number of trials for random search (overrides algorithm_params default)
             
         Returns:
             OptimizationResult with best parameters and comprehensive statistics
         """
         self._progress_callback = progress_callback
         self._interruption_event = interruption_event
-        self._total_trials = n_trials
+        
+        # Use n_trials from parameter or fall back to algorithm_params default
+        effective_n_trials = n_trials or self.algorithm_params.get("n_trials", 100)
+        self._total_trials = effective_n_trials
         self._market_data = market_data
 
         # Reset state for the new run
@@ -75,33 +128,34 @@ class OptimizationEngine:
         self._best_score = None
         self._failed_trials_by_type = defaultdict(int)
         
-        logger.info(f"Starting optimization with {n_trials or 'grid search'} trials")
+        logger.info(f"Starting optimization with {effective_n_trials} trials")
         
-        # Create Optuna study with RDB storage for persistence
+        # Configure Optuna study based on algorithm parameters
+        direction = self.algorithm_params.get("direction", "maximize")
+        sampler = self._get_sampler()
+        pruner = self._get_pruner()
+        
+        # Create Optuna study with configured parameters
         storage = "sqlite:///meqsap_trials.db"
         study = optuna.create_study(
-            direction="maximize",
+            direction=direction,
             storage=storage,
-            study_name=f"meqsap_optimization_{int(time.time())}"
+            study_name=f"meqsap_optimization_{int(time.time())}",
+            sampler=sampler,
+            pruner=pruner
         )
         
+        # Set timeout if specified
+        timeout = self.algorithm_params.get("timeout")
+        
         try:
-            # Run optimization
-            if n_trials:
-                # Random search
-                study.optimize(
-                    lambda trial: self._run_single_trial(trial, market_data),
-                    n_trials=n_trials,
-                    callbacks=[self._trial_callback] if progress_callback else None
-                )
-            else:
-                # Grid search - implement based on parameter spaces
-                # This is a simplified version; real implementation would use grid sampler
-                study.optimize(
-                    lambda trial: self._run_single_trial(trial, market_data),
-                    n_trials=100,  # Default for grid search
-                    callbacks=[self._trial_callback] if progress_callback else None
-                )
+            # Run optimization with configured parameters
+            study.optimize(
+                lambda trial: self._run_single_trial(trial, market_data),
+                n_trials=effective_n_trials,
+                timeout=timeout,
+                callbacks=[self._trial_callback] if progress_callback else None
+            )
                 
         except KeyboardInterrupt:
             logger.info("Optimization interrupted by user")

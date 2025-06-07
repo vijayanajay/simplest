@@ -127,3 +127,27 @@
 ### DON'T ❌
 - **Duplicate Pipeline Logic:** Avoid re-implementing the application's core workflow inside a CLI command function. This leads to inconsistent behavior.
 - **Use Generic `except Exception` in Commands:** A broad `except Exception` in a command function will mask specific error types, preventing correct exit code mapping and making debugging difficult. This was the root cause of FLAW-20250607-001.
+
+## Anti-Pattern Prevention
+
+- **Pass Validated Objects Explicitly:** When a component (e.g., `_validate_and_load_config`) produces multiple validated objects (e.g., `StrategyConfig` and `StrategyParams`), pass them explicitly down the call chain instead of having downstream functions re-derive them. This improves decoupling.
+
+## Refactoring & Test Maintenance
+
+### DO ✅
+- When refactoring a function's signature, use "Find in all files" or IDE tools to locate and update **all** call sites, including those in unit tests.
+- Ensure that mock assertions in tests are updated to match the new function signature and call arguments.
+
+### DON'T ❌
+- Assume a refactoring is complete just because the main application logic works. Unit tests are critical call sites that must be maintained.
+- Leave failing tests that are caused by simple signature mismatches. They indicate an incomplete refactoring process and reduce trust in the test suite. This was the root cause of a `TypeError` in `_execute_backtest_pipeline` tests after its signature was changed to explicitly pass `strategy_params`.
+
+## Test Fixture Integrity
+
+### DO ✅
+- **Ensure Complete Fixture Setup:** When creating or refactoring a test class, verify that its `setup_method` or `pytest` fixture initializes **all** mock objects and data attributes that will be accessed by the test methods within that class.
+- **Keep Fixtures Self-Contained:** A test class should be able to run independently based on its own setup.
+
+### DON'T ❌
+- **Copy-Paste Test Classes Without Verifying Fixtures:** Avoid copy-pasting test classes and assuming the setup is correct. This is a common source of `AttributeError`s within the test suite itself.
+- **Leave Incomplete Test Setups:** A test failing because an attribute is missing on the test class instance (e.g., `AttributeError: 'TestClass' object has no attribute 'mock_something'`) indicates a structural flaw in the test suite, not the application code. This was the root cause of a failure in `TestBacktestExecution` where `self.mock_strategy_params` was not initialized in `setup_method`.

@@ -6,7 +6,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 import pandas as pd
 import typer
@@ -157,11 +157,11 @@ def _main_pipeline(
 ) -> int:
     start_time = time.time()
     try:
-        config = _validate_and_load_config(config_file, verbose, quiet)
+        config, strategy_params = _validate_and_load_config(config_file, verbose, quiet)
         if dry_run:
             return _handle_dry_run_mode(config, quiet)
         market_data = _handle_data_acquisition(config, verbose, quiet)
-        analysis_result = _execute_backtest_pipeline(market_data, config, verbose, quiet)
+        analysis_result = _execute_backtest_pipeline(market_data, config, strategy_params, verbose, quiet)
         _generate_output(analysis_result, config, report, output_dir, quiet, no_color, verbose)
         if not quiet:
             elapsed_time = time.time() - start_time
@@ -190,7 +190,7 @@ def _main_pipeline(
         return 10
 
 
-def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> StrategyConfig:
+def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> tuple[StrategyConfig, Any]:
     if not quiet:
         console.print(f"Loading configuration from: [cyan]{config_file}[/cyan]")
     try:
@@ -208,7 +208,7 @@ def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> 
             console.print("\n[bold underline]Strategy Parameters:[/bold underline]")
             for key, value in strategy_params.model_dump().items():
                 console.print(f"  [cyan]{key.replace('_', ' ').title()}[/cyan]: {value}")
-        return config
+        return config, strategy_params
     except Exception as e:
         raise ConfigurationError(f"Failed to load or validate configuration: {e}")
 
@@ -248,13 +248,13 @@ def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool)
         raise DataAcquisitionError(f"Unexpected error during data acquisition: {e}")
 
 
-def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
+def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, strategy_params: Any, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
     try:
         if not quiet:
             console.print("\nRunning backtest analysis...")
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), TimeElapsedColumn(), console=console, disable=quiet) as progress:
             task = progress.add_task("Executing backtest and analysis...", total=None)
-            analysis_result = run_complete_backtest(config, data)
+            analysis_result = run_complete_backtest(config, data, strategy_params)
             progress.update(task, completed=100)
         if not quiet:
             console.print("[green]OK:[/green] Backtest analysis complete")

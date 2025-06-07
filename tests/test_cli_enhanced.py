@@ -177,8 +177,9 @@ class TestConfigurationValidation:
                 mock_params.model_dump.return_value = {"fast_ma": 10, "slow_ma": 20}
                 mock_config.validate_strategy_params.return_value = mock_params
                 
-                result = _validate_and_load_config(config_path, verbose=False, quiet=True)
-                assert result == mock_config
+                config_result, params_result = _validate_and_load_config(config_path, verbose=False, quiet=True)
+                assert config_result == mock_config
+                assert params_result == mock_params
         finally:
             os.unlink(config_path)
 
@@ -281,8 +282,6 @@ class TestDataAcquisition:
 
 
 class TestBacktestExecution:
-    """Test enhanced backtest execution functionality."""
-
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_config = Mock(spec=StrategyConfig)
@@ -294,6 +293,10 @@ class TestBacktestExecution:
             'volume': [1000, 1100, 1200]
         })
         
+        # Add mock_strategy_params that's missing
+        self.mock_strategy_params = Mock()
+        self.mock_strategy_params.model_dump.return_value = {"fast_ma": 10, "slow_ma": 20}
+        
         self.mock_analysis_result = Mock(spec=BacktestAnalysisResult)
 
     @patch('src.meqsap.cli.run_complete_backtest')
@@ -302,23 +305,25 @@ class TestBacktestExecution:
         mock_backtest.return_value = self.mock_analysis_result
         
         result = _execute_backtest_pipeline(
-            self.mock_data, self.mock_config, verbose=False, quiet=True
+            self.mock_data, self.mock_config, self.mock_strategy_params, verbose=False, quiet=True
         )
         
         assert result == self.mock_analysis_result
-        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data)
+        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data, self.mock_strategy_params)
 
     @patch('src.meqsap.cli.run_complete_backtest')
     def test_backtest_execution_failure(self, mock_backtest):
         """Test backtest execution failure handling."""
+        mock_strategy_params = Mock()
         mock_backtest.side_effect = BacktestError("Computation error")
         
         with pytest.raises(BacktestExecutionError) as exc_info:
             _execute_backtest_pipeline(
-                self.mock_data, self.mock_config, verbose=False, quiet=True
+                self.mock_data, self.mock_config, mock_strategy_params, verbose=False, quiet=True
             )
         
         assert "Backtest execution failed" in str(exc_info.value)
+        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data, mock_strategy_params)
 
 
 class TestOutputGeneration:
@@ -623,4 +628,4 @@ class TestEnhancedCLIDynamicParams:
         mock_load_yaml.assert_called_once_with(config_file_path)
         mock_validate_config.assert_called_once_with(parsed_dynamic_config_data)
         mock_fetch_market_data.assert_called_once_with("DUMMYTICKER", date(2023, 1, 1), date(2023, 3, 31))
-        mock_run_complete_backtest.assert_called_once_with(mock_dynamic_config_obj, mock_market_data)
+        mock_run_complete_backtest.assert_called_once_with(mock_dynamic_config_obj, mock_market_data, mock_dynamic_config_obj.validate_strategy_params())
