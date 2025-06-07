@@ -56,6 +56,76 @@ class OptimizationEngine:
         self._best_score: Optional[float] = None
         self._failed_trials_by_type: Dict[TrialFailureType, int] = defaultdict(int)
     
+    def _extract_optuna_search_space(self) -> Dict[str, Any]:
+        """
+        Extracts the search space for Optuna's GridSampler from the strategy
+        parameters.
+
+        This method parses parameter definitions (ranges and choices) and
+        converts them into a list-based format required by GridSampler.
+
+        Returns:
+            A dictionary where keys are parameter names and values are lists
+            of possible values.
+
+        Raises:
+            ConfigurationError: If a parameter definition is not supported
+                                by GridSampler.
+        """
+        search_space = {}
+        strategy_params_dict = self.strategy_config.get('strategy_params', {})
+
+        for param_name, param_def in strategy_params_dict.items():
+            if isinstance(param_def, dict):
+                param_type = param_def.get("type")
+                if param_type == "range":
+                    start, stop, step = param_def['start'], param_def['stop'], param_def['step']
+                    # Use simple range for integers
+                    if all(isinstance(x, int) for x in [start, stop, step]):
+                        values = list(range(start, stop + 1, step))
+                    else:  # Use np.linspace for floats to be inclusive of stop
+                        num_steps = int(round((stop - start) / step)) + 1
+                        values = np.linspace(start, stop, num=num_steps).tolist()
+                    search_space[param_name] = values
+                elif param_type == "choices":
+                    search_space[param_name] = param_def['values']
+                elif param_type == "value":
+                    search_space[param_name] = [param_def['value']]
+                else:
+                    raise ConfigurationError(
+                        f"Unsupported parameter definition type '{param_type}' for GridSearch on parameter '{param_name}'."
+                    )
+            elif isinstance(param_def, (int, float, str, bool)):
+                # This is a fixed value. GridSampler needs it in the search space as a list of one.
+                search_space[param_name] = [param_def]
+            else:
+                raise ConfigurationError(
+                    f"Unsupported parameter definition for GridSearch on parameter '{param_name}': {param_def}"
+                )
+
+        if not search_space:
+            raise ConfigurationError("GridSearch requires at least one parameter with a defined search space (range or choices).")
+
+        return search_space
+
+    def _get_grid_constraints_func(self) -> Optional[Callable[[optuna.trial.FrozenTrial], bool]]:
+        """
+        Returns a constraints function for the GridSampler based on the strategy.
+        This is used to prune invalid parameter combinations from the grid.
+        """
+        strategy_type = self.strategy_config.get("strategy_type")
+
+        if strategy_type == "MovingAverageCrossover":
+            def constraints(trial: optuna.trial.FrozenTrial) -> bool:
+                # Prune if fast_ma is not smaller than slow_ma
+                if "fast_ma" in trial.params and "slow_ma" in trial.params:
+                    return trial.params["fast_ma"] < trial.params["slow_ma"]
+                return True  # No constraint to apply if params are missing
+            return constraints
+
+        # Return None if no constraints for this strategy type
+        return None
+    
     def _get_sampler(self) -> Optional[optuna.samplers.BaseSampler]:
         """Get Optuna sampler based on algorithm parameters.
         
@@ -64,14 +134,13 @@ class OptimizationEngine:
         """
         sampler_type = self.algorithm_params.get("sampler", "tpe").lower()
         random_seed = self.algorithm_params.get("random_seed")
-        
         if sampler_type == "random":
             return optuna.samplers.RandomSampler(seed=random_seed)
         elif sampler_type == "grid":
-            # Grid sampler requires search space definition
-            # For now, return None and let Optuna use default
-            logger.info("Grid sampler requested but not yet implemented with parameter spaces")
-            return None
+            logger.info("Grid sampler requested. Building search space...")
+            search_space = self._extract_optuna_search_space()
+            constraints_func = self._get_grid_constraints_func()
+            return optuna.samplers.GridSampler(search_space, constraints_func=constraints_func)
         elif sampler_type == "cmaes":
             return optuna.samplers.CmaEsSampler(seed=random_seed)
         elif sampler_type == "tpe":
@@ -202,16 +271,14 @@ class OptimizationEngine:
         # Check for interruption
         if self._interruption_event and self._interruption_event.is_set():
             raise optuna.TrialPruned("Optimization interrupted")
-        
         self._current_trial += 1
-        trial_params = trial.params.copy()
-        
-        logger.info(f"Starting trial {trial.number} with params: {trial_params}")
-        
-        try:
-            # Generate concrete parameters from trial suggestions
+        # For GridSampler, params are pre-defined. For others, they are suggested.
+        if isinstance(trial.study.sampler, optuna.samplers.GridSampler):
+            concrete_params = trial.params
+        else:
             concrete_params = self._generate_concrete_params(trial)
-            
+        logger.info(f"Starting trial {trial.number} with params: {concrete_params}")
+        try:
             # Execute backtest with error handling
             backtest_result = run_complete_backtest(
                 self.strategy_config,
@@ -219,40 +286,31 @@ class OptimizationEngine:
                 concrete_params,
                 objective_params=self.objective_params
             )
-            
             # Evaluate with objective function
             score = self.objective_function(backtest_result, self.objective_params)
-            
             # Update best score
             if self._best_score is None or score > self._best_score:
                 self._best_score = score
-            
             self._successful_trials += 1
             logger.info(f"Trial {trial.number} completed successfully with score: {score}")
-            
             # Update progress
-            self._update_progress(trial_params)
-            
+            self._update_progress(concrete_params)
             return score
-            
         except DataError as e:
-            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.DATA_ERROR.value}] {e}. Params: {trial_params}")
-            self._record_failure(TrialFailureType.DATA_ERROR, trial_params)
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.DATA_ERROR.value}] {e}. Params: {trial.params}")
+            self._record_failure(TrialFailureType.DATA_ERROR, trial.params)
             return FAILED_TRIAL_SCORE
-            
         except BacktestError as e:
-            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.CALCULATION_ERROR.value}] {e}. Params: {trial_params}")
-            self._record_failure(TrialFailureType.CALCULATION_ERROR, trial_params)
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.CALCULATION_ERROR.value}] {e}. Params: {trial.params}")
+            self._record_failure(TrialFailureType.CALCULATION_ERROR, trial.params)
             return FAILED_TRIAL_SCORE
-            
         except ConfigurationError as e:
-            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.VALIDATION_ERROR.value}] {e}. Params: {trial_params}")
-            self._record_failure(TrialFailureType.VALIDATION_ERROR, trial_params)
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.VALIDATION_ERROR.value}] {e}. Params: {trial.params}")
+            self._record_failure(TrialFailureType.VALIDATION_ERROR, trial.params)
             return FAILED_TRIAL_SCORE
-            
         except Exception as e:
-            logger.debug(f"Trial {trial.number} failed with unexpected error. Params: {trial_params}", exc_info=True)
-            self._record_failure(TrialFailureType.UNKNOWN_ERROR, trial_params)
+            logger.debug(f"Trial {trial.number} failed with unexpected error. Params: {trial.params}", exc_info=True)
+            self._record_failure(TrialFailureType.UNKNOWN_ERROR, trial.params)
             return FAILED_TRIAL_SCORE
     
     def _generate_concrete_params(self, trial: Trial) -> Dict[str, Any]:
