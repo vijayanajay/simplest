@@ -20,4 +20,4 @@ tests\test_float_handling.py ........                                    [ 76%]
 tests\test_optimizer\test_optimization_error_handling.py .......         [ 80%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 205 passed, 1 skipped in 16.76s =======================
+======================= 205 passed, 1 skipped in 16.98s =======================

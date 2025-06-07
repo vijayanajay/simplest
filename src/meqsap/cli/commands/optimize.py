@@ -16,10 +16,10 @@ import pandas as pd
 import typer
 from rich.console import Console
 
-from ...backtest import run_complete_backtest, BacktestAnalysisResult
+from ...backtest import BacktestAnalysisResult
 from ...config import load_yaml_config
 from ...data import fetch_market_data
-from ...exceptions import ConfigurationError, DataError
+from ...exceptions import ConfigurationError, DataError, BacktestError, ReportingError
 from ...optimizer import OptimizationEngine, OptimizationResult
 from ...optimizer.interruption import OptimizationInterruptHandler
 from ...optimizer.objective_functions import get_objective_function
@@ -201,20 +201,30 @@ def optimize_single(
     except ConfigurationError as e:
         logger.error(f"Configuration error: {e}", exc_info=verbose)
         console.print(f"[red]Configuration error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(code=1)
     
     except DataError as e:
         logger.error(f"Data error: {e}", exc_info=verbose)
         console.print(f"[red]Data error: {e}[/red]")
         console.print("[yellow]Hint: Check your symbol, date range, and internet connection[/yellow]")
-        raise typer.Exit(1)
+        raise typer.Exit(code=2)
+    
+    except BacktestError as e:
+        logger.error(f"Backtest error during optimization: {e}", exc_info=verbose)
+        console.print(f"[red]Backtest error: {e}[/red]")
+        raise typer.Exit(code=3)
+
+    except ReportingError as e:
+        logger.error(f"Reporting error: {e}", exc_info=verbose)
+        console.print(f"[red]Reporting error: {e}[/red]")
+        raise typer.Exit(code=4)
     
     except Exception as e:
-        logger.error(f"Optimization failed: {e}", exc_info=verbose)
-        console.print(f"[red]Optimization failed: {e}[/red]")
+        logger.error(f"An unexpected error occurred: {e}", exc_info=verbose)
+        console.print(f"[red]An unexpected error occurred: {e}[/red]")
         if not verbose:
             console.print("[yellow]Use --verbose flag for detailed error information[/yellow]")
-        raise typer.Exit(1)
+        raise typer.Exit(code=10)
 
 
 @optimize_app.command("batch")
@@ -270,9 +280,9 @@ def optimize_batch(
         raise typer.Exit(1)
         
     except Exception as e:
-        logger.error(f"Batch optimization failed: {e}", exc_info=verbose)
-        console.print(f"[red]Batch optimization failed: {e}[/red]")
-        raise typer.Exit(1)
+        logger.error(f"Batch optimization failed unexpectedly: {e}", exc_info=verbose)
+        console.print(f"[red]Batch optimization failed unexpectedly: {e}[/red]")
+        raise typer.Exit(code=10)
 
 
 if __name__ == "__main__":

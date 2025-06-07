@@ -119,8 +119,9 @@ class OptimizationEngine:
         normalized = direction.strip().lower()
         
         if normalized not in ("maximize", "minimize"):
-            logger.warning(f"Invalid direction '{direction}', falling back to default 'maximize'")
-            return "maximize"
+            raise ConfigurationError(
+                f"Invalid optimization direction '{direction}'. Must be 'maximize' or 'minimize'."
+            )
         
         return normalized
       
@@ -278,11 +279,9 @@ class OptimizationEngine:
         # The strategy_params in strategy_config is the raw dict from YAML.
         # We validate it to get a Pydantic model, then dump it to a consistent dict.
         # This ensures that the parameter definitions (like ranges) are valid.
-        strategy_params_model = StrategyFactory.create_strategy_validator(
-            self.strategy_config['strategy_type'],
-            self.strategy_config['strategy_params']
-        )
-        strategy_params_dict = strategy_params_model.model_dump()
+        # The strategy_config is assumed to be validated before optimization begins.
+        # We directly use the strategy_params dictionary to avoid re-validating on every trial.
+        strategy_params_dict = self.strategy_config['strategy_params']
 
         for param_name, param_def in strategy_params_dict.items():
             if isinstance(param_def, dict):
