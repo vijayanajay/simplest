@@ -16,27 +16,28 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
     """Create a rich progress bar for optimization display.
     
     Args:
-        algorithm: Optimization algorithm name (Grid Search or Random Search)
-        total_trials: Total number of trials (known for Grid Search, None for Random Search)
+        algorithm: Optimization algorithm name (e.g., GridSearch, RandomSearch).
+        total_trials: Total number of trials. If None, an indeterminate bar is shown.
         
     Returns:
         A tuple containing the configured rich Progress instance and the task ID.
     """
-    if total_trials is not None:
-        # Grid Search - show percentage and trial count
+    # Use a determinate progress bar for ANY algorithm with a known, positive total
+    if total_trials is not None and total_trials > 0:
         columns = [
-            SpinnerColumn(),
+            TextColumn("[bold blue]Optimizing..."),
             BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TextColumn("({task.completed}/{task.total} trials)"),
             TextColumn("Best: [green]{task.fields[best_score]:.4f}[/green]"),
             TimeElapsedColumn(),
             TextColumn("{task.fields[current_params]}", style="dim"),
         ]
     else:
-        # Random Search - show spinner and trial count
+        # Use an indeterminate spinner for algorithms with an unknown or zero total
         columns = [
             SpinnerColumn(),
-            TextColumn("{task.description}"),
+            TextColumn("[bold blue]Optimizing..."),
             TextColumn("({task.completed} trials)"),
             TextColumn("Best: [green]{task.fields[best_score]:.4f}[/green]"),
             TimeElapsedColumn(),

@@ -13,6 +13,7 @@ from optuna import Trial
 from ..exceptions import DataError, BacktestError, ConfigurationError
 from ..backtest import run_complete_backtest, BacktestAnalysisResult
 from .models import TrialFailureType, ProgressData, ErrorSummary, OptimizationResult
+from ..config import StrategyFactory
 
 # Constants
 FAILED_TRIAL_SCORE = -np.inf
@@ -254,24 +255,62 @@ class OptimizationEngine:
             return FAILED_TRIAL_SCORE
     
     def _generate_concrete_params(self, trial: Trial) -> Dict[str, Any]:
-        """Generate concrete parameters from trial suggestions.
-        
-        Args:
-            trial: Optuna trial object
-            
-        Returns:
-            Dictionary of concrete parameter values
         """
-        # This is a simplified implementation
-        # Real implementation would use parameter spaces from strategy config
+        Generate a concrete set of parameters for a trial based on the
+        strategy's defined parameter spaces.
+
+        This method dynamically creates Optuna suggestion calls (e.g.,
+        `suggest_int`, `suggest_float`, `suggest_categorical`) for parameters
+        defined as search spaces. It also prunes invalid trials early.
+
+        Args:
+            trial: The Optuna trial object.
+
+        Returns:
+            A dictionary of concrete parameter values for this trial.
+
+        Raises:
+            optuna.TrialPruned: If a combination of parameters is invalid
+                                (e.g., fast_ma >= slow_ma), the trial is pruned
+                                to avoid running a useless backtest.
+        """
         params = {}
-        
-        # Example parameter suggestions - this would be dynamic based on strategy
-        if "fast_ma" in self.strategy_config.get("parameter_spaces", {}):
-            params["fast_ma"] = trial.suggest_int("fast_ma", 5, 20)
-        if "slow_ma" in self.strategy_config.get("parameter_spaces", {}):
-            params["slow_ma"] = trial.suggest_int("slow_ma", 20, 50)
-            
+        # The strategy_params in strategy_config is the raw dict from YAML.
+        # We validate it to get a Pydantic model, then dump it to a consistent dict.
+        # This ensures that the parameter definitions (like ranges) are valid.
+        strategy_params_model = StrategyFactory.create_strategy_validator(
+            self.strategy_config['strategy_type'],
+            self.strategy_config['strategy_params']
+        )
+        strategy_params_dict = strategy_params_model.model_dump()
+
+        for param_name, param_def in strategy_params_dict.items():
+            if isinstance(param_def, dict):
+                param_type = param_def.get("type")
+                if param_type == "range":
+                    start, stop, step = param_def['start'], param_def['stop'], param_def['step']
+                    # Use suggest_int if all range components are whole numbers
+                    if all(float(x).is_integer() for x in [start, stop, step]):
+                        params[param_name] = trial.suggest_int(
+                            param_name, int(start), int(stop), step=int(step)
+                        )
+                    else:
+                        params[param_name] = trial.suggest_float(
+                            param_name, float(start), float(stop), step=float(step)
+                        )
+                elif param_type == "choices":
+                    params[param_name] = trial.suggest_categorical(param_name, param_def['values'])
+                elif param_type == "value":
+                    params[param_name] = param_def['value']
+            else:
+                # A simple fixed value (int, float, str, etc.)
+                params[param_name] = param_def
+
+        # Add business logic validation to prune invalid trials early.
+        if 'fast_ma' in params and 'slow_ma' in params:
+            if params['fast_ma'] >= params['slow_ma']:
+                raise optuna.TrialPruned("fast_ma must be smaller than slow_ma.")
+
         return params
     
     def _record_failure(self, failure_type: TrialFailureType, params: Dict[str, Any]):
