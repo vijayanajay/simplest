@@ -37,11 +37,18 @@ class OptimizationEngine:
         self.strategy_config = strategy_config
         self.objective_function = objective_function
         self.objective_params = objective_params or {}
+        self.algorithm_params = algorithm_params or {}
+
+        # Initialize state attributes
         self._progress_callback: Optional[Callable[[ProgressData], None]] = None
         self._total_trials: Optional[int] = None
         self._interruption_event = None
-        self.algorithm_params = algorithm_params or {}
         self._market_data = None
+        self._start_time: float = 0.0
+        self._current_trial: int = 0
+        self._successful_trials: int = 0
+        self._best_score: Optional[float] = None
+        self._failed_trials_by_type: Dict[TrialFailureType, int] = defaultdict(int)
     
     def run_optimization(self, market_data: pd.DataFrame, progress_callback: Optional[Callable[[ProgressData], None]] = None,
                         interruption_event=None, n_trials: Optional[int] = None) -> OptimizationResult:
@@ -59,8 +66,14 @@ class OptimizationEngine:
         self._progress_callback = progress_callback
         self._interruption_event = interruption_event
         self._total_trials = n_trials
-        self._start_time = time.time()
         self._market_data = market_data
+
+        # Reset state for the new run
+        self._start_time = time.time()
+        self._current_trial = 0
+        self._successful_trials = 0
+        self._best_score = None
+        self._failed_trials_by_type = defaultdict(int)
         
         logger.info(f"Starting optimization with {n_trials or 'grid search'} trials")
         
@@ -145,17 +158,17 @@ class OptimizationEngine:
             return score
             
         except DataError as e:
-            logger.warning(f"Trial {trial.number} failed: [DataError] {e}. Params: {trial_params}")
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.DATA_ERROR.value}] {e}. Params: {trial_params}")
             self._record_failure(TrialFailureType.DATA_ERROR, trial_params)
             return FAILED_TRIAL_SCORE
             
         except BacktestError as e:
-            logger.warning(f"Trial {trial.number} failed: [BacktestError] {e}. Params: {trial_params}")
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.CALCULATION_ERROR.value}] {e}. Params: {trial_params}")
             self._record_failure(TrialFailureType.CALCULATION_ERROR, trial_params)
             return FAILED_TRIAL_SCORE
             
         except ConfigurationError as e:
-            logger.warning(f"Trial {trial.number} failed: [ConfigurationError] {e}. Params: {trial_params}")
+            logger.warning(f"Trial {trial.number} failed: [{TrialFailureType.VALIDATION_ERROR.value}] {e}. Params: {trial_params}")
             self._record_failure(TrialFailureType.VALIDATION_ERROR, trial_params)
             return FAILED_TRIAL_SCORE
             

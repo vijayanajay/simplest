@@ -3,19 +3,21 @@ platform win32 -- Python 3.12.10, pytest-8.3.5, pluggy-1.6.0
 cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
-collected 199 items
+plugins: mock-3.14.1
+collected 206 items
 
-tests\indicators_core\indicators\test_moving_average.py ........         [  4%]
-tests\indicators_core\indicators\test_rsi.py ........                    [  8%]
-tests\indicators_core\test_base.py ........                              [ 12%]
-tests\indicators_core\test_parameters.py ............                    [ 18%]
-tests\test_backtest.py ............                                      [ 24%]
-tests\test_cli.py ..................                                     [ 33%]
-tests\test_cli_comprehensive.py .......................                  [ 44%]
-tests\test_cli_enhanced.py ...................................           [ 62%]
-tests\test_config.py ...................                                 [ 71%]
-tests\test_data.py .......                                               [ 75%]
-tests\test_float_handling.py ........                                    [ 79%]
+tests\indicators_core\indicators\test_moving_average.py ........         [  3%]
+tests\indicators_core\indicators\test_rsi.py ........                    [  7%]
+tests\indicators_core\test_base.py ........                              [ 11%]
+tests\indicators_core\test_parameters.py ............                    [ 17%]
+tests\test_backtest.py ............                                      [ 23%]
+tests\test_cli.py ..................                                     [ 32%]
+tests\test_cli_comprehensive.py .......................                  [ 43%]
+tests\test_cli_enhanced.py ...................................           [ 60%]
+tests\test_config.py ...................                                 [ 69%]
+tests\test_data.py .......                                               [ 72%]
+tests\test_float_handling.py ........                                    [ 76%]
+tests\test_optimizer\test_optimization_error_handling.py .......         [ 80%]
 tests\test_reporting.py ................................s........        [100%]
 
-======================= 198 passed, 1 skipped in 21.89s =======================
+======================= 205 passed, 1 skipped in 20.40s =======================

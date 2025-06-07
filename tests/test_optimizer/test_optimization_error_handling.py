@@ -12,16 +12,17 @@ class TestOptimizationErrorHandling:
     
     @pytest.fixture
     def mock_engine(self):
-        """Create a mock optimization engine for testing."""
-        with patch('src.meqsap.optimizer.engine.OptimizationEngine.__init__', return_value=None):
-            engine = OptimizationEngine(None, None, None)
-            engine._failed_trials_by_type = {failure_type: 0 for failure_type in TrialFailureType}
-            engine._successful_trials = 0
-            engine._best_score = None
-            engine._current_trial = 0
-            engine._start_time = 0
-            engine._progress_callback = None
-            return engine
+        """Create a properly initialized OptimizationEngine with mock dependencies."""
+        mock_config = {"parameter_spaces": {}}  # Simple dict is sufficient for the test
+        mock_objective_fn = Mock()
+        
+        engine = OptimizationEngine(
+            strategy_config=mock_config,
+            objective_function=mock_objective_fn,
+            objective_params={},
+            algorithm_params={}
+        )
+        return engine
     
     @pytest.mark.parametrize("exception_type,expected_failure_type", [
         (DataError("Insufficient data"), TrialFailureType.DATA_ERROR),
@@ -49,7 +50,7 @@ class TestOptimizationErrorHandling:
         
         # Execute the method - engine needs _market_data set
         mock_engine._market_data = mock_market_data
-        result = mock_engine._run_single_trial(mock_trial)
+        result = mock_engine._run_single_trial(mock_trial, mock_market_data)
         
         # Assertions
         assert result == FAILED_TRIAL_SCORE
@@ -57,10 +58,15 @@ class TestOptimizationErrorHandling:
         
         # Check logging
         if isinstance(exception_type, (DataError, BacktestError, ConfigurationError)):
-            assert expected_failure_type.value in caplog.text
-            assert caplog.records[0].levelname == "WARNING"
+            # The first log is INFO "Starting trial...", the second is WARNING for the error
+            warning_logs = [rec for rec in caplog.records if rec.levelname == 'WARNING']
+            assert len(warning_logs) == 1
+            assert expected_failure_type.value in warning_logs[0].message
         else:
-            assert caplog.records[0].levelname == "DEBUG"
+            # The first log is INFO, the second is DEBUG for the unexpected error
+            debug_logs = [rec for rec in caplog.records if rec.levelname == 'DEBUG']
+            assert len(debug_logs) == 1
+            assert "failed with unexpected error" in debug_logs[0].message
     
     def test_successful_trial(self, mock_engine, mocker):
         """Test successful trial execution."""
@@ -87,7 +93,7 @@ class TestOptimizationErrorHandling:
         
         # Execute the method
         mock_engine._market_data = mock_market_data
-        result = mock_engine._run_single_trial(mock_trial)
+        result = mock_engine._run_single_trial(mock_trial, mock_market_data)
         
         # Assertions
         assert result == expected_score
@@ -113,6 +119,7 @@ class TestOptimizationErrorHandling:
         mock_engine._best_score = 1.5
         mock_engine._total_trials = 10
         mock_engine._failed_trials_by_type[TrialFailureType.DATA_ERROR] = 2
+        mock_engine._current_trial = 1  # Simulate being in the first trial
         
         # Mock time.time
         with patch('time.time', return_value=150):

@@ -47,7 +47,7 @@ class TestCLIAnalyzeCommand:
 
         self.mock_strategy_params = Mock()
         self.mock_strategy_params.model_dump.return_value = {
-            "short_window": 10, "long_window": 30
+            "fast_ma": 10, "slow_ma": 30
         }
         self.mock_config_obj.validate_strategy_params.return_value = self.mock_strategy_params
         self.mock_config_obj.model_dump.return_value = {
@@ -104,7 +104,7 @@ class TestCLIAnalyzeCommand:
             
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
 
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         mock_load_yaml.assert_called_once_with(config_file_path)
 
     @patch('src.meqsap.cli.generate_complete_report')
@@ -126,7 +126,7 @@ class TestCLIAnalyzeCommand:
             
             result = self.runner.invoke(app, ["analyze", str(config_file_path), "--validate-only"], catch_exceptions=True)
         
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         mock_load_yaml.assert_called_once()
         mock_validate_config.assert_called_once()
         mock_fetch_market_data.assert_not_called()
@@ -161,7 +161,7 @@ class TestCLIAnalyzeCommand:
                 "--report", "--output-dir", custom_reports_dir_name
             ], catch_exceptions=True)
 
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         expected_output_dir = str((Path(temp_dir) / custom_reports_dir_name).resolve())
 
         mock_generate_complete_report.assert_called_once_with(
@@ -192,9 +192,9 @@ class TestCLIAnalyzeCommand:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path), "--verbose"], catch_exceptions=True)
         
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Strategy Parameters:" in result.stdout
-        assert "Short Window" in result.stdout 
+        assert "Fast Ma" in result.stdout
         assert "Data Sample (first 3 rows):" in result.stdout
         assert "Trade Details (first 5):" in result.stdout
 
@@ -219,7 +219,7 @@ class TestCLIAnalyzeCommand:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path), "--quiet"], catch_exceptions=True)
 
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         expected_output_dir = str((Path(temp_dir) / "reports").resolve())
         mock_generate_complete_report.assert_called_once_with(
             analysis_result=self.mock_analysis_result,
@@ -248,7 +248,7 @@ class TestCLIAnalyzeCommand:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path), "--no-color"], catch_exceptions=True)
 
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         expected_output_dir = str((Path(temp_dir) / "reports").resolve())
         mock_generate_complete_report.assert_called_once_with(
             analysis_result=self.mock_analysis_result,
@@ -279,7 +279,7 @@ class TestCLIErrorHandling:
                 f.write("dummy_content_for_exists_check")
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
         
-        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Loading configuration from" in result.stdout
 
     @patch('src.meqsap.cli.fetch_market_data')
@@ -296,7 +296,7 @@ class TestCLIErrorHandling:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
 
-        assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Fetching market data for" in result.stdout
 
 
@@ -323,7 +323,7 @@ class TestCLIErrorHandling:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
 
-        assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Running backtest analysis..." in result.stdout
 
     @patch('src.meqsap.cli.generate_complete_report')
@@ -349,7 +349,7 @@ class TestCLIErrorHandling:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
         
-        assert result.exit_code == 4, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 4, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Generating terminal report..." in result.stdout
 
     @patch('src.meqsap.cli.validate_config')
@@ -364,7 +364,7 @@ class TestCLIErrorHandling:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path)], catch_exceptions=True)
 
-        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Loading configuration from" in result.stdout
         # The specific error message "Unexpected error..." is not directly in stdout for this flow
         # as _main_pipeline handles the ConfigurationError by returning exit_code 1.
@@ -386,7 +386,7 @@ class TestCLIErrorHandling:
                 f.write(DUMMY_YAML_CONTENT)
             result = self.runner.invoke(app, ["analyze", str(config_file_path), "--verbose"], catch_exceptions=True)
         
-        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         assert "Loading configuration from" in result.stdout
         # As above, _generate_error_message is not called from analyze_command's main handler for this flow.
         mock_print_exception.assert_not_called()
@@ -506,7 +506,7 @@ class TestCLIIntegration:
                 "--no-color"
             ], catch_exceptions=True)
 
-        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr if result.exception is None else 'N/A (exception caught)'}\nException: {result.exception}"
+        assert result.exit_code == 0, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
         expected_output_dir = str((Path(temp_dir) / custom_reports_dir_name).resolve())
         
         mock_load_yaml.assert_called_once_with(config_file_path)

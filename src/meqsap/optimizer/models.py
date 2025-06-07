@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TrialFailureType(Enum):
@@ -54,10 +54,7 @@ class OptimizationResult(BaseModel):
     
     # Best strategy analysis (optional, populated if available)
     best_strategy_analysis: Optional[Dict[str, Any]] = Field(None, description="Full analysis of best strategy, as a dict")
-    
-    # Constraint adherence metrics
+      # Constraint adherence metrics
     constraint_adherence: Optional[Dict[str, Any]] = Field(None, description="Constraint adherence metrics")
     
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

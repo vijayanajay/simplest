@@ -154,7 +154,8 @@ def optimize_single(
             if interrupt_handler.interrupted.is_set():
                 result.was_interrupted = True
                 console.print("[yellow]Optimization was interrupted by user[/yellow]")
-          # Display comprehensive results summary
+        
+        # Display comprehensive results summary
         display_optimization_summary(result, config['ticker'])
         
         # Generate PDF report if requested and a best strategy was found
