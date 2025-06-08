@@ -512,7 +512,7 @@ class TestCLIIntegration:
         mock_load_yaml.assert_called_once_with(config_file_path)
         mock_validate_config.assert_called_once_with({"strategy": "MovingAverageCrossover"})
         mock_fetch_market_data.assert_called_once_with("AAPL", date(2023, 1, 1), date(2023, 12, 31))
-        mock_run_complete_backtest.assert_called_once_with(self.mock_config_obj_integ, self.mock_market_data_integ, self.mock_config_obj_integ.validate_strategy_params())
+        mock_run_complete_backtest.assert_called_once_with(self.mock_config_obj_integ, self.mock_market_data_integ)
         mock_generate_complete_report.assert_called_once_with(
             analysis_result=self.mock_analysis_result_integ,
             include_pdf=True,

@@ -223,7 +223,7 @@ class StrategyFactory:
             raise ConfigurationError(f"Invalid parameters for strategy {strategy_type}: {e}")
 
 
-def load_yaml_config(file_path: str) -> Dict[str, Any]:
+def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     """Load a YAML configuration file.
 
     Args:

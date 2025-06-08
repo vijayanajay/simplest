@@ -34,8 +34,8 @@ tests\indicators_core\test_base.py                            71      2    97%
 tests\indicators_core\test_parameters.py                      50      0   100%
 tests\test_backtest.py                                       164      0   100%
 tests\test_cli.py                                            335      0   100%
-tests\test_cli_comprehensive.py                              253      1    99%
-tests\test_cli_enhanced.py                                   334      0   100%
+tests\test_cli_comprehensive.py                              255      1    99%
+tests\test_cli_enhanced.py                                   333      0   100%
 tests\test_config.py                                         125      0   100%
 tests\test_data.py                                           107      0   100%
 tests\test_float_handling.py                                  77      1    99%
@@ -43,5 +43,5 @@ tests\test_optimizer\__init__.py                               0      0   100%
 tests\test_optimizer\test_optimization_error_handling.py      79      0   100%
 tests\test_reporting.py                                      333     10    97%
 ------------------------------------------------------------------------------
-TOTAL                                                       2020     14    99%
-======================= 205 passed, 1 skipped in 30.73s =======================
+TOTAL                                                       2021     14    99%
+======================= 205 passed, 1 skipped in 29.16s =======================

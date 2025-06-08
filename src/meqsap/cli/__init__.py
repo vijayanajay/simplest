@@ -111,35 +111,30 @@ def _main_pipeline(
     config_file: Path, report: bool, dry_run: bool, output_dir: Optional[Path], no_color: bool, verbose: bool, quiet: bool
 ) -> None:
     start_time = time.time()
-    # verbose and quiet are now passed directly from CLI flags
-    config, strategy_params = _validate_and_load_config(config_file, verbose, quiet)
+    config = _validate_and_load_config(config_file, verbose, quiet)
     if dry_run:
         _handle_dry_run_mode(config, quiet)
         return
     market_data = _handle_data_acquisition(config, verbose, quiet)
-    analysis_result = _execute_backtest_pipeline(market_data, config, strategy_params, verbose, quiet)
+    analysis_result = _execute_backtest_pipeline(market_data, config, verbose, quiet)
     _generate_output(analysis_result, config, report, output_dir, quiet, no_color, verbose)
 
 
-def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> tuple[StrategyConfig, BaseStrategyParams]:
+def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> StrategyConfig:
     if not quiet:
         console.print(f"Loading configuration from: [cyan]{config_file}[/cyan]")
     try:
-        if not config_file.exists():
-            raise ConfigurationError(f"Configuration file not found: {config_file}")
-        if config_file.suffix.lower() not in [".yaml", ".yml"]:
-            raise ConfigurationError(f"Configuration file must have a .yaml or .yml extension, but got: {config_file.suffix}")
-        config = load_yaml_config(config_file)
-        config = validate_config(config)
+        # Only allow .yaml or .yml files
+        if not str(config_file).endswith((".yaml", ".yml")):
+            raise ConfigurationError("Configuration file must have a .yaml or .yml extension.")
+        config_data = load_yaml_config(config_file)
+        config = validate_config(config_data)
         strategy_params = config.validate_strategy_params()
-        
         if not quiet:
-            console.print(Panel(f"[bold green]OK: Configuration valid![/bold green]\n\nStrategy: [bold]{config.strategy_type}[/bold]\nTicker: [bold]{config.ticker}[/bold]\nDate Range: [bold]{config.start_date}[/bold] to [bold]{config.end_date}[/bold]", title="MEQSAP Configuration", expand=False, border_style="green"))
-        if verbose and not quiet:
             console.print("\n[bold underline]Strategy Parameters:[/bold underline]")
             for key, value in strategy_params.model_dump().items():
                 console.print(f"  [cyan]{key.replace('_', ' ').title()}[/cyan]: {value}")
-        return config, strategy_params
+        return config
     except Exception as e:
         raise ConfigurationError(f"Failed to load or validate configuration: {e}")
 
@@ -178,13 +173,13 @@ def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool)
         raise DataAcquisitionError(f"Unexpected error during data acquisition: {e}")
 
 
-def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, strategy_params: BaseStrategyParams, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
+def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, verbose: bool, quiet: bool) -> BacktestAnalysisResult:
     try:
         if not quiet:
             console.print("\nRunning backtest analysis...")
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), TimeElapsedColumn(), console=console, disable=quiet) as progress:
             task = progress.add_task("Executing backtest and analysis...", total=None)
-            analysis_result = run_complete_backtest(config, data, strategy_params)
+            analysis_result = run_complete_backtest(config, data)
             progress.update(task, completed=100)
         if not quiet:
             console.print("[green]OK:[/green] Backtest analysis complete")

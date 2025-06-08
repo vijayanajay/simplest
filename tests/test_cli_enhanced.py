@@ -182,9 +182,8 @@ class TestConfigurationValidation:
                 mock_params.model_dump.return_value = {"fast_ma": 10, "slow_ma": 20}
                 mock_config.validate_strategy_params.return_value = mock_params
                 
-                config_result, params_result = _validate_and_load_config(config_path, verbose=False, quiet=True)
+                config_result = _validate_and_load_config(config_path, verbose=False, quiet=True)
                 assert config_result == mock_config
-                assert params_result == mock_params
         finally:
             os.unlink(config_path)
 
@@ -310,11 +309,11 @@ class TestBacktestExecution:
         mock_backtest.return_value = self.mock_analysis_result
         
         result = _execute_backtest_pipeline(
-            self.mock_data, self.mock_config, self.mock_strategy_params, verbose=False, quiet=True
+            self.mock_data, self.mock_config, verbose=False, quiet=True
         )
         
         assert result == self.mock_analysis_result
-        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data, self.mock_strategy_params)
+        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data)
 
     @patch('src.meqsap.cli.run_complete_backtest')
     def test_backtest_execution_failure(self, mock_backtest):
@@ -324,11 +323,11 @@ class TestBacktestExecution:
         
         with pytest.raises(BacktestExecutionError) as exc_info:
             _execute_backtest_pipeline(
-                self.mock_data, self.mock_config, mock_strategy_params, verbose=False, quiet=True
+                self.mock_data, self.mock_config, verbose=False, quiet=True
             )
         
         assert "Backtest execution failed" in str(exc_info.value)
-        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data, mock_strategy_params)
+        mock_backtest.assert_called_once_with(self.mock_config, self.mock_data)
 
 
 class TestOutputGeneration:
@@ -525,8 +524,8 @@ class TestCLIIntegration:
     @patch('src.meqsap.cli._validate_and_load_config')
     def test_data_error_exit_code(self, mock_validate_load, mock_data_acq):
         """Test that data errors return exit code 2."""
-        # Mock the preceding step to succeed
-        mock_validate_load.return_value = (Mock(), Mock())
+        # Mock the preceding step to succeed by returning a mock config object
+        mock_validate_load.return_value = Mock(spec=StrategyConfig)
         # Mock the function under test to fail
         mock_data_acq.side_effect = DataAcquisitionError("Test data error")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
@@ -637,4 +636,4 @@ class TestEnhancedCLIDynamicParams:
         mock_load_yaml.assert_called_once_with(config_file_path)
         mock_validate_config.assert_called_once_with(parsed_dynamic_config_data)
         mock_fetch_market_data.assert_called_once_with("DUMMYTICKER", date(2023, 1, 1), date(2023, 3, 31))
-        mock_run_complete_backtest.assert_called_once_with(mock_dynamic_config_obj, mock_market_data, mock_dynamic_config_obj.validate_strategy_params())
+        mock_run_complete_backtest.assert_called_once_with(mock_dynamic_config_obj, mock_market_data)

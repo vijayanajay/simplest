@@ -184,3 +184,13 @@
 ### DON'T ❌
 - **Write Tests Based on Incorrect Assumptions:** Avoid writing tests that expect a function to return a value (like an exit code) when its actual implementation raises exceptions or returns `None`. This creates false negatives and technical debt in the test suite.
 - **Mock High-Level Wrappers for Low-Level Errors:** Don't mock a high-level pipeline function to test a specific error condition. Instead, mock the specific, lower-level function that is responsible for that error condition to create a more precise and stable test. This was the root cause of multiple failures in `test_cli_enhanced.py` where `_main_pipeline` was mocked to return an integer, which it never does.
+
+## Anti-Pattern: Brittle Path Assertions in Tests
+
+### Structural Issue Discovered (2025-06-11)
+- **Symptom**: Multiple CLI tests failed with `AssertionError: expected call not found` when running on Windows. The mock assertion expected a `pathlib.WindowsPath` object but the code was called with a `str` representation of the path (e.g., `C:\path\to\file`).
+- **Root Cause**: A core function (`_validate_and_load_config`) was unnecessarily converting a `pathlib.Path` object to a `str` before passing it to a downstream function (`load_yaml_config`). While the downstream function worked with the string, the unit test's mock assertion was written to expect the more robust `Path` object, making the test brittle and platform-dependent.
+
+### Lesson & Design Principle
+- **Principle: Pass `pathlib.Path` objects directly.** Avoid premature conversion of `Path` objects to strings. Most modern Python I/O functions (like `open()`) and many libraries accept `Path` objects directly. This makes code more robust, readable, and less prone to platform-specific path representation issues (e.g., `/` vs `\\`).
+- **Action**: When writing mock assertions for functions that receive file paths, prefer asserting against `Path` objects. Refactor code to pass `Path` objects down the call chain until they are consumed by a function that strictly requires a string.

@@ -108,8 +108,8 @@ The MEQSAP application comprises the following primary modules:
     *   `run_complete_backtest` populates `BacktestResult` with **mandatory** trade duration statistics. Trade durations are calculated from `vectorbt`'s `trades.records_readable`.
         *   *Future Extension Point (Phase 7):* The `run_complete_backtest` signature will be extended to accept an optional `regime_data: Optional[pd.Series] = None` parameter.
 *   **`meqsap_optimizer` Module (New for v2.2, Simplified in v2.3, Refined):** Responsible for automated parameter optimization.
-    *   **Engine (`engine.py`):** Orchestrates the optimization loop (Optuna study).
-        *   Integrates with Optuna callbacks (e.g., `optuna.integration.RichProgressBar` or custom ones) to provide progress updates to the `cli` module for display.
+    *   **Engine (`engine.py`):** Orchestrates the optimization loop (using Optuna).
+        *   Provides a simple callback mechanism (`progress_callback`) for the `cli` module to hook into for progress updates. This decouples the optimizer from any specific UI library like `rich`.
         *   Handles individual backtest failures within a trial gracefully (e.g., logs error, Optuna prunes or assigns a bad score).
         *   Supports Optuna's RDB storage (e.g., SQLite) for persisting trial history, enabling future resumption or detailed analysis of optimization runs.
     *   **Algorithms:** Implements Grid Search, Random Search by using the appropriate `Optuna` samplers.
@@ -130,8 +130,11 @@ The MEQSAP application comprises the following primary modules:
     *   **Data Models (`models.py`):** Contains Pydantic models for the `optimization_config` block and the `OptimizationResult`.
 *   **`reporting` Module:** Presents results. For analysis, shows standard backtest verdict. For optimization, shows a summary (best params, score, etc.) and detailed verdict for the best strategy. Optimization summary **explicitly includes constraint adherence metrics**, particularly hold period statistics (PRD Epic4/Story6/AC4).
     *   If the `--report` flag is used with `optimize-single`, it generates a PDF report for the *best found strategy* using `pyfolio`.
-*   **`cli` Module:** Main entry point. Parses arguments, orchestrates workflows. New `optimize-single` command delegates to `meqsap_optimizer`.
-    *   Responsible for initializing and **displaying `rich` progress bars** for optimization runs, updated via callbacks from the `meqsap_optimizer.engine`.
+*   **`cli` Module:** Main entry point package. Parses arguments and orchestrates workflows.
+    *   `__init__.py`: Main `analyze` command and pipeline orchestration.
+    *   `commands/`: Contains sub-commands like `optimize`.
+    *   `utils.py`: Contains shared utilities like the error handling decorator.
+    *   `optimization_ui.py`: Manages `rich` progress bars and UI for optimization, driven by callbacks from the `meqsap_optimizer.engine`.
 
 ```mermaid
 graph TD
@@ -191,26 +194,31 @@ The project uses a standard `src` layout.
 
 ```plaintext
 meqsap/
-├── .github/
 ├── docs/
-│   ├── architecture.md         # This architecture document (v2.3 Revised)
-│   ├── prd.md                  # Product Requirements Document (v2.2)
-│   └── roadmap.md              # Project Roadmap
+│   ├── adr/                    # Architectural Decision Records
+│   ├── policies/               # Development policies and guidelines
+│   ├── architecture.md         # This document
+│   ├── prd.md                  # Product Requirements Document
+│   └── ...
 ├── examples/
-│   └── ma_crossover_v2.2_optimizable.yaml
+│   └── ...
 ├── src/
 │   └── meqsap/
 │       ├── __init__.py
 │       ├── backtest.py           # Core backtesting, StrategySignalGenerator, BacktestResult enhanced
 │       │                         # Future: regime_data param, SignalCombiner hook
-│       ├── cli.py                # Main CLI entrypoint, new 'optimize-single' command, progress bar management
+│       ├── cli/                  # Main CLI package
+│       │   ├── __init__.py       # Main CLI entrypoint, command orchestration
+│       │   ├── commands/         # Command implementations (e.g., optimize)
+│       │   ├── optimization_ui.py # UI components for optimization
+│       │   └── utils.py          # CLI utilities (e.g., error handlers)
 │       ├── config.py             # Pydantic schema, YAML loading
 │       ├── data.py               # Data acquisition and caching
 │       ├── exceptions.py         # Custom application exceptions
 │       ├── reporting.py          # Terminal output and PDF generation
 │       ├── indicators_core/      # Indicator definitions and logic
 │       │   └── ...
-│       ├── optimizer/            # NEW: Simplified meqsap_optimizer module
+│       ├── optimizer/            # NEW: meqsap_optimizer module
 │       │   ├── __init__.py
 │       │   ├── engine.py         # Core optimization engine (using Optuna, callbacks, RDB storage)
 │       │   ├── models.py         # Pydantic models for optimizer (config, results)

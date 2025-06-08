@@ -137,7 +137,12 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         mock_config_obj.ticker = "MOCKFAIL"
         mock_config_obj.start_date = date(2023,1,1)
         mock_config_obj.end_date = date(2023,12,31)
-        mock_config_obj.validate_strategy_params.return_value = Mock()
+
+        # Fix: The returned mock must be iterable for the for-loop in _validate_and_load_config
+        # by having a model_dump method that returns a dictionary.
+        mock_strategy_params = Mock()
+        mock_strategy_params.model_dump.return_value = {}
+        mock_config_obj.validate_strategy_params.return_value = mock_strategy_params
 
         mock_load_yaml.return_value = {"ticker": "MOCKFAIL", "strategy_type": "MovingAverageCrossover", "start_date": "2023-01-01", "end_date": "2023-12-31"}
         mock_validate_config.return_value = mock_config_obj

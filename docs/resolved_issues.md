@@ -2,7 +2,7 @@
 
 This file tracks issues that have been resolved, including their re-open history.
 
-**Last Updated:** 2025-06-03
+**Last Updated:** 2025-06-10
 
 ---
 **Issue ID:** FLAW-20250601-001
