@@ -47,14 +47,18 @@ def _generate_error_message(exception: Exception, verbose: bool = False, no_colo
         message_parts = [f"[bold red]{error_type}:[/bold red] {error_msg}"]
     suggestions = _get_recovery_suggestions(exception)
     if suggestions:
-        message_parts.append("\n[bold yellow]Suggested Solutions:[/bold yellow]")
+        if no_color:
+            message_parts.append("\nSuggested Solutions:")
+        else:
+            message_parts.append("\n[bold yellow]Suggested Solutions:[/bold yellow]")
         for suggestion in suggestions:
             message_parts.append(f"  • {suggestion}")
     if verbose:
-        message_parts.append("\n[bold underline]Debug Information:[/bold underline]")
         if no_color:
+            message_parts.append("\nDebug Information:")
             message_parts.append(traceback.format_exc())
         else:
+            message_parts.append("\n[bold underline]Debug Information:[/bold underline]")
             message_parts.append(f"[dim]{traceback.format_exc()}[/dim]")
     return "\n".join(message_parts)
 

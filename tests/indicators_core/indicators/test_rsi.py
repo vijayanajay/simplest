@@ -19,35 +19,31 @@ class TestRSIIndicator:
         assert defs[0].constraints == {"gt": 0}
 
     def test_calculate_rsi_valid(self):
-        indicator = RSIIndicator()
         # Data from pandas_ta documentation example
         data = pd.Series([10, 12, 15, 14, 13, 16, 18, 20, 19, 17, 15, 16, 14, 12, 10])
         params = {"period": 14} # Standard RSI period
-        result = indicator.calculate(data, **params)
+        result = RSIIndicator.calculate(data, **params)
 
         # Calculate expected RSI using pandas_ta directly for comparison
         expected = ta.rsi(data, length=14)
         pd.testing.assert_series_equal(result, expected, check_dtype=False)
 
     def test_calculate_rsi_invalid_period_zero(self):
-        indicator = RSIIndicator()
         data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         params = {"period": 0}
         with pytest.raises(ValueError, match="'period' must be a positive integer"):
-            indicator.calculate(data, **params)
+            RSIIndicator.calculate(data, **params)
 
     def test_calculate_rsi_invalid_period_negative(self):
-        indicator = RSIIndicator()
         data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         params = {"period": -5}
         with pytest.raises(ValueError, match="'period' must be a positive integer"):
-            indicator.calculate(data, **params)
+            RSIIndicator.calculate(data, **params)
 
     def test_calculate_rsi_missing_period(self):
-        indicator = RSIIndicator()
         data = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0])
         with pytest.raises(ValueError, match="'period' must be a positive integer"):
-            indicator.calculate(data) # Missing period
+            RSIIndicator.calculate(data) # Missing period
 
     def test_get_required_data_coverage_bars_valid(self):
         assert RSIIndicator.get_required_data_coverage_bars(period=14) == 14

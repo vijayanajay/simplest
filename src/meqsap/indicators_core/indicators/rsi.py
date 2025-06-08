@@ -27,7 +27,8 @@ class RSIIndicator(IndicatorBase):
         # RSI typically needs 'period' bars for the initial smoothing.
         return period
 
-    def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
+    @classmethod
+    def calculate(cls, data: pd.Series, **params: Any) -> pd.Series:
         """
         Calculates the Relative Strength Index.
 

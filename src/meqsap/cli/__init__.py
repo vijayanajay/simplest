@@ -79,7 +79,6 @@ def analyze_command(
     """Analyze a trading strategy with MEQSAP using a YAML configuration file."""
     if verbose and quiet:
         raise ConfigurationError("--verbose and --quiet flags cannot be used together.")
-    
     _configure_application_context(verbose=verbose, quiet=quiet, no_color=no_color)
     _main_pipeline(
         config_file,
@@ -87,6 +86,8 @@ def analyze_command(
         dry_run=validate_only,
         output_dir=output_dir,
         no_color=no_color,
+        verbose=verbose,
+        quiet=quiet,
     )
 
 
@@ -107,12 +108,10 @@ def _configure_application_context(verbose: bool, quiet: bool, no_color: bool) -
 
 
 def _main_pipeline(
-    config_file: Path, report: bool, dry_run: bool, output_dir: Optional[Path], no_color: bool
+    config_file: Path, report: bool, dry_run: bool, output_dir: Optional[Path], no_color: bool, verbose: bool, quiet: bool
 ) -> None:
     start_time = time.time()
-    verbose = logging.getLogger().level == logging.DEBUG
-    quiet = logging.getLogger().level == logging.ERROR
-
+    # verbose and quiet are now passed directly from CLI flags
     config, strategy_params = _validate_and_load_config(config_file, verbose, quiet)
     if dry_run:
         _handle_dry_run_mode(config, quiet)
@@ -201,9 +200,13 @@ def _generate_output(analysis_result: BacktestAnalysisResult, config: StrategyCo
         if output_dir:
             # Path is already resolved by Typer if provided
             output_directory_str = str(output_dir)
+            output_dir_path = output_dir
         else:
             # Default to a resolved path in the current directory
-            output_directory_str = str(Path("./reports").resolve())
+            output_dir_path = Path("./reports").resolve()
+            output_directory_str = str(output_dir_path)
+        # Ensure the output directory exists
+        output_dir_path.mkdir(parents=True, exist_ok=True)
         if not quiet:
             if report:
                 console.print(f"\nGenerating reports (PDF: Yes, Output Dir: [cyan]{output_directory_str}[/cyan])...")

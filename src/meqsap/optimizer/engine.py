@@ -4,7 +4,7 @@ import logging
 import time
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 from collections import defaultdict
 
 import optuna
@@ -19,6 +19,65 @@ from ..config import StrategyFactory
 FAILED_TRIAL_SCORE = -np.inf
 
 logger = logging.getLogger(__name__)
+
+
+class _ParameterParser:
+    """Helper class to parse a single parameter definition for different samplers."""
+
+    def __init__(self, name: str, definition: Any):
+        self.name = name
+        self.definition = definition
+
+    def for_grid_search(self) -> List[Any]:
+        """Returns a list of values for GridSampler."""
+        if isinstance(self.definition, dict):
+            param_type = self.definition.get("type")
+            if param_type == "range":
+                start, stop, step = self.definition['start'], self.definition['stop'], self.definition['step']
+                if all(isinstance(x, int) for x in [start, stop, step]):
+                    return list(range(start, stop + 1, step))
+                else:
+                    num_steps = int(round((stop - start) / step)) + 1
+                    return np.linspace(start, stop, num=num_steps).tolist()
+            elif param_type == "choices":
+                return self.definition['values']
+            elif param_type == "value":
+                return [self.definition['value']]
+            else:
+                raise ConfigurationError(
+                    f"Unsupported parameter definition type '{param_type}' for GridSearch on parameter '{self.name}'."
+                )
+        elif isinstance(self.definition, (int, float, str, bool)):
+            return [self.definition]
+        else:
+            raise ConfigurationError(
+                f"Unsupported parameter definition for GridSearch on parameter '{self.name}': {self.definition}"
+            )
+
+    def for_trial_suggestion(self, trial: Trial) -> Any:
+        """Suggests a value for a trial for other samplers."""
+        if isinstance(self.definition, dict):
+            param_type = self.definition.get("type")
+            if param_type == "range":
+                start, stop, step = self.definition['start'], self.definition['stop'], self.definition['step']
+                if all(float(x).is_integer() for x in [start, stop, step]):
+                    return trial.suggest_int(self.name, int(start), int(stop), step=int(step))
+                else:
+                    return trial.suggest_float(self.name, float(start), float(stop), step=float(step))
+            elif param_type == "choices":
+                return trial.suggest_categorical(self.name, self.definition['values'])
+            elif param_type == "value":
+                return self.definition['value']
+            else:
+                raise ConfigurationError(
+                    f"Unsupported parameter definition type '{param_type}' for trial suggestion on parameter '{self.name}'."
+                )
+        elif isinstance(self.definition, (int, float, str, bool)):
+            return self.definition
+        else:
+            raise ConfigurationError(
+                f"Unsupported parameter definition for trial suggestion on parameter '{self.name}': {self.definition}"
+            )
 
 
 class OptimizationEngine:
@@ -56,52 +115,16 @@ class OptimizationEngine:
         self._best_score: Optional[float] = None
         self._failed_trials_by_type: Dict[TrialFailureType, int] = defaultdict(int)
     
-    def _extract_optuna_search_space(self) -> Dict[str, Any]:
+    def _get_grid_search_space(self) -> Dict[str, List[Any]]:
         """
-        Extracts the search space for Optuna's GridSampler from the strategy
-        parameters.
-
-        This method parses parameter definitions (ranges and choices) and
-        converts them into a list-based format required by GridSampler.
-
-        Returns:
-            A dictionary where keys are parameter names and values are lists
-            of possible values.
-
-        Raises:
-            ConfigurationError: If a parameter definition is not supported
-                                by GridSampler.
+        Returns a search space dictionary suitable for optuna.samplers.GridSampler.
         """
         search_space = {}
         strategy_params_dict = self.strategy_config.get('strategy_params', {})
 
         for param_name, param_def in strategy_params_dict.items():
-            if isinstance(param_def, dict):
-                param_type = param_def.get("type")
-                if param_type == "range":
-                    start, stop, step = param_def['start'], param_def['stop'], param_def['step']
-                    # Use simple range for integers
-                    if all(isinstance(x, int) for x in [start, stop, step]):
-                        values = list(range(start, stop + 1, step))
-                    else:  # Use np.linspace for floats to be inclusive of stop
-                        num_steps = int(round((stop - start) / step)) + 1
-                        values = np.linspace(start, stop, num=num_steps).tolist()
-                    search_space[param_name] = values
-                elif param_type == "choices":
-                    search_space[param_name] = param_def['values']
-                elif param_type == "value":
-                    search_space[param_name] = [param_def['value']]
-                else:
-                    raise ConfigurationError(
-                        f"Unsupported parameter definition type '{param_type}' for GridSearch on parameter '{param_name}'."
-                    )
-            elif isinstance(param_def, (int, float, str, bool)):
-                # This is a fixed value. GridSampler needs it in the search space as a list of one.
-                search_space[param_name] = [param_def]
-            else:
-                raise ConfigurationError(
-                    f"Unsupported parameter definition for GridSearch on parameter '{param_name}': {param_def}"
-                )
+            parser = _ParameterParser(param_name, param_def)
+            search_space[param_name] = parser.for_grid_search()
 
         if not search_space:
             raise ConfigurationError("GridSearch requires at least one parameter with a defined search space (range or choices).")
@@ -138,7 +161,7 @@ class OptimizationEngine:
             return optuna.samplers.RandomSampler(seed=random_seed)
         elif sampler_type == "grid":
             logger.info("Grid sampler requested. Building search space...")
-            search_space = self._extract_optuna_search_space()
+            search_space = self._get_grid_search_space()
             constraints_func = self._get_grid_constraints_func()
             return optuna.samplers.GridSampler(search_space, constraints_func=constraints_func)
         elif sampler_type == "cmaes":
@@ -276,7 +299,7 @@ class OptimizationEngine:
         if isinstance(trial.study.sampler, optuna.samplers.GridSampler):
             concrete_params = trial.params
         else:
-            concrete_params = self._generate_concrete_params(trial)
+            concrete_params = self._suggest_params_for_trial(trial)
         logger.info(f"Starting trial {trial.number} with params: {concrete_params}")
         try:
             # Execute backtest with error handling
@@ -313,55 +336,16 @@ class OptimizationEngine:
             self._record_failure(TrialFailureType.UNKNOWN_ERROR, trial.params)
             return FAILED_TRIAL_SCORE
     
-    def _generate_concrete_params(self, trial: Trial) -> Dict[str, Any]:
+    def _suggest_params_for_trial(self, trial: Trial) -> Dict[str, Any]:
         """
-        Generate a concrete set of parameters for a trial based on the
-        strategy's defined parameter spaces.
-
-        This method dynamically creates Optuna suggestion calls (e.g.,
-        `suggest_int`, `suggest_float`, `suggest_categorical`) for parameters
-        defined as search spaces. It also prunes invalid trials early.
-
-        Args:
-            trial: The Optuna trial object.
-
-        Returns:
-            A dictionary of concrete parameter values for this trial.
-
-        Raises:
-            optuna.TrialPruned: If a combination of parameters is invalid
-                                (e.g., fast_ma >= slow_ma), the trial is pruned
-                                to avoid running a useless backtest.
+        Suggests parameter values for a given trial using the parameter definitions.
         """
         params = {}
-        # The strategy_params in strategy_config is the raw dict from YAML.
-        # We validate it to get a Pydantic model, then dump it to a consistent dict.
-        # This ensures that the parameter definitions (like ranges) are valid.
-        # The strategy_config is assumed to be validated before optimization begins.
-        # We directly use the strategy_params dictionary to avoid re-validating on every trial.
         strategy_params_dict = self.strategy_config['strategy_params']
 
         for param_name, param_def in strategy_params_dict.items():
-            if isinstance(param_def, dict):
-                param_type = param_def.get("type")
-                if param_type == "range":
-                    start, stop, step = param_def['start'], param_def['stop'], param_def['step']
-                    # Use suggest_int if all range components are whole numbers
-                    if all(float(x).is_integer() for x in [start, stop, step]):
-                        params[param_name] = trial.suggest_int(
-                            param_name, int(start), int(stop), step=int(step)
-                        )
-                    else:
-                        params[param_name] = trial.suggest_float(
-                            param_name, float(start), float(stop), step=float(step)
-                        )
-                elif param_type == "choices":
-                    params[param_name] = trial.suggest_categorical(param_name, param_def['values'])
-                elif param_type == "value":
-                    params[param_name] = param_def['value']
-            else:
-                # A simple fixed value (int, float, str, etc.)
-                params[param_name] = param_def
+            parser = _ParameterParser(param_name, param_def)
+            params[param_name] = parser.for_trial_suggestion(trial)
 
         # Add business logic validation to prune invalid trials early.
         if 'fast_ma' in params and 'slow_ma' in params:

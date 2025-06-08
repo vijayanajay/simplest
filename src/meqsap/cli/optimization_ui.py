@@ -1,6 +1,7 @@
 """CLI progress bar and UI components for optimization."""
 
 import time
+import numpy as np
 from typing import Optional, Callable, Dict, Any, Tuple
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
 from rich.console import Console
@@ -29,7 +30,7 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TextColumn("({task.completed}/{task.total} trials)"),
-            TextColumn("Best: [green]{task.fields[best_score]:.4f}[/green]"),
+            TextColumn("Best: [green]{task.fields[best_score]}[/green]"),
             TimeElapsedColumn(),
             TextColumn("{task.fields[current_params]}", style="dim"),
         ]
@@ -39,7 +40,7 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
             SpinnerColumn(),
             TextColumn("[bold blue]Optimizing..."),
             TextColumn("({task.completed} trials)"),
-            TextColumn("Best: [green]{task.fields[best_score]:.4f}[/green]"),
+            TextColumn("Best: [green]{task.fields[best_score]}[/green]"),
             TimeElapsedColumn(),
             TextColumn("{task.fields[current_params]}", style="dim"),
         ]
@@ -48,7 +49,7 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
     task_id = progress.add_task(
         "optimization", 
         total=total_trials, 
-        best_score=0.0, 
+        best_score="N/A", 
         current_params="Initializing..."
     )
     
@@ -65,14 +66,16 @@ def create_progress_callback(progress: Progress, task_id: int,
             params_str = params_str[:max_param_length-3] + "..."
         
         # Update progress bar
-        best_score_value = progress_data.best_score if progress_data.best_score is not None else 0.0
-        
+        best_score_display = "N/A"
+        if progress_data.best_score is not None and not np.isnan(progress_data.best_score):
+            best_score_display = f"{progress_data.best_score:.4f}"
+
         progress.update(
             task_id,
             completed=progress_data.current_trial,
             total=progress_data.total_trials,
             fields={
-                "best_score": best_score_value,
+                "best_score": best_score_display,
                 "current_params": params_str
             }
         )

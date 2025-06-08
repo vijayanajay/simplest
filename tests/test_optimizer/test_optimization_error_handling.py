@@ -44,7 +44,7 @@ class TestOptimizationErrorHandling:
         mock_backtest.side_effect = exception_type
         
         # Patch other methods
-        mocker.patch.object(mock_engine, '_generate_concrete_params', return_value={})
+        mocker.patch.object(mock_engine, '_suggest_params_for_trial', return_value=mock_trial.params)
         mocker.patch.object(mock_engine, '_record_failure')
         mocker.patch.object(mock_engine, '_update_progress')
         
@@ -93,7 +93,7 @@ class TestOptimizationErrorHandling:
         mock_engine.objective_params = {}
         
         # Patch other methods
-        mocker.patch.object(mock_engine, '_generate_concrete_params', return_value={})
+        mocker.patch.object(mock_engine, '_suggest_params_for_trial', return_value=mock_trial.params)
         mocker.patch.object(mock_engine, '_update_progress')
         
         # Execute the method

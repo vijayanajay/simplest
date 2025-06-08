@@ -54,7 +54,11 @@ class ParameterSpace:
 
 
 class IndicatorBase(ABC):
-    """Abstract base class for all technical indicators."""
+    """Abstract base class for all technical indicators.
+    
+    This class uses classmethods to promote a stateless design. Indicators should not
+    store state between calculations.
+    """
 
     @classmethod
     @abstractmethod
@@ -68,7 +72,8 @@ class IndicatorBase(ABC):
         """Return minimum required historical data bars for calculation based on provided parameters."""
         pass
 
+    @classmethod
     @abstractmethod
-    def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
+    def calculate(cls, data: pd.Series, **params: Any) -> pd.Series:
         """Calculate the indicator values on the provided data series (e.g., close prices)."""
         pass

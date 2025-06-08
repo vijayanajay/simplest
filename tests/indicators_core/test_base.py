@@ -60,11 +60,12 @@ class MockIndicator(IndicatorBase):
             ParameterDefinition(name="length", param_type=int, description="Lookback length.", constraints={"gt": 0})
         ]
 
-    def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
+    @classmethod
+    def calculate(cls, data: pd.Series, **params: Any) -> pd.Series:
         length = params.get("length")
         if length is None or not isinstance(length, int) or length <= 0:
             raise ValueError("'length' must be a positive integer.")
-        return data.rolling(window=length).mean()
+        return data.rolling(length).mean()
 
     @classmethod
     def get_required_data_coverage_bars(cls, **params: Any) -> int:

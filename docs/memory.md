@@ -164,6 +164,16 @@
 - **Principle: Refactoring must include all dependents.** When moving code (functions, classes) between modules, the refactoring task is not complete until all call sites, including unit tests, are updated.
 - **Action:** Use IDE features like "Find Usages" or "Find in all files" to locate every reference to the moved symbol. Update all import statements accordingly. A failing test suite, especially during collection, is a strong signal of an incomplete structural change.
 
+## Anti-Pattern: Stale Test Mocks After Refactoring
+
+### Structural Issue Discovered (2025-06-09)
+- **Symptom:** `AttributeError` during `pytest` execution, where a test (`tests/test_optimizer/test_optimization_error_handling.py`) failed because it tried to patch a method (`_generate_concrete_params`) that no longer exists on the `OptimizationEngine` class.
+- **Root Cause:** A structural refactoring in `src/meqsap/optimizer/engine.py` renamed or removed the `_generate_concrete_params` method, likely replacing it with `_suggest_params_for_trial`. The unit test, which directly mocks this internal method, was not updated to reflect the change. This created a stale mock that targeted a non-existent attribute.
+
+### Lesson & Design Principle
+- **Principle: Test mocks are part of the contract.** When refactoring a class's internal methods, any tests that mock those methods must be updated in lockstep. Stale mocks are a form of technical debt that breaks the test suite's reliability.
+- **Action:** When renaming or removing a method, immediately use "Find Usages" or a global search to locate all call sites, including test mocks (`mocker.patch`, `patch.object`, etc.). Update the test to mock the new method name or adjust the test logic if the method was removed. This prevents the test suite from reporting `AttributeError`s, which are test setup failures, not application logic failures.
+
 ## Test Suite Integrity
 
 ### DO ✅

@@ -28,7 +28,8 @@ class SimpleMovingAverageIndicator(IndicatorBase):
         # The first value is at index period-1. So, period bars are needed.
         return period
 
-    def calculate(self, data: pd.Series, **params: Any) -> pd.Series:
+    @classmethod
+    def calculate(cls, data: pd.Series, **params: Any) -> pd.Series:
         """
         Calculates the Simple Moving Average.
 

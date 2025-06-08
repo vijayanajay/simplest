@@ -216,8 +216,7 @@ class StrategySignalGenerator:
         if sma_indicator_cls is None:
             raise BacktestError("SimpleMovingAverage indicator not found in registry.")
         
-        sma_instance = sma_indicator_cls() # Instantiate without params
-        fast_ma_series = sma_instance.calculate(close_prices_for_ta, period=fast_ma_period)
+        fast_ma_series = sma_indicator_cls.calculate(close_prices_for_ta, period=fast_ma_period)
         if fast_ma_series is None:
             raise BacktestError(
                 f"Failed to calculate Fast MA (period {fast_ma_period}). "
@@ -225,8 +224,7 @@ class StrategySignalGenerator:
                 "all-NaN, or non-numeric input price series for the indicator."
             )
 
-        # Use the same instance for slow_ma or create a new one if state matters (it doesn't for SMA)
-        slow_ma_series = sma_instance.calculate(close_prices_for_ta, period=slow_ma_period)
+        slow_ma_series = sma_indicator_cls.calculate(close_prices_for_ta, period=slow_ma_period)
         if slow_ma_series is None:
             raise BacktestError(
                 f"Failed to calculate Slow MA (period {slow_ma_period}). "
