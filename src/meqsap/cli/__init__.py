@@ -4,34 +4,30 @@ import logging
 import os
 import sys
 import time
-import traceback
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
 import typer
+import pandas as pd
 from rich.console import Console
-from rich.panel import Panel
-from rich.progress import (Progress, SpinnerColumn, TextColumn,
-                           TimeElapsedColumn)
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
+from rich.panel import Panel
 
 # Core application modules
 from .. import __version__
 from ..backtest import BacktestAnalysisResult, run_complete_backtest
 from ..config import StrategyConfig, load_yaml_config, validate_config, BaseStrategyParams
-from ..data import fetch_market_data
-from ..exceptions import (MEQSAPError, ConfigurationError, DataError,
-                          DataAcquisitionError, BacktestError,
+from ..data import DataError, fetch_market_data
+from ..exceptions import (BacktestError, ConfigurationError, DataAcquisitionError,
                           BacktestExecutionError, ReportingError,
                           ReportGenerationError)
 from ..reporting import generate_complete_report
 from .commands import optimize_app
-from .optimization_ui import (
-    create_optimization_progress_bar,
-    create_progress_callback,
-    display_optimization_summary,
-)
+from .optimization_ui import (create_optimization_progress_bar,
+                              create_progress_callback,
+                              display_optimization_summary)
+from .utils import handle_cli_errors
 
 # Create the main app with proper command structure
 app = typer.Typer(
@@ -56,83 +52,42 @@ logging.basicConfig(
 
 
 @app.command("analyze")
+@handle_cli_errors
 def analyze_command(
     config_file: Path = typer.Argument(
         ...,
-        help="Path to the YAML configuration file",
+        help="Path to strategy configuration YAML file",
         exists=True,
         file_okay=True,
         dir_okay=False,
         readable=True,
-        resolve_path=True,
     ),
-    validate_only: bool = typer.Option(
-        False,
-        "--validate-only",
-        help="Only validate the configuration, don't run backtest",
-    ),
-    report: bool = typer.Option(
-        False,
-        "--report",
-        help="Generate PDF report after analysis",
-    ),
+    report: bool = typer.Option(False, "--report", help="Generate PDF report after analysis."),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose logging"),
+    quiet: bool = typer.Option(False, "--quiet", help="Suppress most output."),
+    validate_only: bool = typer.Option(False, "--validate-only", help="Validate configuration only, do not run backtest."),
     output_dir: Optional[Path] = typer.Option(
-        "./reports",
+        None,
         "--output-dir",
-        help="Directory for output reports",
+        help="Directory to save reports and outputs.",
         file_okay=False,
         dir_okay=True,
         resolve_path=True,
     ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose output with detailed logging and diagnostics",
-    ),
-    quiet: bool = typer.Option(
-        False,
-        "--quiet",
-        "-q",
-        help="Suppress non-essential output (minimal output mode)",
-    ),
-    no_color: bool = typer.Option(
-        False,
-        "--no-color",
-        help="Disable colored output",
-    ),
-) -> None:
-    """
-    Analyze a trading strategy with MEQSAP using a YAML configuration file.
-
-    This command loads the configuration, fetches market data, runs a backtest,
-    and generates comprehensive analysis reports for the MEQSAP platform.
-
-    Examples:
-        meqsap analyze config.yaml
-        meqsap analyze config.yaml --report --verbose
-        meqsap analyze config.yaml --validate-only
-        meqsap analyze config.yaml --output-dir ./custom_reports --report
-    """
+    no_color: bool = typer.Option(False, "--no-color", help="Disable colored output."),
+):
+    """Analyze a trading strategy with MEQSAP using a YAML configuration file."""
     if verbose and quiet:
-        console.print("[bold red]Error:[/bold red] --verbose and --quiet flags cannot be used together")
-        raise typer.Exit(code=1)
-
+        raise ConfigurationError("--verbose and --quiet flags cannot be used together.")
+    
     _configure_application_context(verbose=verbose, quiet=quiet, no_color=no_color)
-
-    exit_code = _main_pipeline(
-        config_file=config_file,
+    _main_pipeline(
+        config_file,
         report=report,
-        verbose=verbose,
-        quiet=quiet,
         dry_run=validate_only,
         output_dir=output_dir,
         no_color=no_color,
     )
-
-    if exit_code != 0:
-        # _main_pipeline already prints the error, so we just exit.
-        raise typer.Exit(code=exit_code)
 
 
 def _configure_application_context(verbose: bool, quiet: bool, no_color: bool) -> None:
@@ -152,42 +107,19 @@ def _configure_application_context(verbose: bool, quiet: bool, no_color: bool) -
 
 
 def _main_pipeline(
-    config_file: Path, report: bool, verbose: bool, quiet: bool,
-    dry_run: bool, output_dir: Optional[Path], no_color: bool,
-) -> int:
+    config_file: Path, report: bool, dry_run: bool, output_dir: Optional[Path], no_color: bool
+) -> None:
     start_time = time.time()
-    try:
-        config, strategy_params = _validate_and_load_config(config_file, verbose, quiet)
-        if dry_run:
-            return _handle_dry_run_mode(config, quiet)
-        market_data = _handle_data_acquisition(config, verbose, quiet)
-        analysis_result = _execute_backtest_pipeline(market_data, config, strategy_params, verbose, quiet)
-        _generate_output(analysis_result, config, report, output_dir, quiet, no_color, verbose)
-        if not quiet:
-            elapsed_time = time.time() - start_time
-            console.print(f"\n[bold green]OK: MEQSAP analysis completed successfully in {elapsed_time:.2f} seconds[/bold green]")
-        return 0
-    except ConfigurationError as e:
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
-        console.print(error_msg)
-        return 1
-    except DataAcquisitionError as e:
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
-        console.print(error_msg)
-        return 2
-    except BacktestExecutionError as e:
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
-        console.print(error_msg)
-        return 3
-    except ReportGenerationError as e:
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
-        console.print(error_msg)
-        return 4
-    except Exception as e:
-        logging.exception("An unexpected error occurred in main pipeline")
-        error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
-        console.print(error_msg)
-        return 10
+    verbose = logging.getLogger().level == logging.DEBUG
+    quiet = logging.getLogger().level == logging.ERROR
+
+    config, strategy_params = _validate_and_load_config(config_file, verbose, quiet)
+    if dry_run:
+        _handle_dry_run_mode(config, quiet)
+        return
+    market_data = _handle_data_acquisition(config, verbose, quiet)
+    analysis_result = _execute_backtest_pipeline(market_data, config, strategy_params, verbose, quiet)
+    _generate_output(analysis_result, config, report, output_dir, quiet, no_color, verbose)
 
 
 def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> tuple[StrategyConfig, BaseStrategyParams]:
@@ -213,19 +145,18 @@ def _validate_and_load_config(config_file: Path, verbose: bool, quiet: bool) -> 
         raise ConfigurationError(f"Failed to load or validate configuration: {e}")
 
 
-def _handle_dry_run_mode(config: StrategyConfig, quiet: bool) -> int:
+def _handle_dry_run_mode(config: StrategyConfig, quiet: bool) -> None:
     if not quiet:
         console.print("\n[bold blue]Dry-run mode - Configuration validation only[/bold blue]")
         operations_table = Table(title="Planned Operations", show_header=True, header_style="bold magenta")
-        operations_table.add_column("Operation", style="cyan")
-        operations_table.add_column("Details", style="white")
-        operations_table.add_row("Data Acquisition", "Fetch market data for ticker")
-        operations_table.add_row("Backtesting", "Run complete backtest with vibe checks")
-        operations_table.add_row("Output", "Generate terminal report")
+        operations_table.add_column("Operation")
+        operations_table.add_row("Validate configuration")
+        operations_table.add_row("Acquire market data")
+        operations_table.add_row("Run backtest")
+        operations_table.add_row("Generate report (optional)")
         console.print(operations_table)
         console.print("\n[green]OK: Configuration is valid. Ready for execution.[/green]")
         console.print("[dim]Use without --dry-run to execute the backtest.[/dim]")
-    return 0
 
 
 def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool) -> pd.DataFrame:
@@ -267,7 +198,12 @@ def _execute_backtest_pipeline(data: pd.DataFrame, config: StrategyConfig, strat
 
 def _generate_output(analysis_result: BacktestAnalysisResult, config: StrategyConfig, report: bool, output_dir: Optional[Path], quiet: bool, no_color: bool, verbose: bool = False) -> None:
     try:
-        output_directory_str = str(output_dir) if output_dir else "./reports"
+        if output_dir:
+            # Path is already resolved by Typer if provided
+            output_directory_str = str(output_dir)
+        else:
+            # Default to a resolved path in the current directory
+            output_directory_str = str(Path("./reports").resolve())
         if not quiet:
             if report:
                 console.print(f"\nGenerating reports (PDF: Yes, Output Dir: [cyan]{output_directory_str}[/cyan])...")
@@ -301,42 +237,6 @@ def _display_trade_details(analysis_result: BacktestAnalysisResult) -> None:
         console.print()
     elif primary_result and primary_result.total_trades == 0: # noqa: E721
         console.print("\n[yellow]WARN: No trades were executed during the backtest.[/yellow]")
-
-
-def _generate_error_message(exception: Exception, verbose: bool = False, no_color: bool = False) -> str:
-    error_type = type(exception).__name__
-    error_msg = str(exception)
-    if no_color:
-        message_parts = [f"{error_type}: {error_msg}"]
-    else:
-        message_parts = [f"[bold red]{error_type}:[/bold red] {error_msg}"]
-    suggestions = _get_recovery_suggestions(exception)
-    if suggestions:
-        message_parts.append("\n[bold yellow]Suggested Solutions:[/bold yellow]")
-        for suggestion in suggestions:
-            message_parts.append(f"  • {suggestion}")
-    if verbose:
-        message_parts.append("\n[bold underline]Debug Information:[/bold underline]")
-        if no_color:
-            message_parts.append(traceback.format_exc())
-        else:
-            message_parts.append(f"[dim]{traceback.format_exc()}[/dim]")
-    return "\n".join(message_parts)
-
-
-def _get_recovery_suggestions(exception: Exception) -> list[str]:
-    suggestions = []
-    if isinstance(exception, ConfigurationError):
-        suggestions.extend(["Verify the YAML file syntax is correct", "Check that all required fields are present", "Ensure date ranges are valid (start < end, not in future)", "Validate ticker symbol format", "Try using --dry-run to validate configuration without execution", "Check examples in documentation for proper YAML structure"])
-    elif isinstance(exception, DataAcquisitionError):
-        suggestions.extend(["Check your internet connection", "Verify the ticker symbol exists and is correctly spelled", "Try a different date range (some tickers have limited historical data)", "Wait a moment and try again (rate limiting)", "Check if yfinance service is experiencing issues", "Try using a more common ticker symbol to test connectivity"])
-    elif isinstance(exception, BacktestExecutionError):
-        suggestions.extend(["Verify your strategy parameters are reasonable", "Check that your data has sufficient history for the strategy", "Ensure moving average periods are less than data length", "Try reducing the complexity of your strategy parameters", "Check for data quality issues in your date range", "Consider using --verbose for more detailed error information"])
-    elif isinstance(exception, ReportGenerationError):
-        suggestions.extend(["Check that the output directory exists and is writable", "Ensure you have sufficient disk space", "Try running without --report flag to skip PDF generation", "Verify all required dependencies for PDF generation are installed", "Check file permissions in the output directory", "Try specifying a different output directory with --output-dir"])
-    else:
-        suggestions.extend(["Try running with --verbose for more details", "Check the documentation for troubleshooting guides", "Verify all dependencies are properly installed", "Try running --version to check dependency status", "Consider using --dry-run to isolate configuration issues", "Check if this is a known issue in the project documentation"])
-    return suggestions
 
 
 @app.command("version")

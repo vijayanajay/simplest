@@ -22,6 +22,8 @@ from src.meqsap.cli import (
     _handle_data_acquisition,
     _execute_backtest_pipeline,
     _generate_output,
+)
+from src.meqsap.cli.utils import (
     _generate_error_message,
     _get_recovery_suggestions,
 )
@@ -144,13 +146,16 @@ class TestEnhancedCLIMain:
     @patch('src.meqsap.cli._main_pipeline')
     def test_pipeline_failure(self, mock_pipeline):
         """Test pipeline failure handling."""
-        mock_pipeline.return_value = 1
+        # Mock the pipeline to raise a generic exception, which should be caught
+        # by the decorator and result in exit code 10.
+        mock_pipeline.side_effect = Exception("Generic pipeline failure")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_path])
-            assert result.exit_code == 1
+            # The @handle_cli_errors decorator catches Exception and exits with 10
+            assert result.exit_code == 10
         finally:
             os.unlink(config_path)
 
@@ -232,13 +237,13 @@ class TestDryRunMode:
 
     def test_dry_run_mode_quiet(self):
         """Test dry-run mode with quiet flag."""
-        exit_code = _handle_dry_run_mode(self.mock_config, quiet=True)
-        assert exit_code == 0
+        result = _handle_dry_run_mode(self.mock_config, quiet=True)
+        assert result is None
 
     def test_dry_run_mode_verbose(self):
         """Test dry-run mode with verbose output."""
-        exit_code = _handle_dry_run_mode(self.mock_config, quiet=False)
-        assert exit_code == 0
+        result = _handle_dry_run_mode(self.mock_config, quiet=False)
+        assert result is None
 
 
 class TestDataAcquisition:
@@ -503,10 +508,10 @@ class TestCLIIntegration:
         result = self.runner.invoke(app, ["analyze", "/nonexistent/config.yaml"])
         assert result.exit_code == 2  # Typer's exit code for file not found
 
-    @patch('src.meqsap.cli._main_pipeline')
-    def test_configuration_error_exit_code(self, mock_pipeline):
+    @patch('src.meqsap.cli._validate_and_load_config')
+    def test_configuration_error_exit_code(self, mock_validate_load):
         """Test that configuration errors return exit code 1."""
-        mock_pipeline.return_value = 1
+        mock_validate_load.side_effect = ConfigurationError("Test config error")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name
@@ -516,10 +521,14 @@ class TestCLIIntegration:
         finally:
             os.unlink(config_path)
 
-    @patch('src.meqsap.cli._main_pipeline')
-    def test_data_error_exit_code(self, mock_pipeline):
+    @patch('src.meqsap.cli._handle_data_acquisition')
+    @patch('src.meqsap.cli._validate_and_load_config')
+    def test_data_error_exit_code(self, mock_validate_load, mock_data_acq):
         """Test that data errors return exit code 2."""
-        mock_pipeline.return_value = 2 # To test the specific code path from _main_pipeline
+        # Mock the preceding step to succeed
+        mock_validate_load.return_value = (Mock(), Mock())
+        # Mock the function under test to fail
+        mock_data_acq.side_effect = DataAcquisitionError("Test data error")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write(VALID_YAML_CONTENT)
             config_path = f.name

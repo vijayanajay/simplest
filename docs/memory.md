@@ -119,14 +119,16 @@
 
 ## CLI Orchestration & Error Handling
 
-### DO ✅
-- **Delegate to a Central Pipeline:** High-level CLI commands (e.g., `analyze`) should be thin wrappers that call a single, central orchestration function (e.g., `_main_pipeline`).
-- **Centralize Error Handling:** The central pipeline function must contain the comprehensive `try...except` blocks for all specific, expected exceptions (`ConfigurationError`, `DataError`, etc.), mapping them to distinct exit codes.
-- **Return Exit Codes:** The pipeline function should return integer exit codes, which the CLI command then uses in `typer.Exit(code=...)`.
+### DO ✅ (Corrected Pattern)
+- **Use Decorators for Error Handling:** Apply a single, robust error-handling decorator (e.g., `@handle_cli_errors`) to top-level CLI command functions.
+- **Centralize Exception-to-Exit-Code Mapping:** The decorator should be responsible for catching specific `MEQSAPError` subclasses and mapping them to the correct integer exit codes as defined in ADR-004.
+- **Raise Specific Exceptions:** Pipeline functions (e.g., `_main_pipeline` and its helpers) should raise specific, typed exceptions (`ConfigurationError`, `DataError`, etc.) and let them bubble up to the decorator.
+- **CLI Commands Raise Exceptions, Not `typer.Exit`:** Inside a command function, for application logic errors (like `verbose` and `quiet` used together), raise a `ConfigurationError` instead of calling `typer.Exit` directly. This allows the decorator to handle it consistently.
+- **CLI Commands Should Not Raise `typer.Exit`:** Inside a command function, application logic should either complete successfully (exiting with 0 implicitly) or raise a specific `MEQSAPError`. The error-handling decorator is solely responsible for converting these exceptions into `typer.Exit` calls with the correct code.
 
 ### DON'T ❌
-- **Duplicate Pipeline Logic:** Avoid re-implementing the application's core workflow inside a CLI command function. This leads to inconsistent behavior.
-- **Use Generic `except Exception` in Commands:** A broad `except Exception` in a command function will mask specific error types, preventing correct exit code mapping and making debugging difficult. This was the root cause of FLAW-20250607-001.
+- **Use Generic `except Exception` in Decorators for Specific Errors:** A decorator's `except Exception` block should only handle truly *unexpected* errors. Relying on it to catch specific application errors (like `ConfigurationError`) indicates a structural flaw in the preceding `except` blocks. This was the root cause of numerous test failures where specific errors were incorrectly assigned exit code 10.
+- **Call `typer.Exit` from within Command Logic:** Bypassing the error handling decorator by calling `typer.Exit` directly makes error handling inconsistent.
 
 ## Anti-Pattern Prevention
 
@@ -151,3 +153,24 @@
 ### DON'T ❌
 - **Copy-Paste Test Classes Without Verifying Fixtures:** Avoid copy-pasting test classes and assuming the setup is correct. This is a common source of `AttributeError`s within the test suite itself.
 - **Leave Incomplete Test Setups:** A test failing because an attribute is missing on the test class instance (e.g., `AttributeError: 'TestClass' object has no attribute 'mock_something'`) indicates a structural flaw in the test suite, not the application code. This was the root cause of a failure in `TestBacktestExecution` where `self.mock_strategy_params` was not initialized in `setup_method`.
+
+## Anti-Pattern: Incomplete Code Relocation
+
+### Structural Issue Discovered (2025-06-08)
+- **Symptom:** `ImportError` during `pytest` collection, where a test file (`tests/test_cli_enhanced.py`) failed to import a function (`_generate_error_message`) from its old location (`src.meqsap.cli`).
+- **Root Cause:** A structural refactoring moved utility functions from a main package `__init__.py` to a dedicated `utils.py` submodule to improve organization. However, the corresponding unit test file that imported and used these functions was not updated to reflect their new location. This is a classic "incomplete refactoring" error.
+
+### Lesson & Design Principle
+- **Principle: Refactoring must include all dependents.** When moving code (functions, classes) between modules, the refactoring task is not complete until all call sites, including unit tests, are updated.
+- **Action:** Use IDE features like "Find Usages" or "Find in all files" to locate every reference to the moved symbol. Update all import statements accordingly. A failing test suite, especially during collection, is a strong signal of an incomplete structural change.
+
+## Test Suite Integrity
+
+### DO ✅
+- **Model Application Behavior Accurately:** When testing decorated functions or complex control flows (like exception-to-exit-code mapping), ensure tests mock the *inputs* that trigger the desired behavior (e.g., raising an exception) rather than mocking the *output* of the entire flow (e.g., mocking a return value that never occurs).
+- **Test the Integration Point:** For CLI error handling, mock the function that *raises* the specific exception (e.g., `_validate_and_load_config` raising `ConfigurationError`). Then, use the `CliRunner` to invoke the top-level command and assert that the final `result.exit_code` matches the one assigned by the error-handling decorator.
+- **Respect Function Signatures:** Ensure tests honor the return type hints of the functions they call. If a function is hinted to return `None`, tests should assert `result is None`, not `result == 0`.
+
+### DON'T ❌
+- **Write Tests Based on Incorrect Assumptions:** Avoid writing tests that expect a function to return a value (like an exit code) when its actual implementation raises exceptions or returns `None`. This creates false negatives and technical debt in the test suite.
+- **Mock High-Level Wrappers for Low-Level Errors:** Don't mock a high-level pipeline function to test a specific error condition. Instead, mock the specific, lower-level function that is responsible for that error condition to create a more precise and stable test. This was the root cause of multiple failures in `test_cli_enhanced.py` where `_main_pipeline` was mocked to return an integer, which it never does.
