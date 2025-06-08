@@ -115,40 +115,31 @@ class StrategySignalGenerator:
     @staticmethod
     def generate_signals(
         data: pd.DataFrame, 
-        strategy_config: StrategyConfig,
-        concrete_params: Optional[Dict[str, Any]] = None
+        strategy_config: StrategyConfig
     ) -> pd.DataFrame:
         """Generate trading signals based on strategy configuration.
         
         Args:
             data: OHLCV market data DataFrame
             strategy_config: Validated strategy configuration
-            concrete_params: Optional dictionary of concrete parameter values to use.
-                             If None, defaults will be extracted from strategy_config.
-            
+        
         Returns:
             DataFrame with 'entry' and 'exit' boolean columns
-            
-        Raises:
-            BacktestError: If signal generation fails
         """
-        # Instantiate self to access instance methods and registry
         generator_instance = StrategySignalGenerator()
-        
         try:
-            if concrete_params is None:
-                # Extract concrete parameters if not provided (e.g., for a single run)
-                # This uses the strategy_params from the config, which might be complex types
-                validated_params_model = strategy_config.validate_strategy_params()
-                concrete_params = generator_instance._extract_concrete_params(validated_params_model)
-            
+            # Extract concrete parameters from the strategy config.
+            # For optimization, the config object is created with the trial's specific params.
+            validated_params_model = strategy_config.validate_strategy_params()
+            concrete_params = generator_instance._extract_concrete_params(validated_params_model)
             if strategy_config.strategy_type == "MovingAverageCrossover":
                 return generator_instance._generate_ma_crossover_signals(data, concrete_params)
             else:
-                raise BacktestError(f"Unknown strategy type: {strategy_config.strategy_type}")
-                
+                raise BacktestError(f"Unsupported strategy type: {strategy_config.strategy_type}")
         except Exception as e:
-            raise BacktestError(f"Signal generation failed: {str(e)}") from e
+            logger.error(f"Signal generation failed: {e}")
+            raise
+
     
     def _extract_concrete_params(self, strategy_params_model: BaseStrategyParams) -> Dict[str, Any]:
         """
@@ -750,24 +741,19 @@ def perform_robustness_checks(
         )
 
 
-def run_complete_backtest(strategy_config, data, concrete_params=None, objective_params=None):
+def run_complete_backtest(strategy_config, data, objective_params=None):
     """Execute complete backtest analysis including validation and robustness checks."""
     logger.debug(f"Starting complete backtest for ticker: {strategy_config.ticker}")
-
     try:
-        # Determine actual prices DataFrame and signals DataFrame
         if isinstance(data, dict):
-            actual_prices_df = data.get('prices')
-            if actual_prices_df is None:
-                raise BacktestError("Price data ('prices') missing from input dictionary.")
-            # If signals are already provided in data dictionary
+            actual_prices_df = data['prices']
             if 'signals' in data:
                 actual_signals_df = data['signals']
             else:
-                actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config, concrete_params)
+                actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
         else:  # data is a DataFrame of prices
             actual_prices_df = data
-            actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config, concrete_params)
+            actual_signals_df = StrategySignalGenerator.generate_signals(actual_prices_df, strategy_config)
 
         # Execute primary backtest
         primary_result = run_backtest(prices_data=actual_prices_df, signals_data=actual_signals_df)
@@ -801,7 +787,6 @@ def run_complete_backtest(strategy_config, data, concrete_params=None, objective
             robustness_checks=robustness_checks,
             strategy_config=strategy_config.model_dump()
         )
-
     except Exception as e:
         logger.error(f"Complete backtest analysis failed: {str(e)}", exc_info=True)
         raise BacktestError(f"Complete backtest analysis failed: {str(e)}") from e

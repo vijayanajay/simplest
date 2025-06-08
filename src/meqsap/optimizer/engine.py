@@ -13,7 +13,7 @@ from optuna import Trial
 from ..exceptions import DataError, BacktestError, ConfigurationError
 from ..backtest import run_complete_backtest, BacktestAnalysisResult
 from .models import TrialFailureType, ProgressData, ErrorSummary, OptimizationResult
-from ..config import StrategyFactory
+from ..config import StrategyFactory, StrategyConfig
 
 # Constants
 FAILED_TRIAL_SCORE = -np.inf
@@ -295,18 +295,19 @@ class OptimizationEngine:
         if self._interruption_event and self._interruption_event.is_set():
             raise optuna.TrialPruned("Optimization interrupted")
         self._current_trial += 1
-        # For GridSampler, params are pre-defined. For others, they are suggested.
-        if isinstance(trial.study.sampler, optuna.samplers.GridSampler):
-            concrete_params = trial.params
-        else:
-            concrete_params = self._suggest_params_for_trial(trial)
+        concrete_params = self._suggest_params_for_trial(trial)
         logger.info(f"Starting trial {trial.number} with params: {concrete_params}")
         try:
+            # Create a temporary config dict for this trial by injecting concrete_params
+            trial_config_dict = self.strategy_config.copy()
+            trial_config_dict['strategy_params'] = concrete_params
+            # Create a StrategyConfig object for this trial to ensure a consistent interface
+            config_for_trial = StrategyConfig(**trial_config_dict)
+
             # Execute backtest with error handling
             backtest_result = run_complete_backtest(
-                self.strategy_config,
+                config_for_trial,
                 market_data,
-                concrete_params,
                 objective_params=self.objective_params
             )
             # Evaluate with objective function
@@ -435,10 +436,15 @@ class OptimizationEngine:
             if self._market_data is not None and best_params is not None:
                 try:
                     logger.info(f"Re-running backtest for best parameters: {best_params}")
+                    # Create a new config for the best trial
+                    best_config_dict = self.strategy_config.copy()
+                    best_config_dict['strategy_params'] = best_params
+                    config_for_best_trial = StrategyConfig(**best_config_dict)
+
                     analysis = run_complete_backtest(
-                        self.strategy_config,
+                        config_for_best_trial,
                         self._market_data,
-                        best_params
+                        objective_params=self.objective_params
                     )
                     best_strategy_analysis = analysis.model_dump()
                 except Exception as e:

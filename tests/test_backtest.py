@@ -25,7 +25,7 @@ from src.meqsap.backtest import (
     BacktestAnalysisResult,
     BacktestError
 )
-from src.meqsap.config import MovingAverageCrossoverParams, StrategyConfig
+from src.meqsap.config import MovingAverageCrossoverParams, StrategyConfig, ConfigurationError
 
 
 class TestStrategySignalGenerator:
@@ -94,7 +94,7 @@ class TestStrategySignalGenerator:
         config = self.create_sample_config()
         config.strategy_type = "UnknownStrategy"
         
-        with pytest.raises(BacktestError, match="Unknown strategy type"):
+        with pytest.raises(ConfigurationError, match="Unknown strategy type"):
             StrategySignalGenerator.generate_signals(data, config)
 
 

@@ -2,7 +2,7 @@
 
 This file tracks issues that have been resolved, including their re-open history.
 
-**Last Updated:** 2025-06-10
+**Last Updated:** 2025-06-11
 
 ---
 **Issue ID:** FLAW-20250601-001
@@ -27,13 +27,12 @@ The exception hierarchy diagram in `docs/adr/004-error-handling-policy.md` and t
 ---
 **Issue ID:** FLAW-20250601-003
 **Original Description (Concise):** Doc inaccuracy in architecture.md project structure
-**Initial Resolution Summary (Concise):**
-The "Project Structure" diagram in `docs/architecture.md` was verified to include `src/meqsap/exceptions.py`, the `examples/` directory, and details of the `docs/` subdirectories (e.g., `adr/`, `policies/`), accurately reflecting the current project structure.
+**Initial Resolution Summary (Concise):** Initial fixes added `exceptions.py` and other files to the diagram.
 **Date First Resolved:** 2025-06-02
 **Reopen Count:** 0
 **Last Reopened Date:**
-**Last Resolution Summary (Concise):** The "Project Structure" diagram in `docs/architecture.md` was verified to include `src/meqsap/exceptions.py`, the `examples/` directory, and details of the `docs/` subdirectories (e.g., `adr/`, `policies/`), accurately reflecting the current project structure.
-**Date Last Resolved:** 2025-06-02
+**Last Resolution Summary (Concise):** The "Project Structure" diagram and component descriptions in `docs/architecture.md` were fully updated to reflect the `src/meqsap/cli/` package structure, resolving the previously noted discrepancy.
+**Date Last Resolved:** 2025-06-11
 ---
 **Issue ID:** FLAW-20250601-004
 **Original Description (Concise):** Doc error in adr-002-date-range-handling.md validation logic
@@ -66,4 +65,13 @@ The resolution for this issue involved two key changes:
 **Last Reopened Date:**
 **Last Resolution Summary (Concise):** The resolution for this issue involved two key changes: 1. The `get_required_data_coverage_bars` method in `src/meqsap/config.py::BaseStrategyParams` was made an abstract method. 2. The `perform_vibe_checks` function was modified to explicitly fail the data coverage check if `get_required_data_coverage_bars` returns `None`.
 **Date Last Resolved:** 2025-06-02
+---
+**Issue ID:** FLAW-20250610-001
+**Original Description (Concise):** Critical Logic Failure: A type mismatch in the call chain for the `analyze` and `optimize` commands. `run_complete_backtest` was called with inconsistent types for its `strategy_config` parameter (a `StrategyConfig` object from the CLI path, and a `dict` from the optimizer path), breaking the API contract.
+**Initial Resolution Summary (Concise):** Refactored the call chain. The optimizer engine now creates a `StrategyConfig` object for each trial, injecting the trial's specific parameters. The `run_complete_backtest` and `generate_signals` function signatures were simplified to remove the redundant `concrete_params` argument, creating a consistent and robust API.
+**Date First Resolved:** 2025-06-11
+**Reopen Count:** 0
+**Last Reopened Date:** 
+**Last Resolution Summary (Concise):** Refactored the call chain. The optimizer engine now creates a `StrategyConfig` object for each trial, injecting the trial's specific parameters. The `run_complete_backtest` and `generate_signals` function signatures were simplified to remove the redundant `concrete_params` argument, creating a consistent and robust API.
+**Date Last Resolved:** 2025-06-11
 ---

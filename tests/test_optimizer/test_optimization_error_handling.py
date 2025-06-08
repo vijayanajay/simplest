@@ -13,7 +13,18 @@ class TestOptimizationErrorHandling:
     @pytest.fixture
     def mock_engine(self):
         """Create a properly initialized OptimizationEngine with mock dependencies."""
-        mock_config = {"parameter_spaces": {}}  # Simple dict is sufficient for the test
+        # This mock config must contain all required fields for StrategyConfig
+        # to prevent pydantic.ValidationError inside the method under test.
+        mock_config = {
+            "ticker": "DUMMY",
+            "start_date": "2023-01-01",
+            "end_date": "2023-01-31",
+            "strategy_type": "MovingAverageCrossover",
+            "strategy_params": {
+                "fast_ma": {"type": "range", "start": 5, "stop": 15, "step": 1},
+                "slow_ma": {"type": "range", "start": 20, "stop": 50, "step": 5}
+            }
+        }
         mock_objective_fn = Mock()
         
         engine = OptimizationEngine(

@@ -44,4 +44,4 @@ tests\test_optimizer\test_optimization_error_handling.py      79      0   100%
 tests\test_reporting.py                                      333     10    97%
 ------------------------------------------------------------------------------
 TOTAL                                                       2021     14    99%
-======================= 205 passed, 1 skipped in 29.16s =======================
+======================= 205 passed, 1 skipped in 29.61s =======================

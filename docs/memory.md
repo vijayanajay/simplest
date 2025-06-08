@@ -194,3 +194,23 @@
 ### Lesson & Design Principle
 - **Principle: Pass `pathlib.Path` objects directly.** Avoid premature conversion of `Path` objects to strings. Most modern Python I/O functions (like `open()`) and many libraries accept `Path` objects directly. This makes code more robust, readable, and less prone to platform-specific path representation issues (e.g., `/` vs `\\`).
 - **Action**: When writing mock assertions for functions that receive file paths, prefer asserting against `Path` objects. Refactor code to pass `Path` objects down the call chain until they are consumed by a function that strictly requires a string.
+
+## Anti-Pattern: Inconsistent API Contracts in Call Chain
+
+### Structural Issue Discovered (2025-06-12)
+- **Symptom**: `AttributeError` in `OptimizationEngine` tests due to a call to a non-existent method, and a latent bug in the `_compile_results` method where `run_complete_backtest` was called with incorrect argument types (`dict` of parameters instead of `dict` of objective settings).
+- **Root Cause**: A structural refactoring was performed to simplify the `run_complete_backtest` API, requiring callers to pass a fully-formed `StrategyConfig` object containing all parameters. However, not all call sites within the `OptimizationEngine` were updated to adhere to this new contract. The optimizer's `_compile_results` method was still attempting to pass strategy parameters via a separate argument, which was now being misinterpreted as `objective_params`. Additionally, a helper method (`_is_trial_with_concrete_params`) was removed, but its call was left in place, causing test failures.
+
+### Lesson & Design Principle
+- **Principle: API refactoring requires updating all call sites.** When a function's signature or contract is changed, the refactoring is incomplete until every call site—including those in application logic, unit tests, and integration tests—is updated.
+- **Action**: Use IDE tools like "Find Usages" or global search to locate every call to the refactored function. Ensure that the arguments passed in each call match the new signature in both type and meaning. This prevents latent bugs where data of one type is misinterpreted as another (e.g., `strategy_params` being passed as `objective_params`). Update or remove test mocks that target old, non-existent internal methods to keep the test suite synchronized with the implementation.
+
+## Anti-Pattern: Incomplete Fixture Data for Pydantic Model Instantiation
+
+### Structural Issue Discovered (2025-06-13)
+- **Symptom**: A test suite for an error-handling function (`test_single_trial_error_handling`) was failing. The tests were designed to check if specific exceptions (`DataError`, `BacktestError`) were caught and classified correctly. However, all failures were being misclassified as a generic `UNKNOWN_ERROR`.
+- **Root Cause**: The test fixture provided an incomplete dictionary as `strategy_config` to the `OptimizationEngine`. Inside the method under test (`_run_single_trial`), this incomplete dictionary was used to instantiate a `StrategyConfig` Pydantic model. This instantiation failed with a `pydantic.ValidationError` *before* the code path that was supposed to raise the test-specific exceptions was ever reached. The `ValidationError` was not explicitly caught, so it fell through to the generic `except Exception` block, causing the misclassification and test failure.
+
+### Lesson & Design Principle
+- **Principle: Test fixtures must provide a complete and valid data contract for downstream components.** When a component under test relies on creating objects (especially strictly-validated Pydantic models) from data passed into its constructor, the test fixtures must supply a dictionary that satisfies the model's schema.
+- **Action**: Ensure that test fixtures for components that perform internal object instantiation provide a complete and valid dictionary/data structure. Do not use minimal or incomplete dictionaries in fixtures if they will be used to construct a validated model later in the call chain. This prevents tests from failing due to schema validation errors, allowing them to correctly test the intended business logic.
