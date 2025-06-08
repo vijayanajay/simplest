@@ -1,0 +1,110 @@
+# IT Sector Multi-Objective Optimization
+# Stock: Infosys - Global IT Services Leader
+# Demonstrates: Multiple objective function optimization and comprehensive parameter ranges
+# Suitable for: Portfolio managers, systematic traders, sector specialists
+
+ticker: INFY.NS
+start_date: 2022-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# COMPREHENSIVE PARAMETER OPTIMIZATION
+# ------------------------------------
+# Wide parameter ranges suitable for systematic strategy development
+# Covers short-term trading to long-term investing timeframes
+
+strategy_params:
+  # Comprehensive fast MA range
+  fast_ma:
+    type: "range"
+    start: 5       # Short-term reactive signals
+    stop: 50       # Medium-term momentum (exclusive)
+    step: 5        # Test: 5,10,15,20,25,30,35,40,45
+  
+  # Strategic slow MA choices covering all major timeframes
+  slow_ma:
+    type: "choices"
+    values: [50, 100, 150, 200]  # Key technical analysis levels
+
+# SHARPE RATIO OPTIMIZATION
+# -------------------------
+# Optimize for risk-adjusted returns - ideal for professional portfolio management
+optimization_config:
+  active: true
+  algorithm: "GridSearch"          # Exhaustive search for best risk-adjusted returns
+  objective_function: "sharpe"     # Risk-adjusted return optimization
+  objective_params:
+    risk_free_rate: 0.06          # Indian 10-year government bond yield
+  cache_results: true
+
+# ALTERNATIVE MULTI-OBJECTIVE CONFIGURATIONS:
+# ------------------------------------------
+# To test different optimization objectives, replace the optimization_config above:
+
+# 1. MAXIMUM RETURN OPTIMIZATION:
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch"
+#   objective_function: "total_return"
+#   cache_results: true
+
+# 2. DRAWDOWN MINIMIZATION:
+# optimization_config:
+#   active: true  
+#   algorithm: "GridSearch"
+#   objective_function: "max_drawdown"  # Minimize maximum drawdown
+#   cache_results: true
+
+# 3. PROFIT QUALITY OPTIMIZATION:
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch" 
+#   objective_function: "profit_factor"  # Gross profit / Gross loss ratio
+#   cache_results: true
+
+# 4. WIN RATE OPTIMIZATION:
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch"
+#   objective_function: "win_rate"      # Percentage of profitable trades
+#   cache_results: true
+
+# IT SECTOR ANALYSIS INSIGHTS
+# ---------------------------
+# 1. USD Revenue Exposure: ~75-80% of revenues in USD
+# 2. Rupee Depreciation Benefits: Improves INR revenue translation
+# 3. Quarterly Guidance: Provides earnings predictability
+# 4. Client Concentration: Large deals impact quarterly performance
+# 5. Technology Cycles: Cloud, AI adoption drive long-term trends
+# 6. Visa Dependencies: H1B policies affect sentiment and costs
+# 7. Margin Pressure: Wage inflation vs. pricing power dynamics
+#
+# OPTIMIZATION STRATEGY ANALYSIS:
+# ------------------------------
+# Total Combinations: 9 fast_ma x 4 slow_ma = 36 parameter sets
+# 
+# Expected Results by Objective:
+# - Sharpe Optimization: Balanced risk-return parameters
+# - Return Optimization: More aggressive short-term parameters  
+# - Drawdown Minimization: Conservative longer-term parameters
+# - Profit Factor: Focus on trade quality over quantity
+# - Win Rate: Parameters favoring frequent small wins
+#
+# SECTOR-SPECIFIC CONSIDERATIONS:
+# ------------------------------
+# - IT stocks show lower volatility than broader market
+# - Strong trend-following characteristics during tech cycles
+# - Quarterly earnings announcements create temporary volatility
+# - Dollar strength cycles affect multi-year performance trends
+# - ESG and sustainability themes increasingly important
+#
+# USAGE EXAMPLES:
+# --------------
+# 1. Comprehensive optimization:
+#    python run.py optimize single examples/infosys_sector_optimization.yaml --report --verbose
+#
+# 2. Quick parameter scan:
+#    python run.py optimize single examples/infosys_sector_optimization.yaml --no-progress
+#
+# 3. Generate detailed analysis:
+#    python run.py optimize single examples/infosys_sector_optimization.yaml --report --output-dir ./it_sector_analysis

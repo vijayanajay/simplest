@@ -124,9 +124,13 @@ def fetch_market_data(ticker: str, start_date: date, end_date: date) -> pd.DataF
             end=adjusted_end,  # yfinance exclusive end, so we add 1 day
             progress=False
         )
-        
         if data.empty:
             raise DataError(f"No data available for {ticker} in {start_date} to {end_date}")
+        
+        # Handle MultiIndex columns that yfinance sometimes returns
+        if isinstance(data.columns, pd.MultiIndex):
+            # For single ticker, take the first level (OHLCV names) and drop ticker level
+            data.columns = data.columns.get_level_values(0)
         
         # Normalize column names to lowercase
         data.columns = [col.lower() for col in data.columns]

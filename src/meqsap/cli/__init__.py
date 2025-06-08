@@ -14,6 +14,19 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from rich.panel import Panel
 
+# Fix Windows console encoding issues
+if sys.platform == "win32":
+    # Set environment variable to force UTF-8 encoding for Rich on Windows
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    # Try to set console code page to UTF-8 if possible
+    try:
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass  # Fallback gracefully if reconfigure is not available
+
 # Core application modules
 from .. import __version__
 from ..backtest import BacktestAnalysisResult, run_complete_backtest
@@ -41,7 +54,8 @@ app = typer.Typer(
 )
 
 # Global console instance - will be reconfigured based on CLI options
-console = Console()
+# Fix Windows Unicode encoding issues with Rich console
+console = Console(force_terminal=True, width=120)
 
 # Configure logging
 logging.basicConfig(
@@ -157,10 +171,19 @@ def _handle_data_acquisition(config: StrategyConfig, verbose: bool, quiet: bool)
     try:
         if not quiet:
             console.print(f"\nFetching market data for [bold cyan]{config.ticker}[/bold cyan] from [bold]{config.start_date}[/bold] to [bold]{config.end_date}[/bold]...")
-        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console, disable=quiet) as progress:
-            task = progress.add_task("Downloading market data...", total=None)
+        
+        # Use a simpler progress display to avoid Unicode issues on Windows
+        try:
+            with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console, disable=quiet) as progress:
+                task = progress.add_task("Downloading market data...", total=None)
+                market_data = fetch_market_data(config.ticker, config.start_date, config.end_date)
+                progress.update(task, completed=100)
+        except UnicodeEncodeError:
+            # Fallback to simple text output if Rich progress fails due to encoding
+            if not quiet:
+                console.print("Downloading market data...")
             market_data = fetch_market_data(config.ticker, config.start_date, config.end_date)
-            progress.update(task, completed=100)
+        
         if not quiet:
             console.print(f"[green]OK:[/green] Market data received: [bold]{len(market_data)}[/bold] bars")
             if verbose:

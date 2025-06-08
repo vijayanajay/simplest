@@ -1,0 +1,191 @@
+# Multi-Objective Strategy Development Template
+# Stock: ITC Limited - Diversified FMCG Conglomerate  
+# Demonstrates: Framework for testing multiple optimization objectives
+# Suitable for: Strategy researchers, quant developers, institutional portfolio teams
+
+ticker: ITC.NS
+start_date: 2020-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# COMPREHENSIVE PARAMETER SPACE
+# -----------------------------
+# Broad parameter ranges suitable for multi-objective testing
+# Covers multiple trading timeframes and market conditions
+
+strategy_params:
+  # Broad fast MA range for comprehensive testing
+  fast_ma:
+    type: "range"
+    start: 10      # Short-term momentum
+    stop: 30       # Medium-term signals (exclusive)
+    step: 2        # Test: 10,12,14,16,18,20,22,24,26,28
+  
+  # Strategic slow MA periods for trend confirmation
+  slow_ma:
+    type: "choices"
+    values: [40, 60, 100, 150]    # Key technical levels
+
+# DEFAULT: SHARPE RATIO OPTIMIZATION
+# ----------------------------------
+# Start with risk-adjusted return optimization as baseline
+optimization_config:
+  active: true
+  algorithm: "GridSearch"          # Systematic exploration
+  objective_function: "sharpe"     # Risk-adjusted returns (default)
+  objective_params:
+    risk_free_rate: 0.06          # Indian 10-year bond yield
+  cache_results: true
+
+# ALTERNATIVE OPTIMIZATION CONFIGURATIONS
+# ---------------------------------------
+# Uncomment any section below to test different objectives:
+
+# 1. MAXIMUM RETURN OPTIMIZATION
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch"
+#   objective_function: "total_return"
+#   cache_results: true
+
+# 2. DRAWDOWN MINIMIZATION
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch" 
+#   objective_function: "max_drawdown"
+#   objective_params:
+#     direction: "minimize"
+#   cache_results: true
+
+# 3. PROFIT FACTOR OPTIMIZATION
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch"
+#   objective_function: "profit_factor"
+#   objective_params:
+#     min_trades: 5
+#   cache_results: true
+
+# 4. WIN RATE OPTIMIZATION
+# optimization_config:
+#   active: true
+#   algorithm: "GridSearch"
+#   objective_function: "win_rate"
+#   objective_params:
+#     min_trades: 8
+#   cache_results: true
+
+# ITC BUSINESS CHARACTERISTICS
+# ----------------------------
+# 1. Diversified Business Portfolio:
+#    - Cigarettes: ~80% of profits, declining volumes
+#    - FMCG: High growth, increasing contribution
+#    - Hotels: Cyclical, premium segment
+#    - Paperboards: B2B industrial business
+#    - Agri-business: Rural economy exposure
+#
+# 2. Regulatory Environment:
+#    - Tobacco taxation and packaging regulations
+#    - Anti-smoking campaigns affect core business
+#    - ESG concerns from institutional investors
+#
+# 3. Financial Characteristics:
+#    - High cash generation from tobacco business
+#    - Significant dividend yield (4-6%)
+#    - Conservative debt levels
+#    - Strong return on equity
+#
+# MULTI-OBJECTIVE ANALYSIS FRAMEWORK
+# ----------------------------------
+# Systematic Approach:
+# 1. Run optimization with each objective function
+# 2. Compare optimal parameter ranges across objectives
+# 3. Identify robust parameters that perform well across multiple metrics
+# 4. Analyze trade-offs between different objectives
+# 5. Select final parameters based on investment philosophy
+#
+# Expected Results by Objective:
+# 
+# SHARPE RATIO:
+# - Balanced risk-return parameters
+# - Medium-term MA combinations
+# - Consistent performance across market cycles
+#
+# TOTAL RETURN:
+# - More aggressive shorter-term parameters
+# - Higher volatility tolerance
+# - May sacrifice consistency for peak performance
+#
+# MAX DRAWDOWN:
+# - Conservative longer-term parameters
+# - Risk preservation focus
+# - May sacrifice returns for capital protection
+#
+# PROFIT FACTOR:
+# - Focus on trade quality over quantity
+# - Parameters that avoid false signals
+# - Emphasis on sustained trends
+#
+# WIN RATE:
+# - Consistent profitable trades
+# - May have smaller average profits
+# - Psychological comfort for systematic trading
+#
+# PARAMETER SENSITIVITY ANALYSIS
+# ------------------------------
+# Total Combinations: 10 fast_ma x 4 slow_ma = 40 parameter sets
+#
+# Sensitivity Testing Framework:
+# 1. Robust Parameters: Perform well across multiple objectives
+# 2. Specialized Parameters: Excel in specific objectives
+# 3. Market Regime Dependency: Performance varies by market conditions
+# 4. Transaction Cost Sensitivity: High-frequency vs low-frequency strategies
+#
+# ITC-SPECIFIC OPTIMIZATION CONSIDERATIONS
+# ---------------------------------------
+# Sector Rotation Impact:
+# - Defensive characteristics during market stress
+# - ESG concerns affect institutional flows
+# - Dividend attraction during low interest rate periods
+# - Tobacco regulatory risk creates periodic volatility
+#
+# Business Transformation Timeline:
+# - FMCG growth trajectory (5-10 year horizon)
+# - Tobacco business decline management
+# - Hotel business cyclical recovery
+# - Rural economy exposure through agri-business
+#
+# IMPLEMENTATION WORKFLOW
+# ----------------------
+# Step 1: Baseline Analysis
+# python run.py optimize single examples/itc_multi_objective.yaml --report --verbose
+#
+# Step 2: Alternative Objective Testing
+# # Modify optimization_config for each objective and rerun
+# 
+# Step 3: Comparative Analysis
+# # Compare results across all objectives
+# # Identify parameter patterns and trade-offs
+#
+# Step 4: Robust Parameter Selection
+# # Choose parameters that perform well across multiple objectives
+# # Consider investment constraints and risk tolerance
+#
+# Step 5: Out-of-Sample Validation
+# # Test selected parameters on different time periods
+# # Validate performance consistency
+#
+# USAGE EXAMPLES
+# --------------
+# 1. Sharpe ratio optimization (default):
+#    python run.py optimize single examples/itc_multi_objective.yaml --report --verbose
+#
+# 2. Quick parameter scan:
+#    python run.py optimize single examples/itc_multi_objective.yaml --no-progress
+#
+# 3. Export for detailed analysis:
+#    python run.py optimize single examples/itc_multi_objective.yaml --output-dir ./itc_analysis
+#
+# 4. Batch testing workflow:
+#    # Create copies with different objective functions
+#    # Run systematic comparison across all objectives

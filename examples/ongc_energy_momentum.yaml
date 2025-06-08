@@ -1,0 +1,153 @@
+# Energy Sector Momentum Strategy  
+# Stock: Oil & Natural Gas Corporation - India's Largest Oil Explorer
+# Demonstrates: Commodity-linked stock optimization with momentum focus
+# Suitable for: Energy sector specialists, commodity traders, cyclical strategy developers
+
+ticker: ONGC.NS
+start_date: 2021-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# ENERGY SECTOR MOMENTUM PARAMETERS
+# ---------------------------------
+# Parameters optimized for oil & gas sector characteristics
+# Energy stocks show strong correlation with crude oil prices and global cycles
+
+strategy_params:
+  # Responsive fast MA for commodity price correlation
+  # Energy stocks react quickly to crude oil price movements
+  fast_ma:
+    type: "choices"
+    values: [5, 8, 12, 15, 20]    # Short to medium-term momentum periods
+  
+  # Trend confirmation for energy cycle timing
+  # Oil cycles can last 2-5 years, requiring longer confirmation
+  slow_ma:
+    type: "range"
+    start: 30      # Short-term energy cycles
+    stop: 120      # Long-term energy cycles (exclusive)
+    step: 15       # Test: 30,45,60,75,90,105
+
+# TOTAL RETURN OPTIMIZATION
+# -------------------------
+# Energy sector momentum strategies focus on capturing major moves
+# Commodity-linked stocks can have explosive upside during super-cycles
+
+optimization_config:
+  active: true
+  algorithm: "GridSearch"           # Systematic exploration of momentum parameters
+  objective_function: "total_return"  # Maximize absolute returns
+  objective_params:
+    min_trades: 3                 # Allow for longer-term positioning
+  cache_results: true
+
+# ENERGY SECTOR DYNAMICS
+# ----------------------
+# 1. Crude Oil Price Correlation: 70-80% correlation with Brent/WTI prices
+# 2. Global Demand Cycles: Economic growth drives energy consumption
+# 3. Geopolitical Risk Premium: Middle East tensions, sanctions impact
+# 4. OPEC Production Decisions: Supply cuts/increases affect prices
+# 5. Currency Impact: USD strength affects oil prices and costs
+# 6. Refining Margins: GRM (Gross Refining Margin) drives profitability
+# 7. Government Policy: Subsidy burden, pricing freedom
+# 8. Energy Transition: Long-term shift to renewables
+#
+# COMMODITY MOMENTUM CHARACTERISTICS:
+# ----------------------------------
+# Energy Sector Trading Patterns:
+# - Strong trending behavior during oil bull/bear markets
+# - Mean reversion during sideways oil price consolidation
+# - Gap movements on geopolitical events
+# - Seasonal patterns (driving season, winter heating)
+# - Inventory data impacts (weekly EIA reports)
+#
+# Momentum Strategy Rationale:
+# - Energy super-cycles can last multiple years
+# - Strong trends justify momentum-based approaches
+# - Commodity volatility requires responsive parameters
+# - Total return focus captures major cyclical moves
+#
+# ONGC SPECIFIC FACTORS
+# ---------------------
+# Business Characteristics:
+# - Upstream focus: Oil & gas exploration and production
+# - Government ownership: ~60% government stake
+# - Dividend policy: Attractive dividend yield during profitable periods
+# - Exploration assets: Domestic and international operations
+# - Refining exposure: Limited downstream integration
+#
+# Key Performance Drivers:
+# - Crude oil realization prices
+# - Natural gas pricing reforms
+# - Exploration success rates
+# - Government policy on energy pricing
+# - Capital allocation to new projects vs dividends
+#
+# OPTIMIZATION STRATEGY ANALYSIS
+# ------------------------------
+# Parameter Space: 5 fast_ma x 6 slow_ma = 30 combinations
+#
+# Expected Performance Patterns:
+# Fast MA Analysis:
+# - 5-day: Captures daily oil price movements, higher noise
+# - 8-12 day: Balances responsiveness with noise reduction
+# - 15-20 day: Medium-term momentum, misses some quick reversals
+#
+# Slow MA Analysis:
+# - 30-45 day: Short-term energy cycles, quarterly patterns
+# - 60-75 day: Medium-term trends, seasonal adjustments
+# - 90-105 day: Long-term energy cycles, major trend changes
+#
+# COMMODITY CYCLE CONSIDERATIONS
+# ------------------------------
+# Historical Energy Cycles:
+# - Oil Bull Market 2021-2022: Post-COVID demand recovery
+# - Oil Bear Market 2014-2016: Shale oil supply surge
+# - Oil Super-cycle 2003-2008: China demand growth
+# - Oil Crash 2020: COVID demand destruction
+#
+# Strategy Performance Expectations:
+# - Bull Markets: Momentum strategies outperform significantly
+# - Bear Markets: Early exit signals preserve capital
+# - Sideways Markets: Higher transaction costs, lower returns
+# - Volatility Spikes: Responsive parameters capture moves
+#
+# RISK MANAGEMENT CONSIDERATIONS
+# ------------------------------
+# Energy Sector Risks:
+# - High volatility (daily moves of 5-10% common)
+# - Gap risk on geopolitical events
+# - Currency exposure through oil price impacts
+# - Regulatory changes in energy policy
+# - Long-term transition risks (renewable energy shift)
+#
+# Position Sizing Guidelines:
+# - Reduce position size during high volatility periods
+# - Consider oil price technical levels for entry/exit
+# - Monitor global economic indicators (PMI, GDP growth)
+# - Track inventory levels and production decisions
+#
+# USAGE EXAMPLES
+# --------------
+# 1. Energy momentum optimization:
+#    python run.py optimize single examples/ongc_energy_momentum.yaml --report --verbose
+#
+# 2. Quick cycle analysis:
+#    python run.py optimize single examples/ongc_energy_momentum.yaml --no-progress
+#
+# 3. Export for energy sector analysis:
+#    python run.py optimize single examples/ongc_energy_momentum.yaml --output-dir ./energy_analysis
+#
+# SECTOR STRATEGY DEVELOPMENT
+# ---------------------------
+# Multi-Stock Energy Portfolio:
+# 1. Apply similar parameters to other energy stocks:
+#    - RELIANCE.NS (integrated oil & gas)
+#    - IOC.NS (refining focus)
+#    - BPCL.NS (marketing and refining)
+#    - GAIL.NS (natural gas infrastructure)
+#
+# 2. Compare optimal parameters across energy value chain
+# 3. Consider energy ETF strategies for broader exposure
+# 4. Monitor correlation with international energy stocks
+# 5. Integrate with commodity futures for hedging strategies

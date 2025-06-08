@@ -63,6 +63,20 @@ MEQSAP will output:
 - **Risk Metrics**: Volatility, drawdown analysis, and risk-adjusted returns
 - **Optional PDF Report**: Comprehensive analysis with charts (when using `--report`)
 
+### 4. Parameter Optimization (New!)
+
+For automated parameter optimization, create a configuration with parameter ranges and run:
+
+```bash
+# Run parameter optimization with real-time progress reporting
+python run.py optimize single my_strategy_with_ranges.yaml --report
+
+# Run optimization with custom trial count
+python run.py optimize single config.yaml --trials 100 --verbose
+```
+
+MEQSAP will automatically find the best parameter combinations using Grid Search or Random Search algorithms.
+
 ## Available Strategy Types
 
 ### MovingAverageCrossover
@@ -72,11 +86,19 @@ Implements a trading strategy based on the crossover of two moving averages.
 - `fast_ma`: Fast moving average period in days (must be > 0)
 - `slow_ma`: Slow moving average period in days (must be > fast_ma)
 
+**Parameter Definition Options:**
+- **Fixed Values**: Traditional approach with single values
+- **Parameter Ranges**: For optimization with start, stop, and step values
+- **Parameter Choices**: Discrete options to test during optimization
+- **Explicit Values**: Named value definitions for clarity
+
 **Trading Logic:**
 - **Entry Signal**: When fast MA crosses above slow MA (bullish crossover)
 - **Exit Signal**: When fast MA crosses below slow MA (bearish crossover)
 
-**Example Configuration:**
+**Example Configurations:**
+
+*Fixed Parameters (Traditional):*
 ```yaml
 strategy_type: MovingAverageCrossover
 strategy_params:
@@ -84,7 +106,186 @@ strategy_params:
   slow_ma: 30      # 30-day moving average
 ```
 
-## CLI Commands and Options
+*Parameter Ranges (For Optimization):*
+```yaml
+strategy_type: MovingAverageCrossover
+strategy_params:
+  fast_ma:
+    type: "range"
+    start: 5
+    stop: 15
+    step: 1
+  slow_ma:
+    type: "choices" 
+    values: [20, 30, 50]
+```
+
+*Mixed Parameters:*
+```yaml
+strategy_type: MovingAverageCrossover
+strategy_params:
+  fast_ma: 10      # Fixed value
+  slow_ma:         # Range for optimization
+    type: "range"
+    start: 20
+    stop: 50
+    step: 5
+```
+
+## Enhanced Parameter Definition Framework
+
+MEQSAP now supports flexible parameter definitions that enable automated optimization while maintaining backward compatibility with fixed parameter configurations.
+
+### Parameter Types
+
+#### Fixed Values (Traditional)
+Use simple numeric values for traditional single-run analysis:
+```yaml
+strategy_params:
+  fast_ma: 10
+  slow_ma: 30
+```
+
+#### Parameter Ranges
+Define ranges for systematic optimization:
+```yaml
+strategy_params:
+  fast_ma:
+    type: "range"
+    start: 5      # Minimum value
+    stop: 15      # Maximum value (exclusive)
+    step: 1       # Step size
+```
+
+#### Parameter Choices
+Specify discrete options to test:
+```yaml
+strategy_params:
+  slow_ma:
+    type: "choices"
+    values: [20, 30, 50, 100]
+```
+
+#### Explicit Values
+Named value definitions for clarity:
+```yaml
+strategy_params:
+  period:
+    type: "value"
+    value: 14
+```
+
+### Mixed Parameter Definitions
+You can combine different parameter types in the same configuration:
+```yaml
+strategy_params:
+  fast_ma: 10              # Fixed value
+  slow_ma:                 # Range for optimization
+    type: "range"
+    start: 20
+    stop: 100
+    step: 5
+  signal_threshold:        # Discrete choices
+    type: "choices"
+    values: [0.01, 0.02, 0.05]
+```
+
+### Backward Compatibility
+All existing YAML configurations with fixed parameters continue to work without modification. The enhanced framework automatically detects parameter types and handles them appropriately.
+
+## Parameter Optimization Engine
+
+MEQSAP includes a powerful parameter optimization engine that systematically searches through parameter combinations to find optimal strategy configurations. This engine integrates seamlessly with the enhanced parameter definition framework to provide comprehensive optimization capabilities.
+
+### Key Features
+
+- **Multiple Search Algorithms**: Grid Search, Random Search, and future support for advanced optimization methods
+- **Flexible Parameter Spaces**: Supports ranges, discrete choices, and mixed parameter types
+- **Real-time Progress Tracking**: Live progress bars with ETA, completion rate, and performance metrics
+- **Graceful Interruption**: Ctrl+C handling that preserves partial results and shows best findings
+- **Memory Efficient**: Streams results and maintains configurable result caching
+- **Comprehensive Reporting**: Detailed optimization reports with parameter sensitivity analysis
+
+### Optimization Algorithms
+
+**Grid Search (`GridSearch`)**
+- Exhaustively searches all parameter combinations
+- Guarantees finding the global optimum within the defined space
+- Best for: Small parameter spaces, thorough exploration needs
+- Performance: Systematic but can be time-intensive for large spaces
+
+**Random Search (`RandomSearch`)**
+- Randomly samples parameter combinations for a specified number of trials
+- Often finds good solutions faster than grid search for high-dimensional spaces
+- Best for: Large parameter spaces, time-constrained optimization
+- Performance: Efficient exploration with configurable trial limits
+
+### Objective Functions
+
+The optimization engine supports multiple objective functions for strategy evaluation:
+
+- **`sharpe`**: Sharpe ratio (risk-adjusted returns) - *default*
+- **`total_return`**: Total portfolio return percentage
+- **`max_drawdown`**: Maximum drawdown (minimized)
+- **`profit_factor`**: Ratio of gross profit to gross loss
+- **`win_rate`**: Percentage of profitable trades
+
+### Configuration
+
+Enable optimization by adding an `optimization_config` section to your YAML:
+
+```yaml
+optimization_config:
+  active: true                    # Must be true to enable optimization
+  algorithm: "GridSearch"         # or "RandomSearch"
+  objective_function: "sharpe"    # Metric to optimize
+  max_trials: 1000               # For RandomSearch only
+  cache_results: true            # Cache intermediate results
+  parallel_jobs: 1               # Future: parallel execution
+```
+
+### Optimization Workflow
+
+1. **Parameter Discovery**: Engine analyzes configuration for optimizable parameters
+2. **Space Generation**: Creates parameter combinations based on algorithm choice
+3. **Parallel Execution**: Runs backtests with progress tracking and interruption handling
+4. **Result Analysis**: Identifies best parameters and generates performance rankings
+5. **Report Generation**: Creates comprehensive optimization reports (if `--report` enabled)
+
+### Progress Monitoring
+
+The optimization engine provides real-time feedback:
+
+```
+Optimizing AAPL MovingAverageCrossover...
+Progress: 45% |████████████████████▌                    | 450/1000 trials
+Best Sharpe: 1.847 | Current: 1.234 | ETA: 00:02:15
+Top Parameters: fast_ma=8, slow_ma=35, signal_threshold=0.02
+```
+
+### Interruption Handling
+
+Press `Ctrl+C` during optimization to gracefully stop and see results so far:
+
+```
+Optimization interrupted by user.
+Completed 342 out of 1000 trials (34.2%).
+
+Best result found:
+├─ Sharpe Ratio: 1.847
+├─ Total Return: 24.5%
+├─ Max Drawdown: -8.2%
+└─ Parameters: fast_ma=8, slow_ma=35, signal_threshold=0.02
+```
+
+### Memory and Performance
+
+- **Efficient Streaming**: Results processed incrementally to minimize memory usage
+- **Result Caching**: Optional caching prevents re-computation of identical parameter sets
+- **Progress Persistence**: Partial results preserved on interruption
+- **Configurable Batch Processing**: Future support for batch optimization workflows
+
+## CLI Commands
 
 ### `analyze` - Run Strategy Analysis
 
@@ -125,6 +326,52 @@ python run.py analyze config.yaml --report --output-dir ./my_reports
 python run.py analyze config.yaml --quiet
 ```
 
+### `optimize single` - Parameter Optimization (New!)
+
+**Syntax:**
+```bash
+python run.py optimize single CONFIG_FILE [OPTIONS]
+# or
+meqsap optimize single CONFIG_FILE [OPTIONS]
+```
+
+**Arguments:**
+- `CONFIG_FILE`: Path to YAML configuration file with parameter ranges (required)
+
+**Options:**
+- `--report`: Generate PDF report for the best strategy found
+- `--output-dir DIR`: Directory for output reports and results
+- `--trials N`: Number of optimization trials (RandomSearch only)
+- `--no-progress`: Disable real-time progress bar
+- `--verbose, -v`: Enable detailed optimization logging
+- `--help, -h`: Show help message
+
+**Examples:**
+```bash
+# Basic optimization with progress reporting
+python run.py optimize single config_with_ranges.yaml
+
+# Optimization with PDF report for best strategy
+python run.py optimize single config.yaml --report --verbose
+
+# Random search with custom trial count
+python run.py optimize single config.yaml --trials 200
+
+# Optimization without progress bar (for scripting)
+python run.py optimize single config.yaml --no-progress --quiet
+```
+
+**Progress Reporting Features:**
+- Real-time progress bars with trial completion status
+- Best score tracking during optimization
+- Error categorization and failure reporting
+- Graceful interruption with Ctrl+C
+- Comprehensive optimization summary
+
+**Supported Algorithms:**
+- **Grid Search**: Systematic exploration of all parameter combinations
+- **Random Search**: Random sampling within parameter ranges
+
 ### `version` - Show Version Information
 
 **Syntax:**
@@ -161,6 +408,12 @@ strategy_type: STRATEGY_NAME   # Strategy to backtest
 strategy_params:               # Strategy-specific parameters
   param1: value1
   param2: value2
+
+# Optional: For parameter optimization
+optimization_config:           # Optimization settings (optional)
+  active: true                 # Enable optimization mode
+  algorithm: GridSearch        # Algorithm to use
+  objective_function: sharpe   # Metric to optimize
 ```
 
 ### Field Details
@@ -180,6 +433,13 @@ strategy_params:               # Strategy-specific parameters
 
 **`strategy_params`**: Strategy-specific configuration
 - See "Available Strategy Types" section for required parameters per strategy
+- Supports both fixed values and parameter ranges for optimization
+
+**`optimization_config`** (Optional): Parameter optimization settings
+- `active`: Set to `true` to enable optimization mode
+- `algorithm`: `GridSearch` or `RandomSearch`
+- `objective_function`: Metric to optimize (`sharpe`, `returns`, etc.)
+- `algorithm_params`: Algorithm-specific settings (e.g., `n_trials` for RandomSearch)
 
 ### Example Configurations
 
@@ -205,15 +465,54 @@ strategy_params:
   slow_ma: 200
 ```
 
-#### Cryptocurrency Analysis
+#### Parameter Optimization Configuration
+```yaml
+ticker: AAPL
+start_date: 2023-01-01
+end_date: 2024-01-01
+strategy_type: MovingAverageCrossover
+strategy_params:
+  fast_ma:
+    type: "range"
+    start: 5
+    stop: 15
+    step: 1
+  slow_ma:
+    type: "choices"
+    values: [20, 30, 50]
+
+optimization_config:
+  active: true
+  algorithm: "GridSearch"
+  objective_function: "sharpe"
+  objective_params:
+    risk_free_rate: 0.02
+```
+
+#### Random Search Optimization
 ```yaml
 ticker: BTC-USD
 start_date: 2022-06-01
 end_date: 2023-06-01
 strategy_type: MovingAverageCrossover
 strategy_params:
-  fast_ma: 10
-  slow_ma: 30
+  fast_ma:
+    type: "range"
+    start: 5
+    stop: 20
+    step: 1
+  slow_ma:
+    type: "range"
+    start: 21
+    stop: 100
+    step: 1
+
+optimization_config:
+  active: true
+  algorithm: "RandomSearch"
+  algorithm_params:
+    n_trials: 100
+  objective_function: "sharpe"
 ```
 
 ## Output and Reporting
@@ -332,12 +631,32 @@ python run.py analyze my_config.yaml --report --verbose --output-dir ./analysis_
 python run.py analyze my_config.yaml --validate-only
 ```
 
-### 4. Batch Analysis (Scripting)
+### 4. Parameter Optimization
+```bash
+# Find optimal parameters using Grid Search
+python run.py optimize single examples/ma_crossover_dynamic_params.yaml --report
+
+# Random search with custom trial count
+python run.py optimize single config.yaml --trials 200 --verbose
+
+# Optimization without progress bar (for automation)
+python run.py optimize single config.yaml --no-progress --quiet
+```
+
+### 5. Batch Analysis (Scripting)
 ```bash
 # Run multiple analyses in quiet mode for automation
-for config in configs/*.yaml; do
-    python run.py analyze "$config" --quiet --report
-done
+foreach ($config in Get-ChildItem configs/*.yaml) {
+    python run.py analyze $config.FullName --quiet --report
+}
+```
+
+### 6. Mixed Workflows
+```bash
+# First validate, then optimize, then generate final report
+python run.py analyze config.yaml --validate-only
+python run.py optimize single config_with_ranges.yaml --trials 50
+python run.py analyze best_config.yaml --report --verbose
 ```
 
 ## Development
@@ -395,12 +714,28 @@ The project uses:
 meqsap/
 ├── src/meqsap/           # Main package
 │   ├── __init__.py       # Package initialization
-│   ├── cli.py           # Command-line interface
-│   ├── config.py        # Configuration handling
-│   ├── data.py          # Data acquisition and caching
-│   ├── backtest.py      # Strategy backtesting engine
-│   ├── reporting.py     # Report generation
-│   └── exceptions.py    # Custom exception classes
+│   ├── backtest.py       # Strategy backtesting engine
+│   ├── config.py         # Configuration handling
+│   ├── data.py           # Data acquisition and caching
+│   ├── exceptions.py     # Custom exception classes
+│   ├── reporting.py      # Report generation
+│   ├── cli/              # Command-line interface
+│   │   ├── __init__.py   # Main CLI entry point
+│   │   ├── optimization_ui.py  # Progress bars and UI
+│   │   ├── utils.py      # CLI utilities and decorators
+│   │   └── commands/     # Sub-command implementations
+│   │       └── optimize.py    # Optimization commands
+│   ├── indicators_core/  # Enhanced parameter framework
+│   │   ├── __init__.py   # Core indicator functionality
+│   │   ├── base.py       # Base classes and abstractions
+│   │   ├── parameters.py # Parameter type definitions
+│   │   └── registry.py   # Indicator discovery system
+│   └── optimizer/        # Parameter optimization engine
+│       ├── __init__.py   # Optimizer public interface
+│       ├── engine.py     # Core optimization engine
+│       ├── models.py     # Data models and enums
+│       ├── interruption.py  # Signal handling
+│       └── objective_functions.py  # Optimization metrics
 ├── tests/               # Test suite
 ├── examples/            # Example configurations
 ├── docs/               # Documentation
@@ -457,12 +792,16 @@ python run.py analyze config.yaml
 # With reporting
 python run.py analyze config.yaml --report --verbose
 
+# Parameter optimization
+python run.py optimize single config_with_ranges.yaml --report
+
 # Validation only  
 python run.py analyze config.yaml --validate-only
 
 # Get help
 python run.py --help
 python run.py analyze --help
+python run.py optimize --help
 ```
 
 ### Sample Configuration
@@ -476,10 +815,34 @@ strategy_params:
   slow_ma: 30
 ```
 
+### Sample Optimization Configuration
+```yaml
+ticker: AAPL
+start_date: 2022-01-01
+end_date: 2022-12-31
+strategy_type: MovingAverageCrossover
+strategy_params:
+  fast_ma:
+    type: "range"
+    start: 5
+    stop: 15
+    step: 1
+  slow_ma:
+    type: "choices"
+    values: [20, 30, 50]
+optimization_config:
+  active: true
+  algorithm: "GridSearch"
+  objective_function: "sharpe"
+```
+
 ### Common Issues
 - **slow_ma must be greater than fast_ma**: Fix parameter ordering
 - **Insufficient data**: Extend date range or reduce MA periods
 - **No data found**: Check ticker symbol validity
 - **Import errors**: Ensure you're in project root directory
+- **optimization_config.active must be true**: Enable optimization in YAML config
+- **Invalid parameter range**: Check start < stop for range definitions
+- **No valid trials found**: Verify parameter ranges allow valid combinations
 
-For more help: `python run.py --help`
+For more help: `python run.py --help` or `python run.py optimize --help`

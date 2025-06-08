@@ -1,8 +1,8 @@
 # Sample configuration for Indian stock analysis
-# MEQSAP - Indian Stock Example Configuration
+# MEQSAP - Enhanced Indian Stock Example Configuration
 #
-# This file demonstrates all available configuration options for running
-# backtests on Indian stocks using the MEQSAP platform.
+# This file demonstrates the enhanced parameter definition framework and
+# optimization capabilities for Indian stocks using the MEQSAP platform.
 
 # TICKER SYMBOL
 # -------------
@@ -31,20 +31,46 @@ end_date: 2024-12-31
 #   - MovingAverageCrossover: Classic golden cross/death cross strategy
 strategy_type: MovingAverageCrossover
 
-# STRATEGY PARAMETERS
-# -------------------
-# Parameters specific to the chosen strategy type
+# ENHANCED STRATEGY PARAMETERS
+# ----------------------------
+# This example demonstrates the new parameter definition framework
+# with optimization-ready parameter ranges and choices
+
 strategy_params:
   # Fast Moving Average Period (days)
-  # Typical values: 5, 10, 20
-  # Shorter periods = more signals, more noise
-  fast_ma: 20
-  
-  # Slow Moving Average Period (days)
-  # Typical values: 50, 100, 200
-  # Longer periods = fewer signals, more stable trends
-  # Must be greater than fast_ma
-  slow_ma: 50
+  # Using parameter range for optimization
+  fast_ma:
+    type: "range"
+    start: 5      # Minimum value for fast MA
+    stop: 25      # Maximum value (exclusive)
+    step: 2       # Step size - test 5, 7, 9, 11, 13, 15, 17, 19, 21, 23
+    # Slow Moving Average Period (days)
+  # Using discrete choices for popular MA periods in Indian markets
+  slow_ma:
+    type: "choices"
+    values: [30, 50, 100, 200]  # Common long-term MA periods
+
+# OPTIMIZATION CONFIGURATION
+# --------------------------
+# Enable parameter optimization with Grid Search algorithm
+optimization_config:
+  active: true                    # Must be true to enable optimization
+  algorithm: "GridSearch"         # Systematic exploration of all combinations
+  objective_function: "sharpe"    # Optimize for risk-adjusted returns
+  objective_params:
+    risk_free_rate: 0.06         # Indian 10-year bond yield (~6%)
+  cache_results: true            # Cache results for faster re-runs
+
+# USAGE EXAMPLES
+# --------------
+# 1. Run optimization:
+#    python run.py optimize single examples/indian_stock_sample.yaml --report
+#
+# 2. Generate comprehensive report:
+#    python run.py optimize single examples/indian_stock_sample.yaml --report --verbose
+#
+# 3. View progress without saving report:
+#    python run.py optimize single examples/indian_stock_sample.yaml --verbose
 
 # NOTES FOR INDIAN MARKETS
 # ------------------------
@@ -53,35 +79,51 @@ strategy_params:
 # 3. Currency: All prices will be in Indian Rupees (INR)
 # 4. Liquidity: Use well-traded stocks for better backtest accuracy
 # 5. Corporate Actions: Be aware of stock splits, bonuses, dividends
+# 6. Risk-free Rate: Using Indian 10-year government bond yield as reference
 #
+# OPTIMIZATION RESULTS INTERPRETATION:
+# -----------------------------------
+# - Grid Search will test 10 x 4 = 40 parameter combinations
+# - Best combination optimizes Sharpe ratio for Indian market conditions
+# - Consider market volatility and trading costs in final strategy selection
+# - Validate results across different market cycles (bull/bear markets)
+
 # POPULAR INDIAN STOCKS FOR BACKTESTING:
 # --------------------------------------
-# Large Cap:
-#   - RELIANCE.NS (Reliance Industries)
-#   - TCS.NS (Tata Consultancy Services)
-#   - HDFCBANK.NS (HDFC Bank)
-#   - INFY.NS (Infosys)
-#   - HINDUNILVR.NS (Hindustan Unilever)
-#   - BHARTIARTL.NS (Bharti Airtel)
-#   - ITC.NS (ITC Limited)
-#   - SBIN.NS (State Bank of India)
-#   - LT.NS (Larsen & Toubro)
-#   - KOTAKBANK.NS (Kotak Mahindra Bank)
+# Large Cap (High Liquidity):
+#   - RELIANCE.NS (Reliance Industries) - Energy & Petrochemicals
+#   - TCS.NS (Tata Consultancy Services) - IT Services
+#   - HDFCBANK.NS (HDFC Bank) - Private Banking
+#   - INFY.NS (Infosys) - IT Services
+#   - HINDUNILVR.NS (Hindustan Unilever) - FMCG
+#   - BHARTIARTL.NS (Bharti Airtel) - Telecommunications
+#   - ITC.NS (ITC Limited) - Diversified Conglomerate
+#   - SBIN.NS (State Bank of India) - Public Sector Banking
+#   - LT.NS (Larsen & Toubro) - Engineering & Construction
+#   - KOTAKBANK.NS (Kotak Mahindra Bank) - Private Banking
 #
-# Mid Cap:
-#   - BAJFINANCE.NS (Bajaj Finance)
-#   - ADANIPORTS.NS (Adani Ports)
-#   - TATASTEEL.NS (Tata Steel)
-#   - AXISBANK.NS (Axis Bank)
-#   - WIPRO.NS (Wipro)
+# Mid Cap (Moderate Liquidity):
+#   - BAJFINANCE.NS (Bajaj Finance) - NBFC
+#   - ADANIPORTS.NS (Adani Ports) - Infrastructure
+#   - TATASTEEL.NS (Tata Steel) - Steel & Mining
+#   - AXISBANK.NS (Axis Bank) - Private Banking
+#   - WIPRO.NS (Wipro) - IT Services
 #
-# PARAMETER RECOMMENDATIONS BY TIMEFRAME:
-# ---------------------------------------
-# Short-term (1-3 months):
-#   fast_ma: 5-10, slow_ma: 20-30
+# PARAMETER OPTIMIZATION GUIDELINES:
+# ---------------------------------
+# Fast MA Range Selection:
+#   - Short-term Trading: 3-15 days
+#   - Medium-term Trading: 10-30 days
+#   - Long-term Investing: 20-50 days
 #
-# Medium-term (3-12 months):
-#   fast_ma: 10-20, slow_ma: 50-100
+# Slow MA Choice Strategy:
+#   - 30-day: Short-term trend following
+#   - 50-day: Medium-term momentum
+#   - 100-day: Long-term trend confirmation
+#   - 200-day: Classic long-term trend indicator
 #
-# Long-term (1+ years):
-#   fast_ma: 20-50, slow_ma: 100-200
+# Indian Market Considerations:
+#   - Higher volatility requires wider MA ranges
+#   - Monsoon seasonality affects certain sectors
+#   - Budget announcements create market swings
+#   - Festival seasons show reduced trading volumes

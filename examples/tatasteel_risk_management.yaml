@@ -1,0 +1,130 @@
+# Steel Sector Drawdown Minimization Strategy
+# Stock: Tata Steel - India's Largest Steel Producer
+# Demonstrates: Maximum drawdown optimization for risk management
+# Suitable for: Risk managers, conservative portfolios, volatility-sensitive strategies
+
+ticker: TATASTEEL.NS
+start_date: 2021-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# STEEL SECTOR RISK-FOCUSED PARAMETERS
+# ------------------------------------
+# Conservative parameter ranges designed for volatile cyclical sector
+# Steel stocks show extreme volatility due to commodity price swings
+
+strategy_params:
+  # Conservative fast MA range to reduce whipsaw trades
+  # Steel sector has high intraday volatility requiring noise filtering
+  fast_ma:
+    type: "range"  
+    start: 15      # Minimum to filter daily noise
+    stop: 40       # Medium-term momentum (exclusive)
+    step: 3        # Test: 15,18,21,24,27,30,33,36,39
+  
+  # Long-term trend confirmation for cyclical sector
+  # Steel cycles are multi-year, requiring longer confirmation periods
+  slow_ma:
+    type: "choices"
+    values: [60, 100, 150, 200]  # Extended periods for cyclical confirmation
+
+# MAXIMUM DRAWDOWN MINIMIZATION
+# -----------------------------
+# Optimize to minimize maximum drawdown rather than maximize returns
+# Critical for steel sector due to extreme volatility and cyclical nature
+
+optimization_config:
+  active: true
+  algorithm: "GridSearch"           # Systematic search for risk-optimal parameters
+  objective_function: "max_drawdown"  # Minimize maximum portfolio drawdown
+  objective_params:
+    direction: "minimize"           # Explicitly minimize drawdown
+    min_trades: 5                  # Minimum trades for valid risk assessment
+  cache_results: true
+
+# STEEL SECTOR RISK CHARACTERISTICS
+# ---------------------------------
+# 1. Commodity Price Volatility: Iron ore, coking coal price swings
+# 2. Global Demand Cycles: Chinese demand, global infrastructure spending
+# 3. Currency Impact: Import costs vs export competitiveness
+# 4. Environmental Regulations: Carbon emission norms, green steel transition
+# 5. Capacity Utilization Cycles: Oversupply/undersupply periods
+# 6. Trade Policy Sensitivity: Import duties, anti-dumping measures
+# 7. Interest Rate Sensitivity: Capital intensive industry
+# 8. Infrastructure Spending: Government capex drives domestic demand
+#
+# HIGH VOLATILITY RISK FACTORS:
+# -----------------------------
+# Historical Drawdown Events:
+# - COVID-19 Impact (Mar 2020): -70% drawdown in weeks
+# - China Demand Shock (2015-16): Extended bear market
+# - Global Financial Crisis (2008): Severe cyclical downturn
+# - Trade War Periods: Export uncertainty creates volatility
+#
+# Risk Management Rationale:
+# - Steel stocks can lose 50%+ value in bear cycles
+# - Drawdown minimization preserves capital for next cycle
+# - Reduces emotional stress during volatile periods
+# - Enables consistent position sizing across cycles
+#
+# CYCLICAL SECTOR STRATEGY:
+# ------------------------
+# Parameter Selection Philosophy:
+# - Longer MAs reduce false signals during consolidation
+# - Conservative parameters miss some upside but avoid major drawdowns
+# - Steel sector momentum tends to be sustained when genuine
+# - Exit signals more important than entry timing
+#
+# Expected Parameter Performance:
+# - Fast MA 15-21: Quick response but higher risk
+# - Fast MA 24-30: Balanced approach for most conditions
+# - Fast MA 33-39: Conservative, may miss short cycles
+# - Slow MA 60-100: Captures major cyclical turns
+# - Slow MA 150-200: Ultra-conservative for multi-year cycles
+#
+# RISK-ADJUSTED PERFORMANCE METRICS:
+# ----------------------------------
+# Key Metrics to Monitor:
+# - Maximum Drawdown: Primary optimization target
+# - Drawdown Duration: Time to recover from losses
+# - Calmar Ratio: Annual return / Maximum drawdown
+# - Sharpe Ratio: Risk-adjusted returns
+# - Sortino Ratio: Downside deviation adjusted returns
+#
+# TATA STEEL SPECIFIC FACTORS:
+# ----------------------------
+# - Integrated steel producer with iron ore mines
+# - European operations provide geographic diversification
+# - Debt levels amplify volatility during down cycles
+# - Government policy on mining rights affects long-term outlook
+# - Green steel initiatives require significant capex
+# - Consolidation opportunities in fragmented Indian market
+#
+# USAGE EXAMPLES:
+# --------------
+# 1. Drawdown minimization optimization:
+#    python run.py optimize single examples/tatasteel_risk_management.yaml --report --verbose
+#
+# 2. Risk analysis with detailed reporting:
+#    python run.py optimize single examples/tatasteel_risk_management.yaml --report --output-dir ./steel_risk_analysis
+#
+# 3. Compare with return optimization:
+#    # Create copy with objective_function: "total_return" for comparison
+#    python run.py optimize single examples/tatasteel_risk_management.yaml --verbose
+#
+# PORTFOLIO RISK MANAGEMENT:
+# --------------------------
+# Integration Guidelines:
+# - Use optimized parameters as base for position sizing rules
+# - Implement stop-loss levels based on historical drawdown analysis
+# - Consider sector rotation signals for cyclical timing
+# - Monitor commodity price indicators for early warning signals
+# - Diversify across steel value chain (miners, producers, users)
+#
+# STRESS TESTING RECOMMENDATIONS:
+# ------------------------------
+# - Test parameters across different commodity cycles
+# - Validate during high volatility periods (2020, 2008)
+# - Check performance during sector rotation events
+# - Analyze sensitivity to global growth slowdowns
+# - Monitor correlation with broader market during stress periods

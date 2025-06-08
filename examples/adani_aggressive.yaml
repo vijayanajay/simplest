@@ -1,10 +1,82 @@
 # Aggressive Short-term Strategy for Volatile Indian Stock
-# Suitable for: Active traders, high-risk tolerance
-# Stock: Adani Enterprises - High volatility stock
+# Stock: Adani Enterprises - High volatility, high-growth stock
+# Demonstrates: Advanced optimization with multiple objectives and fine-tuned ranges
+# Suitable for: Active traders, high-risk tolerance, short-term profit-seeking
+
 ticker: ADANIENT.NS
 start_date: 2023-01-01
 end_date: 2024-12-31
 strategy_type: MovingAverageCrossover
+
+# AGGRESSIVE PARAMETER OPTIMIZATION
+# ---------------------------------
+# Fine-tuned ranges optimized for high-volatility stocks
+# Focuses on capturing short-term momentum swings
+
 strategy_params:
-  fast_ma: 5   # Very short fast MA for quick signals
-  slow_ma: 20  # Short slow MA for frequent trades
+  # Very short fast MA range for quick signal detection
+  fast_ma:
+    type: "range"
+    start: 3       # Minimum for noise reduction
+    stop: 12       # Maximum to maintain responsiveness  
+    step: 1        # Test every day: 3,4,5,6,7,8,9,10,11
+  
+  # Short to medium slow MA choices for trend confirmation
+  slow_ma:
+    type: "range"
+    start: 15      # Minimum for trend validity
+    stop: 35       # Maximum to avoid lagging signals
+    step: 3        # Test: 15,18,21,24,27,30,33
+
+# ADVANCED OPTIMIZATION CONFIG
+# ----------------------------
+# Multiple optimization runs with different objectives
+optimization_config:
+  active: true
+  algorithm: "GridSearch"          # Systematic exploration for small space
+  objective_function: "total_return"  # Optimize for maximum returns (aggressive)
+  objective_params:
+    risk_free_rate: 0.06          # Indian benchmark rate
+  cache_results: true
+  
+# ALTERNATIVE OBJECTIVES FOR AGGRESSIVE TRADING:
+# ---------------------------------------------
+# Uncomment different objective functions to optimize for different metrics:
+#
+# For maximum profit potential:
+# objective_function: "total_return"
+#
+# For trade frequency optimization:  
+# objective_function: "win_rate"
+#
+# For profit quality:
+# objective_function: "profit_factor"
+#
+# For risk management:
+# objective_function: "max_drawdown"  # Minimize drawdown
+
+# HIGH VOLATILITY STOCK CHARACTERISTICS
+# -------------------------------------
+# 1. Extreme price movements (±5-10% daily swings common)
+# 2. News-driven volatility (regulatory, business developments)
+# 3. High beta relative to market indices
+# 4. Momentum-driven trading patterns
+# 5. Sector rotation sensitivity (infrastructure, energy themes)
+#
+# AGGRESSIVE STRATEGY CONSIDERATIONS:
+# ----------------------------------
+# - Very short MAs capture quick momentum shifts
+# - Higher trade frequency increases transaction costs
+# - Requires active monitoring and risk management
+# - Stop-loss mechanisms recommended for live trading
+# - Parameter ranges optimized for 2023-2024 high-volatility period
+#
+# OPTIMIZATION RESULTS ANALYSIS:
+# -----------------------------
+# - Total combinations: 9 x 7 = 63 parameter sets
+# - Focus on maximum return rather than risk-adjusted metrics
+# - Validate results with paper trading before live implementation
+# - Monitor for overfitting to recent market conditions
+#
+# USAGE:
+# python run.py optimize single examples/adani_aggressive.yaml --report --verbose

@@ -1,0 +1,107 @@
+# Multi-Stock Portfolio Optimization Template
+# Demonstrates: Template for systematic multi-stock analysis
+# Stock: State Bank of India - Largest Public Sector Bank
+# Suitable for: Portfolio managers, institutional traders, banking sector specialists
+
+ticker: SBIN.NS
+start_date: 2021-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# BANKING SECTOR OPTIMIZED PARAMETERS
+# -----------------------------------
+# Parameter ranges specifically tuned for Indian banking sector characteristics
+# Based on sector volatility patterns and regulatory cycle timing
+
+strategy_params:
+  # Banking-optimized fast MA range
+  # Banks show strong momentum patterns during policy cycles
+  fast_ma:
+    type: "choices"
+    values: [10, 15, 20, 25]     # Popular banking sector momentum periods
+  
+  # Long-term trend confirmation for banking cycles
+  # Banking stocks benefit from longer trend confirmation due to:
+  # - Interest rate cycle impacts (6-18 month cycles)
+  # - Credit cycle timing (12-24 month patterns)
+  # - Regulatory announcement effects
+  slow_ma:
+    type: "choices"
+    values: [50, 75, 100, 150]   # Banking-specific trend periods
+
+# PROFIT FACTOR OPTIMIZATION
+# --------------------------
+# Optimize for trade quality rather than pure returns
+# Banking sector benefits from high-quality trade selection
+
+optimization_config:
+  active: true
+  algorithm: "GridSearch"          # Systematic exploration of all combinations
+  objective_function: "profit_factor"  # Gross profit / Gross loss ratio
+  objective_params:
+    min_trades: 5                # Minimum trades required for valid results
+  cache_results: true
+
+# PUBLIC SECTOR BANKING CHARACTERISTICS
+# ------------------------------------
+# 1. Government Policy Sensitivity: Budget announcements, policy changes
+# 2. Credit Quality Cycles: NPL recognition and resolution cycles
+# 3. Interest Rate Sensitivity: More sensitive than private banks
+# 4. Dividend Policy: Government dividend requirements affect capital
+# 5. Digital Transformation: Ongoing technology modernization initiatives
+# 6. Rural Penetration: Significant rural and semi-urban presence
+# 7. Corporate Lending Focus: Large corporate and infrastructure lending
+# 8. Regulatory Compliance: Stricter oversight than private banks
+#
+# PROFIT FACTOR OPTIMIZATION RATIONALE:
+# ------------------------------------
+# - Banking stocks can have extended drawdown periods
+# - Quality of trades more important than frequency
+# - Profit factor helps identify parameters that avoid false signals
+# - Banking sector momentum tends to be sustained when genuine
+# - Reduces whipsaw trades during sideways consolidation periods
+#
+# PARAMETER ANALYSIS FRAMEWORK:
+# ----------------------------
+# Total Combinations: 4 x 4 = 16 parameter sets (manageable for detailed analysis)
+#
+# Expected Parameter Performance:
+# - Fast MA 10-15: Captures policy-driven moves quickly
+# - Fast MA 20-25: Reduces noise, misses some quick reversals
+# - Slow MA 50-75: Good for quarterly result cycles
+# - Slow MA 100-150: Captures major credit/policy cycles
+#
+# SECTOR ROTATION CONSIDERATIONS:
+# ------------------------------
+# - Banking outperforms during rising rate cycles
+# - Underperforms during rate cut cycles and recession fears
+# - Credit growth cycles drive medium-term performance
+# - Monsoon impact on rural lending affects seasonal performance
+# - Budget announcements create volatility (typically January-February)
+#
+# RISK MANAGEMENT NOTES:
+# ---------------------
+# - Banking stocks can gap down on credit quality concerns
+# - Regulatory announcements can cause sudden moves
+# - Results seasons show high volatility (quarterly)
+# - Consider position sizing based on sector allocation limits
+# - Monitor macro indicators: inflation, GDP growth, policy rates
+#
+# USAGE EXAMPLES:
+# --------------
+# 1. Standard optimization:
+#    python run.py optimize single examples/sbin_banking_portfolio.yaml --report --verbose
+#
+# 2. Export results for portfolio analysis:
+#    python run.py optimize single examples/sbin_banking_portfolio.yaml --output-dir ./banking_analysis
+#
+# 3. Quick parameter screening:
+#    python run.py optimize single examples/sbin_banking_portfolio.yaml --no-progress
+#
+# PORTFOLIO INTEGRATION WORKFLOW:
+# ------------------------------
+# 1. Run optimization for multiple banking stocks using this template
+# 2. Compare optimal parameters across SBIN.NS, HDFCBANK.NS, ICICIBANK.NS
+# 3. Identify sector-wide optimal parameter ranges
+# 4. Create ensemble strategy using top-performing parameters
+# 5. Test portfolio-level risk management rules

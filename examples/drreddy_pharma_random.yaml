@@ -1,0 +1,96 @@
+# Pharmaceutical Sector Random Search Optimization
+# Stock: Dr. Reddy's Laboratories - Leading Pharma Company
+# Demonstrates: Random Search algorithm for large parameter spaces
+# Suitable for: Rapid prototyping, time-constrained optimization, exploration
+
+ticker: DRREDDY.NS
+start_date: 2022-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# LARGE PARAMETER SPACE FOR RANDOM SEARCH
+# ---------------------------------------
+# Wide ranges suitable for Random Search exploration
+# Covers micro to macro timeframe analysis
+
+strategy_params:
+  # Wide fast MA range for comprehensive exploration
+  fast_ma:
+    type: "range"
+    start: 3       # Very short-term (high frequency)
+    stop: 60       # Medium-term momentum (exclusive)
+    step: 1        # Every single day from 3 to 59
+  
+  # Extensive slow MA range for trend analysis
+  slow_ma:
+    type: "range"
+    start: 60      # Minimum for clear trend separation
+    stop: 250      # Long-term trend analysis (exclusive)
+    step: 5        # Test: 60,65,70,...,240,245
+
+# RANDOM SEARCH OPTIMIZATION
+# --------------------------
+# Efficient exploration of large parameter space (57 x 38 = 2,166 total combinations)
+# Random Search often finds good solutions faster than Grid Search for large spaces
+
+optimization_config:
+  active: true
+  algorithm: "RandomSearch"        # Efficient for large parameter spaces
+  algorithm_params:
+    n_trials: 200                 # Test 200 random combinations (~9% of total space)
+  objective_function: "sharpe"     # Risk-adjusted return optimization
+  objective_params:
+    risk_free_rate: 0.06          # Indian benchmark rate
+  cache_results: true
+
+# PHARMACEUTICAL SECTOR CHARACTERISTICS
+# ------------------------------------
+# 1. Regulatory Approval Cycles: FDA/EMA approvals create volatility
+# 2. Patent Cliff Events: Drug patent expiries cause revenue drops
+# 3. API Price Volatility: Raw material cost fluctuations
+# 4. Generic Competition: Pricing pressure from biosimilars
+# 5. R&D Investment Cycles: Long development timelines (10+ years)
+# 6. Regulatory Compliance: Quality issues affect market access
+# 7. Currency Exposure: Significant USD revenue exposure
+# 8. Healthcare Policy Impact: Government pricing regulations
+#
+# RANDOM SEARCH STRATEGY RATIONALE:
+# --------------------------------
+# - Large parameter space (2,166 combinations) makes Grid Search time-intensive
+# - Random Search efficiently explores diverse parameter regions
+# - 200 trials provide good coverage while maintaining reasonable execution time
+# - Pharma volatility benefits from diverse parameter testing
+# - Results can guide subsequent focused Grid Search optimization
+#
+# EXPECTED OPTIMIZATION TIME:
+# --------------------------
+# Estimated Runtime: ~15-25 minutes (depending on system performance)
+# Parameter Coverage: ~9% of total space
+# Progress Reporting: Real-time updates every 10 trials
+#
+# RESULT INTERPRETATION GUIDELINES:
+# --------------------------------
+# 1. Top 10 Results: Focus on consistently performing parameter ranges
+# 2. Parameter Clusters: Look for optimal ranges rather than single points
+# 3. Risk Metrics: Pharma volatility requires careful drawdown analysis
+# 4. Trade Frequency: Balance signal frequency with transaction costs
+# 5. Market Regime Sensitivity: Test across different market conditions
+#
+# USAGE EXAMPLES:
+# --------------
+# 1. Full random search optimization:
+#    python run.py optimize single examples/drreddy_pharma_random.yaml --report --verbose
+#
+# 2. Quick exploration (fewer trials):
+#    python run.py optimize single examples/drreddy_pharma_random.yaml --trials 50 --verbose
+#
+# 3. Silent optimization for automation:
+#    python run.py optimize single examples/drreddy_pharma_random.yaml --no-progress --quiet
+#
+# POST-OPTIMIZATION WORKFLOW:
+# ---------------------------
+# 1. Analyze top 10 parameter combinations
+# 2. Identify promising parameter ranges  
+# 3. Create focused Grid Search configuration
+# 4. Validate results with out-of-sample testing
+# 5. Consider ensemble strategies from multiple top performers

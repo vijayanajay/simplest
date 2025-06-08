@@ -1,0 +1,117 @@
+# Automotive Sector Win Rate Optimization
+# Stock: Maruti Suzuki - India's Largest Car Manufacturer
+# Demonstrates: Win rate optimization for consistent trading performance
+# Suitable for: Systematic traders, automotive sector specialists, risk-averse strategies
+
+ticker: MARUTI.NS
+start_date: 2022-01-01
+end_date: 2024-12-31
+strategy_type: MovingAverageCrossover
+
+# AUTOMOTIVE SECTOR PARAMETER OPTIMIZATION
+# ----------------------------------------
+# Parameters tuned for automotive sector seasonality and cyclical patterns
+# Automotive stocks show strong seasonal patterns (festival demand, monsoon impact)
+
+strategy_params:
+  # Short to medium-term momentum capture
+  # Automotive sector responds to monthly sales data and quarterly results
+  fast_ma:
+    type: "range"
+    start: 8       # Capture weekly sales momentum
+    stop: 25       # Medium-term trend confirmation (exclusive)
+    step: 2        # Test: 8,10,12,14,16,18,20,22,24
+  
+  # Seasonal and cyclical trend confirmation
+  # Automotive cycles align with economic cycles and seasonal demand
+  slow_ma:
+    type: "choices"
+    values: [40, 60, 90, 120]    # Quarterly and seasonal cycle periods
+
+# WIN RATE OPTIMIZATION
+# ---------------------
+# Optimize for percentage of profitable trades
+# Ideal for consistent performance and reduced psychological stress
+
+optimization_config:
+  active: true
+  algorithm: "GridSearch"         # Systematic exploration for win rate patterns
+  objective_function: "win_rate"  # Maximize percentage of profitable trades
+  objective_params:
+    min_trades: 8               # Minimum trades for statistical significance
+  cache_results: true
+
+# AUTOMOTIVE SECTOR DYNAMICS
+# --------------------------
+# 1. Monthly Sales Data: Monthly vehicle sales numbers drive short-term moves
+# 2. Seasonal Demand Patterns:
+#    - Festival Season (Oct-Nov): High demand period
+#    - Marriage Season (Nov-Feb): Increased vehicle purchases
+#    - Monsoon Impact (Jun-Sep): Rural demand depends on rainfall
+# 3. Commodity Price Sensitivity: Steel, aluminum price fluctuations
+# 4. Regulatory Changes: Emission norms, safety regulations
+# 5. Rural vs Urban Demand: Economic indicators affect different segments
+# 6. Electric Vehicle Transition: Long-term disruption factor
+# 7. Interest Rate Sensitivity: Auto loans affect demand
+# 8. Fuel Price Impact: Petrol/diesel prices influence buying decisions
+#
+# WIN RATE OPTIMIZATION STRATEGY:
+# ------------------------------
+# - Focus on trade consistency rather than maximum returns
+# - Reduces emotional stress from frequent losses
+# - Suitable for systematic trading with position sizing
+# - Automotive sector momentum tends to be sustained
+# - Helps identify parameters that avoid false breakouts
+#
+# SEASONAL TRADING CONSIDERATIONS:
+# -------------------------------
+# High Win Rate Periods (Historically):
+# - Pre-festival season (August-September): Anticipation builds
+# - Post-results (January): Clear guidance for the year
+# - Budget aftermath (February-March): Policy clarity
+#
+# Lower Win Rate Periods:
+# - Monsoon season (June-August): Uncertainty about rural demand
+# - Global uncertainty periods: Supply chain disruptions
+# - Interest rate hike cycles: Financing becomes expensive
+#
+# PARAMETER INTERPRETATION:
+# ------------------------
+# Total Combinations: 9 fast_ma x 4 slow_ma = 36 parameter sets
+#
+# Expected Win Rate Patterns:
+# - Shorter Fast MA (8-12): Higher frequency, potentially lower win rate
+# - Medium Fast MA (14-18): Balanced frequency and accuracy
+# - Longer Fast MA (20-24): Lower frequency, potentially higher win rate
+# - Slow MA 40-60: Captures quarterly business cycles
+# - Slow MA 90-120: Captures seasonal and annual patterns
+#
+# MARUTI-SPECIFIC FACTORS:
+# -----------------------
+# - Market leader with 40%+ market share
+# - Strong rural presence through dealer network
+# - Joint venture benefits (Suzuki technology)
+# - Export business provides currency hedge
+# - New product launches drive periodic outperformance
+# - Government policy on small cars affects performance
+#
+# USAGE EXAMPLES:
+# --------------
+# 1. Win rate optimization:
+#    python run.py optimize single examples/maruti_automotive_winrate.yaml --report --verbose
+#
+# 2. Compare with return optimization:
+#    # Modify objective_function to "total_return" and compare results
+#    python run.py optimize single examples/maruti_automotive_winrate.yaml --report
+#
+# 3. Seasonal analysis:
+#    # Modify date ranges to focus on specific seasons
+#    python run.py optimize single examples/maruti_automotive_winrate.yaml --verbose
+#
+# TRADE EXECUTION CONSIDERATIONS:
+# ------------------------------
+# - High win rate strategies may have smaller average profits per trade
+# - Consider transaction costs in final strategy implementation
+# - Monitor for parameter stability across different market conditions
+# - Use stop-loss orders to limit downside on losing trades
+# - Position sizing based on win rate and average trade profitability

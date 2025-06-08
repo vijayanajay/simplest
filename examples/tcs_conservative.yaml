@@ -1,10 +1,57 @@
 # Conservative Long-term Strategy for Indian Blue-chip Stock
-# Suitable for: Long-term investors, low-risk tolerance
 # Stock: Tata Consultancy Services (TCS) - IT Giant
+# Demonstrates: Backward compatibility and explicit value definitions
+# Suitable for: Long-term investors, low-risk tolerance
+
 ticker: TCS.NS
 start_date: 2020-01-01
 end_date: 2024-12-31
 strategy_type: MovingAverageCrossover
+
+# BACKWARD COMPATIBLE CONFIGURATION
+# ---------------------------------
+# This configuration uses traditional fixed parameters
+# Demonstrates that existing configurations continue to work
+
 strategy_params:
+  # Traditional fixed parameter approach
   fast_ma: 50   # Longer fast MA for stability
   slow_ma: 200  # Classic 200-day long-term trend
+
+# ALTERNATIVE: EXPLICIT VALUE DEFINITIONS
+# --------------------------------------
+# Uncomment below to see the new explicit value syntax
+# which provides the same result with enhanced clarity:
+
+# strategy_params:
+#   fast_ma:
+#     type: "value"
+#     value: 50
+#     description: "Conservative 50-day MA for reduced noise"
+#   slow_ma:
+#     type: "value" 
+#     value: 200
+#     description: "Classic 200-day long-term trend indicator"
+
+# NO OPTIMIZATION CONFIG
+# ---------------------
+# This strategy uses fixed parameters only
+# No optimization_config section means single backtest execution
+
+# IT SECTOR CHARACTERISTICS
+# -------------------------
+# 1. Lower volatility compared to other sectors
+# 2. Strong export orientation (USD revenue benefits from rupee weakness)
+# 3. Quarterly guidance provides predictable revenue streams
+# 4. Technology adoption cycles drive long-term trends
+# 5. Geopolitical factors (H1B visas, trade policies) affect sentiment
+#
+# CONSERVATIVE STRATEGY RATIONALE:
+# -------------------------------
+# - 50-day MA: Captures medium-term momentum while filtering noise
+# - 200-day MA: Provides strong long-term trend confirmation
+# - Combination suitable for buy-and-hold investors
+# - Reduces whipsaw trades common in volatile markets
+#
+# USAGE:
+# python run.py analyze examples/tcs_conservative.yaml --report --verbose

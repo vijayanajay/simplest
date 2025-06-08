@@ -1,9 +1,48 @@
-# Banking Sector Strategy
-# Stock: HDFC Bank - Leading private sector bank
+# Banking Sector Strategy - Enhanced Parameter Framework
+# Stock: HDFC Bank - Leading private sector bank in India
+# Demonstrates: Mixed parameter definitions with fixed and optimizable parameters
+
 ticker: HDFCBANK.NS
 start_date: 2021-01-01
 end_date: 2024-12-31
 strategy_type: MovingAverageCrossover
+
+# MIXED PARAMETER STRATEGY
+# ------------------------
+# This configuration shows how to combine fixed and optimizable parameters
+# Fixed parameters provide stability, while ranges allow optimization
+
 strategy_params:
-  fast_ma: 15  # Medium-term momentum
-  slow_ma: 50  # Trend confirmation
+  # Fixed fast MA for consistent short-term signals
+  # Banking stocks benefit from stable short-term momentum indicators
+  fast_ma: 15  # Fixed at 15 days for medium-term momentum
+  
+  # Optimize slow MA to find best long-term trend confirmation
+  # Banking sector responds well to different trend timeframes
+  slow_ma:
+    type: "choices"
+    values: [30, 50, 100]  # Test popular banking sector MA periods
+
+# RANDOM SEARCH OPTIMIZATION
+# --------------------------
+# Use Random Search for faster exploration of parameter space
+optimization_config:
+  active: true
+  algorithm: "RandomSearch"       # Efficient for smaller parameter spaces
+  algorithm_params:
+    n_trials: 50                 # Test 50 random combinations
+  objective_function: "sharpe"    # Optimize risk-adjusted returns
+  objective_params:
+    risk_free_rate: 0.06         # Indian risk-free rate
+  cache_results: true
+
+# BANKING SECTOR NOTES
+# --------------------
+# 1. Banking stocks show strong trend-following behavior
+# 2. Interest rate cycles significantly impact performance
+# 3. Quarterly results often create volatility spikes
+# 4. Regulatory announcements (RBI policies) affect sector performance
+# 5. Credit quality concerns drive long-term trends
+#
+# USAGE:
+# python run.py optimize single examples/hdfc_banking.yaml --report --verbose

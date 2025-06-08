@@ -36,6 +36,8 @@ try:
     from .config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams
     from .exceptions import BacktestError
     from .indicators_core.registry import get_indicator_registry # New import
+    # Import indicators_core to trigger indicator registration
+    from . import indicators_core
 except ImportError: # For imports when running tests or if structure changes
     from src.meqsap.config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams # type: ignore
     from src.meqsap.exceptions import BacktestError # type: ignore
@@ -162,13 +164,32 @@ class StrategySignalGenerator:
                     concrete[param_name] = param_def 
             else: # Fallback for simple values not caught by initial isinstance
                 concrete[param_name] = param_def
-        return concrete
-
+        return concrete    
+        
     def _generate_ma_crossover_signals(self, data: pd.DataFrame, params: Dict[str, Any]) -> pd.DataFrame:
         """Generate Moving Average Crossover signals."""
-        fast_ma_period = params['fast_ma']
-        slow_ma_period = params['slow_ma']
-          # Validate MA period ordering
+        # Extract and validate MA periods with type conversion
+        fast_ma_raw = params['fast_ma']
+        slow_ma_raw = params['slow_ma']
+        
+        logger.debug(f"Raw MA periods: fast_ma={fast_ma_raw} (type: {type(fast_ma_raw)}), slow_ma={slow_ma_raw} (type: {type(slow_ma_raw)})")
+        
+        # Convert to integers and validate
+        try:
+            fast_ma_period = int(fast_ma_raw)
+            slow_ma_period = int(slow_ma_raw)
+        except (ValueError, TypeError) as e:
+            raise BacktestError(f"MA periods must be convertible to integers: fast_ma={fast_ma_raw}, slow_ma={slow_ma_raw}. Error: {e}")
+        
+        logger.debug(f"Converted MA periods: fast_ma={fast_ma_period}, slow_ma={slow_ma_period}")
+        
+        # Validate MA period values
+        if fast_ma_period <= 0:
+            raise BacktestError(f"Fast MA period must be positive: {fast_ma_period}")
+        if slow_ma_period <= 0:
+            raise BacktestError(f"Slow MA period must be positive: {slow_ma_period}")
+            
+        # Validate MA period ordering
         if fast_ma_period >= slow_ma_period:
             raise BacktestError(f"Invalid MA period ordering: fast_ma ({fast_ma_period}) must be less than slow_ma ({slow_ma_period})")
         
@@ -448,13 +469,24 @@ def run_backtest(
                 trade_details=[],
                 portfolio_value_series={}
             )
-        
         logger.debug("Extracting performance metrics...")
         # Replace float conversions with safe_float where needed
         total_return = safe_float(stats.get('Total Return [%]'), default=0.0, 
                                   metric_name="Total Return", raise_on_type_error=True)
-        annualized_return = safe_float(stats.get('Annualized Return [%]'), default=0.0,
-                                       metric_name="Annualized Return", raise_on_type_error=True)
+        
+        # Calculate annualized return manually since vectorbt doesn't provide it directly
+        # Use the total return and the period to annualize
+        try:
+            period_days = (returns.index[-1] - returns.index[0]).days if len(returns) > 1 else 365
+            years = period_days / 365.25  # Account for leap years
+            if years > 0 and total_return != 0:
+                annualized_return = ((1 + total_return / 100) ** (1 / years) - 1) * 100
+            else:
+                annualized_return = 0.0
+            logger.debug(f"Calculated annualized return: {annualized_return}% (period: {period_days} days, {years:.2f} years)")
+        except Exception as e:
+            logger.warning(f"Could not calculate annualized return: {str(e)}, using 0.0")
+            annualized_return = 0.0
         # Sharpe can be legitimately 0 or negative. Defaulting to 0.0 if non-numeric is okay,
         # but a string like "N/A" should raise an error.
         sharpe_ratio = safe_float(stats.get('Sharpe Ratio'), default=0.0,
@@ -477,22 +509,27 @@ def run_backtest(
             # Get column mapping for different vectorbt versions
             columns = trades.columns.tolist()
             logger.debug(f"Trade columns: {columns}")
+              # Create column name mappings with correct vectorbt column names
+            entry_time_col = 'Entry Timestamp'
+            exit_time_col = 'Exit Timestamp' 
+            entry_price_col = 'Avg Entry Price'
+            exit_price_col = 'Avg Exit Price'
+            pnl_col = 'PnL'
+            return_pct_col = 'Return'
             
-            # Create column name mappings with fallbacks
-            entry_time_col = next((c for c in ['entry_time', 'Entry Time', 'Entry Timestamp', 'entry_timestamp'] 
-                                if c in columns), columns[0] if len(columns) > 0 else 'entry_time')
-            exit_time_col = next((c for c in ['exit_time', 'Exit Time', 'Exit Timestamp', 'exit_timestamp'] 
-                               if c in columns), columns[1] if len(columns) > 1 else 'exit_time')
-            entry_price_col = next((c for c in ['entry_price', 'Entry Price', 'EntryPrice'] 
-                                  if c in columns), columns[2] if len(columns) > 2 else 'entry_price')
-            exit_price_col = next((c for c in ['exit_price', 'Exit Price', 'ExitPrice'] 
-                                 if c in columns), columns[3] if len(columns) > 3 else 'exit_price')
-            pnl_col = next((c for c in ['pnl', 'PnL', 'profit_loss'] 
-                          if c in columns), columns[4] if len(columns) > 4 else 'PnL')
-            return_pct_col = next((c for c in ['return_pct', 'Return [%]', 'return'] 
-                                  if c in columns), columns[5] if len(columns) > 5 else 'Return [%]')
-            
-            logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, pnl={pnl_col}")
+            # Verify required columns exist
+            required_cols = [entry_time_col, exit_time_col, entry_price_col, exit_price_col, pnl_col, return_pct_col]
+            missing_cols = [col for col in required_cols if col not in columns]
+            if missing_cols:
+                logger.warning(f"Missing expected columns: {missing_cols}. Available: {columns}")
+                # Fallback to positional mapping if standard names don't exist
+                entry_time_col = columns[3] if len(columns) > 3 else 'Entry Timestamp'
+                exit_time_col = columns[6] if len(columns) > 6 else 'Exit Timestamp'
+                entry_price_col = columns[4] if len(columns) > 4 else 'Avg Entry Price'
+                exit_price_col = columns[7] if len(columns) > 7 else 'Avg Exit Price'
+                pnl_col = columns[9] if len(columns) > 9 else 'PnL'
+                return_pct_col = columns[10] if len(columns) > 10 else 'Return'
+                logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, entry_price={entry_price_col}, exit_price={exit_price_col}, pnl={pnl_col}")
             
             # Ensure PnL and Return columns are numeric before calculations
             trades[pnl_col] = pd.to_numeric(trades[pnl_col], errors='coerce')
@@ -504,15 +541,18 @@ def run_backtest(
             gross_profit = trades[trades[pnl_col] > 0][pnl_col].sum()
             gross_loss = abs(trades[trades[pnl_col] < 0][pnl_col].sum())
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
-            logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")
-
-            # Calculate trade duration statistics
-            trades[entry_time_col] = pd.to_datetime(trades[entry_time_col])
-            trades[exit_time_col] = pd.to_datetime(trades[exit_time_col])
-            trade_durations = (trades[exit_time_col] - trades[entry_time_col]).dt.days
-            avg_trade_duration_days = trade_durations.mean()
-            trade_durations_list = trade_durations.tolist()
-            logger.debug(f"Trade duration stats: avg={avg_trade_duration_days:.2f} days")
+            logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")            # Calculate trade duration statistics
+            try:
+                trades[entry_time_col] = pd.to_datetime(trades[entry_time_col])
+                trades[exit_time_col] = pd.to_datetime(trades[exit_time_col])
+                trade_durations = (trades[exit_time_col] - trades[entry_time_col]).dt.days
+                avg_trade_duration_days = trade_durations.mean()
+                trade_durations_list = trade_durations.tolist()
+                logger.debug(f"Trade duration stats: avg={avg_trade_duration_days:.2f} days")
+            except Exception as e:
+                logger.warning(f"Could not calculate trade durations: {str(e)}")
+                avg_trade_duration_days = None
+                trade_durations_list = None
         else:
             win_rate = 0.0
             profit_factor = 0.0
@@ -534,20 +574,23 @@ def run_backtest(
         # Calculate Calmar ratio
         calmar_ratio = annualized_return / abs(max_drawdown) if max_drawdown != 0 else 0.0
         logger.debug(f"Calmar ratio: {calmar_ratio}")
-        
-        # Extract trade details
+          # Extract trade details
         logger.debug("Extracting trade details...")
         trade_details = []
         if len(trades) > 0:
             for idx, trade in trades.iterrows():
                 try:
+                    # Convert timestamps to strings properly
+                    entry_date_str = pd.to_datetime(trade[entry_time_col]).strftime('%Y-%m-%d') if pd.notna(trade[entry_time_col]) else 'N/A'
+                    exit_date_str = pd.to_datetime(trade[exit_time_col]).strftime('%Y-%m-%d') if pd.notna(trade[exit_time_col]) else 'N/A'
+                    
                     trade_details.append({
-                        'entry_date': str(trade[entry_time_col]),  # Keep as str conversion
-                        'exit_date': str(trade[exit_time_col]),    # Keep as str conversion
+                        'entry_date': entry_date_str,
+                        'exit_date': exit_date_str,
                         'entry_price': safe_float(trade[entry_price_col], metric_name=f"Trade Entry Price (idx {idx})", raise_on_type_error=True),
                         'exit_price': safe_float(trade[exit_price_col], metric_name=f"Trade Exit Price (idx {idx})", raise_on_type_error=True),
                         'pnl': safe_float(trade[pnl_col], metric_name=f"Trade PnL (idx {idx})", raise_on_type_error=True),
-                        'return_pct': safe_float(trade[return_pct_col], metric_name=f"Trade Return % (idx {idx})", raise_on_type_error=True)
+                        'return_pct': safe_float(trade[return_pct_col] * 100, metric_name=f"Trade Return % (idx {idx})", raise_on_type_error=True)  # Convert to percentage
                     })
                 except Exception as e:
                     logger.warning(f"Error processing trade at index {idx}: {str(e)}")
