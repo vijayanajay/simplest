@@ -328,6 +328,8 @@ python run.py analyze config.yaml --quiet
 
 ### `optimize single` - Parameter Optimization (New!)
 
+**Important**: The `single` subcommand is required. Use `python run.py optimize single` (not just `python run.py optimize`).
+
 **Syntax:**
 ```bash
 python run.py optimize single CONFIG_FILE [OPTIONS]
@@ -802,6 +804,7 @@ python run.py analyze config.yaml --validate-only
 python run.py --help
 python run.py analyze --help
 python run.py optimize --help
+python run.py optimize single --help
 ```
 
 ### Sample Configuration
@@ -845,4 +848,4 @@ optimization_config:
 - **Invalid parameter range**: Check start < stop for range definitions
 - **No valid trials found**: Verify parameter ranges allow valid combinations
 
-For more help: `python run.py --help` or `python run.py optimize --help`
+For more help: `python run.py --help` or `python run.py optimize single --help`

@@ -249,7 +249,7 @@ class StrategySignalGenerator:
         valid_mask = fast_ma_series.notna() & slow_ma_series.notna()
         valid_index = data.index[valid_mask]
         
-        if len(valid_mask) == 0:
+        if not valid_mask.any():
             raise BacktestError("No valid data points after moving average calculation")
         
         # Create signals DataFrame restricted to valid index range
@@ -509,29 +509,59 @@ def run_backtest(
             # Get column mapping for different vectorbt versions
             columns = trades.columns.tolist()
             logger.debug(f"Trade columns: {columns}")
-              # Create column name mappings with correct vectorbt column names
-            entry_time_col = 'Entry Timestamp'
-            exit_time_col = 'Exit Timestamp' 
-            entry_price_col = 'Avg Entry Price'
-            exit_price_col = 'Avg Exit Price'
-            pnl_col = 'PnL'
-            return_pct_col = 'Return'
             
-            # Verify required columns exist
-            required_cols = [entry_time_col, exit_time_col, entry_price_col, exit_price_col, pnl_col, return_pct_col]
-            missing_cols = [col for col in required_cols if col not in columns]
+            # Helper function to find column by patterns
+            def find_column_by_patterns(columns: list, patterns: list, default: str) -> str:
+                """Find column name that matches any of the given patterns (case-insensitive)."""
+                for pattern in patterns:
+                    for col in columns:
+                        if pattern.lower() in col.lower():
+                            return col
+                return default
+            
+            # Create column name mappings with robust pattern matching
+            entry_time_col = find_column_by_patterns(
+                columns, 
+                ['entry timestamp', 'entry time', 'open time', 'start time'], 
+                'Entry Timestamp'
+            )
+            exit_time_col = find_column_by_patterns(
+                columns, 
+                ['exit timestamp', 'exit time', 'close time', 'end time'], 
+                'Exit Timestamp'
+            )
+            entry_price_col = find_column_by_patterns(
+                columns, 
+                ['avg entry price', 'entry price', 'open price', 'buy price'], 
+                'Avg Entry Price'
+            )
+            exit_price_col = find_column_by_patterns(
+                columns, 
+                ['avg exit price', 'exit price', 'close price', 'sell price'], 
+                'Avg Exit Price'
+            )
+            pnl_col = find_column_by_patterns(
+                columns, 
+                ['pnl', 'profit', 'p&l', 'p/l'], 
+                'PnL'
+            )
+            return_pct_col = find_column_by_patterns(
+                columns, 
+                ['return', 'ret', '%', 'pct'], 
+                'Return'
+            )
+            
+            # Verify required columns exist after mapping
+            mapped_cols = [entry_time_col, exit_time_col, entry_price_col, exit_price_col, pnl_col, return_pct_col]
+            missing_cols = [col for col in mapped_cols if col not in columns]
+            
             if missing_cols:
-                logger.warning(f"Missing expected columns: {missing_cols}. Available: {columns}")
-                # Fallback to positional mapping if standard names don't exist
-                entry_time_col = columns[3] if len(columns) > 3 else 'Entry Timestamp'
-                exit_time_col = columns[6] if len(columns) > 6 else 'Exit Timestamp'
-                entry_price_col = columns[4] if len(columns) > 4 else 'Avg Entry Price'
-                exit_price_col = columns[7] if len(columns) > 7 else 'Avg Exit Price'
-                pnl_col = columns[9] if len(columns) > 9 else 'PnL'
-                return_pct_col = columns[10] if len(columns) > 10 else 'Return'
-                logger.debug(f"Column mapping: entry={entry_time_col}, exit={exit_time_col}, entry_price={entry_price_col}, exit_price={exit_price_col}, pnl={pnl_col}")
-            
-            # Ensure PnL and Return columns are numeric before calculations
+                logger.warning(f"Could not find required columns after pattern matching. Missing: {missing_cols}")
+                logger.warning(f"Available columns: {columns}")
+                logger.warning("Proceeding with best-effort mapping - some calculations may fail")
+            else:
+                logger.debug(f"Successfully mapped all columns: entry={entry_time_col}, exit={exit_time_col}, entry_price={entry_price_col}, exit_price={exit_price_col}, pnl={pnl_col}, return={return_pct_col}")
+              # Ensure PnL and Return columns are numeric before calculations
             trades[pnl_col] = pd.to_numeric(trades[pnl_col], errors='coerce')
             trades[return_pct_col] = pd.to_numeric(trades[return_pct_col], errors='coerce')
             
@@ -541,7 +571,9 @@ def run_backtest(
             gross_profit = trades[trades[pnl_col] > 0][pnl_col].sum()
             gross_loss = abs(trades[trades[pnl_col] < 0][pnl_col].sum())
             profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
-            logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")            # Calculate trade duration statistics
+            logger.debug(f"Trade metrics: WR={win_rate}, PF={profit_factor}")
+            
+            # Calculate trade duration statistics
             try:
                 trades[entry_time_col] = pd.to_datetime(trades[entry_time_col])
                 trades[exit_time_col] = pd.to_datetime(trades[exit_time_col])
