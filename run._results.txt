@@ -1,0 +1,32 @@
+Verbose logging enabled
+Loading configuration from examples\indian_stock_sample.yaml...[\/blue]
+Acquiring market data...[\/blue]
+✓[\/green] Acquired 739 data points for RELIANCE.NS
+Initializing optimization engine...[\/blue]
+ConfigurationError: Objective function 'sharpe' not found. Available functions: ['SharpeRatio', 'CalmarRatio', 
+'ProfitFactor', 'SharpeWithHoldPeriodConstraint']
+
+Suggested Solutions:
+  • Verify the YAML file syntax is correct
+  • Check that all required fields are present
+  • Ensure date ranges are valid (start < end, not in future)
+  • Validate ticker symbol format
+  • Try using --validate-only to validate configuration without execution
+  • Check examples in documentation for proper YAML structure
+
+Debug Information:
+Traceback (most recent call last):
+  File "D:\Code\simplest\src\meqsap\cli\utils.py", line 82, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Code\simplest\src\meqsap\cli\commands\optimize.py", line 176, in optimize_single
+    engine = _setup_optimization_engine(config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Code\simplest\src\meqsap\cli\commands\optimize.py", line 88, in _setup_optimization_engine
+    objective_function = get_objective_function(objective_function_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Code\simplest\src\meqsap\optimizer\objective_functions.py", line 81, in get_objective_function
+    raise ConfigurationError(
+meqsap.exceptions.ConfigurationError: Objective function 'sharpe' not found. Available functions: ['SharpeRatio', 
+'CalmarRatio', 'ProfitFactor', 'SharpeWithHoldPeriodConstraint']
+
