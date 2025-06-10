@@ -197,7 +197,19 @@
 
 ## Anti-Pattern: Inconsistent API Contracts in Call Chain
 
-### Structural Issue Discovered (2025-06-12)
+### Structural Issue Discovered (2025-06-14)
+- **Symptom**: Multiple tests for the `optimize single` command failed with `TypeError: cannot unpack non-iterable function object` and `AttributeError: 'str' object has no attribute 'strftime'`.
+- **Root Cause**: The application had two separate logic paths for loading and validating user configuration YAMLs. The `analyze` command's path used a robust Pydantic model (`StrategyConfig`) that performed type coercion (e.g., converting date strings to `datetime.date` objects). The `optimize single` command's path used a simpler helper that loaded the YAML into a raw dictionary but failed to perform the same type coercion. This created a structural inconsistency where the same input data was treated differently depending on the CLI command used, leading to downstream errors. A secondary symptom was an API contract mismatch between a UI helper and its consumer due to incomplete refactoring.
+
+### Lesson & Design Principle
+- **Principle: Unify Core Business Logic.** Critical, cross-cutting concerns like configuration loading, validation, and data preparation should be handled by a single, canonical function or class that is used by all parts of the application. Avoid creating parallel, slightly different implementations for the same task in different modules or command paths.
+- **Action**: Refactor divergent logic paths to call a single, authoritative function. In this case, the `optimize` command's configuration loader was refactored to use the same `validate_config` function as the `analyze` command, ensuring all configurations are processed identically, regardless of the entry point. This reinforces the "Don't Repeat Yourself" (DRY) principle at an architectural level.
+
+---
+
+## Anti-Pattern: Inconsistent API Contracts in Call Chain
+ 
+ ### Structural Issue Discovered (2025-06-12)
 - **Symptom**: `AttributeError` in `OptimizationEngine` tests due to a call to a non-existent method, and a latent bug in the `_compile_results` method where `run_complete_backtest` was called with incorrect argument types (`dict` of parameters instead of `dict` of objective settings).
 - **Root Cause**: A structural refactoring was performed to simplify the `run_complete_backtest` API, requiring callers to pass a fully-formed `StrategyConfig` object containing all parameters. However, not all call sites within the `OptimizationEngine` were updated to adhere to this new contract. The optimizer's `_compile_results` method was still attempting to pass strategy parameters via a separate argument, which was now being misinterpreted as `objective_params`. Additionally, a helper method (`_is_trial_with_concrete_params`) was removed, but its call was left in place, causing test failures.
 
@@ -214,3 +226,59 @@
 ### Lesson & Design Principle
 - **Principle: Test fixtures must provide a complete and valid data contract for downstream components.** When a component under test relies on creating objects (especially strictly-validated Pydantic models) from data passed into its constructor, the test fixtures must supply a dictionary that satisfies the model's schema.
 - **Action**: Ensure that test fixtures for components that perform internal object instantiation provide a complete and valid dictionary/data structure. Do not use minimal or incomplete dictionaries in fixtures if they will be used to construct a validated model later in the call chain. This prevents tests from failing due to schema validation errors, allowing them to correctly test the intended business logic.
+
+## Anti-Pattern: Hardcoded File Paths in Tests
+
+### Structural Issue Discovered (2025-06-10)
+- **Symptom**: Tests using hardcoded file paths like `Path("d:/Code/simplest/run.py")` were not portable across different development environments and machines. Some tests would skip instead of failing when critical files didn't exist, masking potential issues.
+- **Root Cause**: Inconsistent path handling across test methods, with some using relative paths while others used hardcoded absolute paths. Critical entry point files like `run.py` were being treated as optional (using `pytest.skip()`) when they should be required for the project to function.
+
+### Lesson & Design Principle
+- **Principle: Use relative paths for test portability and appropriate error handling for critical files.** Tests should work regardless of where the project is cloned. Critical project files should cause test failures, not skips, when missing.
+- **Action**: 
+  - Use `Path(__file__).parent.parent / "filename"` for consistent relative path calculation
+  - Use `pytest.fail()` for missing critical files like entry points, configuration files, etc.
+  - Use `pytest.skip()` only for truly optional features or files
+  - Provide descriptive error messages with resolved paths and context
+  - Add proper exception handling for file I/O operations with meaningful error messages
+
+### DO ✅
+- Use relative path calculation: `Path(__file__).parent.parent / "run.py"`
+- Fail tests for missing critical files: `pytest.fail(f"run.py not found at {path.resolve()}")`
+- Add file I/O exception handling: `try/except (OSError, IOError)`
+- Provide descriptive error messages with expected patterns and context
+
+### DON'T ❌
+- Use hardcoded absolute paths in tests: `Path("d:/Code/project/file")`
+- Skip tests for missing critical project files
+- Ignore file I/O errors without proper exception handling
+- Use inconsistent path handling across test methods
+
+## Anti-Pattern: Brittle Data Contracts and Overly-Specific Exception Handling
+
+### Structural Issue Discovered (2025-06-15)
+- **Symptom**: Multiple `optimize single` command tests failed with `AttributeError: 'Mock' object has no attribute 'timing_info'` and incorrect exit codes for `YAMLError`.
+- **Root Cause**:
+    1.  The `OptimizationResult` Pydantic model defines several fields (`total_trials`, `error_summary`, `timing_info`) that are populated during a real run. However, the test mocks for this object were incomplete and did not define these attributes. This led to `AttributeError` in downstream UI components that expected them to exist, making the tests brittle to model changes.
+    2.  The central CLI error handler in `utils.py` was too specific, only catching the custom `ConfigurationError` but not the underlying `yaml.YAMLError` that could be raised by a mock or during file parsing. This led to incorrect error classification and exit codes in tests.
+
+### Lesson & Design Principle
+- **Principle: Test mocks must honor the data contract.** When mocking a data model object (like a Pydantic model), the mock must be as complete as the consumer of that object expects it to be. Incomplete mocks lead to brittle tests that fail on implementation details, not on logic errors.
+- **Principle: Central error handlers should be robust.** While core logic should wrap third-party exceptions, the top-level error handler can be made more resilient by also catching key raw exceptions that are conceptually equivalent to a custom error type (e.g., treating `yaml.YAMLError` as a `ConfigurationError`). This ensures consistent error classification and user experience (e.g., exit codes).
+
+### DO ✅
+- **Keep Mocks Complete:** Ensure test mocks for data models include all attributes that downstream functions will access.
+- **Broaden `except` Blocks:** Broaden top-level `except` blocks to include key raw third-party exceptions alongside custom-wrapped ones: `except (ConfigurationError, yaml.YAMLError) as e:`.
+
+## Anti-Pattern: Overly Broad Exception Handling in Decorators
+
+### Structural Issue Discovered (2025-06-15)
+- **Symptom**: CLI commands using `typer.Exit` for controlled exits (e.g., success with code 0, interruption with code 2) were failing with a generic exit code 10.
+- **Root Cause**: A global error-handling decorator (`@handle_cli_errors`) was implemented with a broad `except Exception as e:` block. This block was catching `typer.Exit` (which can inherit from `Exception` via `click.Exit`), misinterpreting it as an unhandled application error, and then re-raising it as a generic failure with exit code 10. This broke the intended exit code semantics of the command.
+
+### Lesson & Design Principle
+- **Principle: Decorators for cross-cutting concerns must not interfere with the underlying framework's control flow.** An error-handling decorator should be specific about the application exceptions it translates into exit codes. It should explicitly ignore or re-raise framework-specific control-flow exceptions like `typer.Exit` or `SystemExit`.
+- **Action**: When implementing a generic error handler as a decorator:
+  - **Be Specific**: Catch specific, custom application exceptions (`MEQSAPError` subclasses) first.
+  - **Ignore Control Flow**: Explicitly catch and re-raise framework exceptions like `typer.Exit` *before* the generic `except Exception:` block to allow the framework to handle its own control flow.
+  - **Alternative (Stricter Design)**: Adhere to a stricter pattern where command logic *never* calls `typer.Exit` directly, but instead raises specific, typed exceptions that the decorator is designed to map to exit codes. The immediate fix was to make the decorator more robust, but the long-term solution is to enforce the stricter pattern.

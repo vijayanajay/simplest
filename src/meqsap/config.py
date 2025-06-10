@@ -124,6 +124,22 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
 # which gets converted to concrete BaseStrategyParams instances via validate_strategy_params()
 StrategyParamsDict = Dict[str, Any]
 
+class OptimizationConfig(BaseModel):
+    """Defines the configuration for a parameter optimization run."""
+    active: bool = Field(False, description="Whether optimization is active for this run.")
+    algorithm: str = Field("RandomSearch", description="The optimization algorithm to use (e.g., 'GridSearch', 'RandomSearch').")
+    objective_function: str = Field(..., description="The name of the objective function to maximize or minimize.")
+    objective_params: Dict[str, Any] = Field(default_factory=dict, description="Parameters for the objective function.")
+    algorithm_params: Dict[str, Any] = Field(default_factory=dict, description="Parameters for the chosen algorithm (e.g., 'n_trials').")
+    cache_results: bool = Field(True, description="Whether to cache intermediate backtest results during optimization.")
+
+    @field_validator('algorithm')
+    def algorithm_must_be_supported(cls, v: str) -> str:
+        if v not in ["GridSearch", "RandomSearch"]:
+            raise ValueError(f"Unsupported algorithm: {v}. Supported algorithms are 'GridSearch', 'RandomSearch'.")
+        return v
+
+
 class StrategyConfig(BaseModel):
     """
     Configuration for a trading strategy backtest.
@@ -144,6 +160,9 @@ class StrategyConfig(BaseModel):
     )
     strategy_params: StrategyParamsDict = Field(
         ..., description="Strategy-specific parameters"
+    )
+    optimization_config: Optional[OptimizationConfig] = Field(
+        None, description="Configuration for parameter optimization."
     )
 
     @field_validator("ticker")

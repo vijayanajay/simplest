@@ -36,7 +36,7 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"           # Systematic exploration of momentum parameters
-  objective_function: "total_return"  # Maximize absolute returns
+  objective_function: "ProfitFactor"  # Maximize profit quality for momentum
   objective_params:
     min_trades: 3                 # Allow for longer-term positioning
   cache_results: true

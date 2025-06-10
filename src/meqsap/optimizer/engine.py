@@ -82,15 +82,15 @@ class _ParameterParser:
 
 class OptimizationEngine:
     """Core optimization engine with progress tracking and error handling."""
-    def __init__(self, strategy_config: Dict[str, Any], objective_function: Callable, 
+    def __init__(self, strategy_config: StrategyConfig, objective_function: Callable, 
                  objective_params: Optional[Dict[str, Any]] = None,
                  algorithm_params: Optional[Dict[str, Any]] = None):
         """Initialize optimization engine.
         
         Args:
-            strategy_config: Strategy configuration including parameter spaces
-            objective_function: Function to evaluate backtest results
-            objective_params: Additional parameters for objective function
+            strategy_config: The full strategy configuration object
+            objective_function: The function to optimize
+            objective_params: Parameters for the objective function
             algorithm_params: Parameters for the optimization algorithm. Supported keys:
                 - n_trials: Default number of trials (overridden by run_optimization param)
                 - sampler: Optuna sampler type ('tpe', 'random', 'grid', 'cmaes')
@@ -120,7 +120,7 @@ class OptimizationEngine:
         Returns a search space dictionary suitable for optuna.samplers.GridSampler.
         """
         search_space = {}
-        strategy_params_dict = self.strategy_config.get('strategy_params', {})
+        strategy_params_dict = self.strategy_config.strategy_params
 
         for param_name, param_def in strategy_params_dict.items():
             parser = _ParameterParser(param_name, param_def)
@@ -136,7 +136,7 @@ class OptimizationEngine:
         Returns a constraints function for the GridSampler based on the strategy.
         This is used to prune invalid parameter combinations from the grid.
         """
-        strategy_type = self.strategy_config.get("strategy_type")
+        strategy_type = self.strategy_config.strategy_type
 
         if strategy_type == "MovingAverageCrossover":
             def constraints(trial: optuna.trial.FrozenTrial) -> bool:
@@ -299,7 +299,7 @@ class OptimizationEngine:
         logger.info(f"Starting trial {trial.number} with params: {concrete_params}")
         try:
             # Create a temporary config dict for this trial by injecting concrete_params
-            trial_config_dict = self.strategy_config.copy()
+            trial_config_dict = self.strategy_config.model_dump()
             trial_config_dict['strategy_params'] = concrete_params
             # Create a StrategyConfig object for this trial to ensure a consistent interface
             config_for_trial = StrategyConfig(**trial_config_dict)
@@ -342,7 +342,7 @@ class OptimizationEngine:
         Suggests parameter values for a given trial using the parameter definitions.
         """
         params = {}
-        strategy_params_dict = self.strategy_config['strategy_params']
+        strategy_params_dict = self.strategy_config.strategy_params
 
         for param_name, param_def in strategy_params_dict.items():
             parser = _ParameterParser(param_name, param_def)
@@ -436,8 +436,8 @@ class OptimizationEngine:
             if self._market_data is not None and best_params is not None:
                 try:
                     logger.info(f"Re-running backtest for best parameters: {best_params}")
-                    # Create a new config for the best trial
-                    best_config_dict = self.strategy_config.copy()
+                    # Create a new config dict for the best trial
+                    best_config_dict = self.strategy_config.model_dump()
                     best_config_dict['strategy_params'] = best_params
                     config_for_best_trial = StrategyConfig(**best_config_dict)
 

@@ -36,7 +36,7 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"         # Systematic exploration for win rate patterns
-  objective_function: "win_rate"  # Maximize percentage of profitable trades
+  objective_function: "ProfitFactor"  # Maximize profit quality (proxy for win rate)
   objective_params:
     min_trades: 8               # Minimum trades for statistical significance
   cache_results: true

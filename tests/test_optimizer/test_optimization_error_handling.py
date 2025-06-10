@@ -15,7 +15,7 @@ class TestOptimizationErrorHandling:
         """Create a properly initialized OptimizationEngine with mock dependencies."""
         # This mock config must contain all required fields for StrategyConfig
         # to prevent pydantic.ValidationError inside the method under test.
-        mock_config = {
+        mock_config_dict = {
             "ticker": "DUMMY",
             "start_date": "2023-01-01",
             "end_date": "2023-01-31",
@@ -25,6 +25,10 @@ class TestOptimizationErrorHandling:
                 "slow_ma": {"type": "range", "start": 20, "stop": 50, "step": 5}
             }
         }
+        
+        # Create a proper StrategyConfig object, not just a dict
+        from src.meqsap.config import StrategyConfig
+        mock_config = StrategyConfig(**mock_config_dict)
         mock_objective_fn = Mock()
         
         engine = OptimizationEngine(

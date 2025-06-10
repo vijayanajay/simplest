@@ -8,6 +8,7 @@ import traceback
 from typing import Any
 
 import typer
+import yaml
 from rich.console import Console
 
 from ..exceptions import (
@@ -80,7 +81,9 @@ def handle_cli_errors(func: Any) -> Any:
 
         try:
             return func(*args, **kwargs)
-        except ConfigurationError as e:
+        except typer.Exit:
+            raise  # Re-raise Exit exceptions to let typer/click handle them
+        except (ConfigurationError, yaml.YAMLError) as e:
             exit_code = 1
             logger.error(f"{type(e).__name__}: {e}", exc_info=verbose)
             error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)

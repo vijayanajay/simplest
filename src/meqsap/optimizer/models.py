@@ -1,6 +1,6 @@
 """Data models for optimization progress tracking and results."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, Optional, Any, List
 from pydantic import BaseModel, Field, ConfigDict
@@ -28,8 +28,8 @@ class ProgressData:
 @dataclass
 class ErrorSummary:
     """Summary of optimization errors and failures."""
-    total_failed_trials: int
-    failure_counts_by_type: Dict[str, int]
+    total_failed_trials: int = 0
+    failure_counts_by_type: Dict[str, int] = field(default_factory=dict)
 
 
 class OptimizationResult(BaseModel):
@@ -40,11 +40,11 @@ class OptimizationResult(BaseModel):
     best_score: Optional[float] = Field(None, description="Best objective score achieved")
     
     # Trial statistics
-    total_trials: int = Field(..., description="Total trials executed")
-    successful_trials: int = Field(..., description="Number of successful trials")
+    total_trials: int = Field(0, description="Total trials executed")
+    successful_trials: int = Field(0, description="Number of successful trials")
     
     # Error tracking
-    error_summary: ErrorSummary = Field(..., description="Summary of trial failures")
+    error_summary: ErrorSummary = Field(default_factory=ErrorSummary, description="Summary of trial failures")
     
     # Timing information
     timing_info: Dict[str, float] = Field(default_factory=dict, description="Timing statistics")

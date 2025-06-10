@@ -36,10 +36,9 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"           # Systematic search for risk-optimal parameters
-  objective_function: "max_drawdown"  # Minimize maximum portfolio drawdown
+  objective_function: "CalmarRatio"  # Maximize return relative to drawdown
   objective_params:
-    direction: "minimize"           # Explicitly minimize drawdown
-    min_trades: 5                  # Minimum trades for valid risk assessment
+     min_trades: 5                  # Minimum trades for valid risk assessment
   cache_results: true
 
 # STEEL SECTOR RISK CHARACTERISTICS

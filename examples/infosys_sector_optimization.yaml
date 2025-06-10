@@ -32,79 +32,57 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"          # Exhaustive search for best risk-adjusted returns
-  objective_function: "sharpe"     # Risk-adjusted return optimization
+  objective_function: "SharpeRatio"     # Risk-adjusted return optimization
   objective_params:
     risk_free_rate: 0.06          # Indian 10-year government bond yield
   cache_results: true
-
-# ALTERNATIVE MULTI-OBJECTIVE CONFIGURATIONS:
-# ------------------------------------------
-# To test different optimization objectives, replace the optimization_config above:
-
-# 1. MAXIMUM RETURN OPTIMIZATION:
-# optimization_config:
-#   active: true
-#   algorithm: "GridSearch"
-#   objective_function: "total_return"
-#   cache_results: true
-
-# 2. DRAWDOWN MINIMIZATION:
-# optimization_config:
-#   active: true  
-#   algorithm: "GridSearch"
-#   objective_function: "max_drawdown"  # Minimize maximum drawdown
-#   cache_results: true
-
-# 3. PROFIT QUALITY OPTIMIZATION:
-# optimization_config:
-#   active: true
-#   algorithm: "GridSearch" 
-#   objective_function: "profit_factor"  # Gross profit / Gross loss ratio
-#   cache_results: true
-
-# 4. WIN RATE OPTIMIZATION:
-# optimization_config:
-#   active: true
-#   algorithm: "GridSearch"
-#   objective_function: "win_rate"      # Percentage of profitable trades
-#   cache_results: true
-
-# IT SECTOR ANALYSIS INSIGHTS
-# ---------------------------
-# 1. USD Revenue Exposure: ~75-80% of revenues in USD
-# 2. Rupee Depreciation Benefits: Improves INR revenue translation
-# 3. Quarterly Guidance: Provides earnings predictability
-# 4. Client Concentration: Large deals impact quarterly performance
-# 5. Technology Cycles: Cloud, AI adoption drive long-term trends
-# 6. Visa Dependencies: H1B policies affect sentiment and costs
-# 7. Margin Pressure: Wage inflation vs. pricing power dynamics
-#
-# OPTIMIZATION STRATEGY ANALYSIS:
-# ------------------------------
-# Total Combinations: 9 fast_ma x 4 slow_ma = 36 parameter sets
-# 
-# Expected Results by Objective:
-# - Sharpe Optimization: Balanced risk-return parameters
-# - Return Optimization: More aggressive short-term parameters  
-# - Drawdown Minimization: Conservative longer-term parameters
-# - Profit Factor: Focus on trade quality over quantity
-# - Win Rate: Parameters favoring frequent small wins
-#
-# SECTOR-SPECIFIC CONSIDERATIONS:
-# ------------------------------
-# - IT stocks show lower volatility than broader market
-# - Strong trend-following characteristics during tech cycles
-# - Quarterly earnings announcements create temporary volatility
-# - Dollar strength cycles affect multi-year performance trends
-# - ESG and sustainability themes increasingly important
-#
-# USAGE EXAMPLES:
-# --------------
-# 1. Comprehensive optimization:
-#    python run.py optimize single examples/infosys_sector_optimization.yaml --report --verbose
-#
-# 2. Quick parameter scan:
-#    python run.py optimize single examples/infosys_sector_optimization.yaml --no-progress
-#
-# 3. Generate detailed analysis:
-#    python run.py optimize single examples/infosys_sector_optimization.yaml --report --output-dir ./it_sector_analysis
+  # ALTERNATIVE MULTI-OBJECTIVE CONFIGURATIONS:
+ # ------------------------------------------
+ # To test different optimization objectives, change the objective_function above:
+ 
+# 1. DRAWDOWN-ADJUSTED RETURN OPTIMIZATION:
+# objective_function: "CalmarRatio"
+ 
+# 2. PROFIT QUALITY OPTIMIZATION:
+# objective_function: "ProfitFactor"  # Gross profit / Gross loss ratio
+ 
+# 3. SHARPE WITH HOLD PERIOD CONSTRAINT:
+# objective_function: "SharpeWithHoldPeriodConstraint"
+ 
+ # IT SECTOR ANALYSIS INSIGHTS
+ # ---------------------------
+ # 1. USD Revenue Exposure: ~75-80% of revenues in USD
+ # 2. Rupee Depreciation Benefits: Improves INR revenue translation
+ # 3. Quarterly Guidance: Provides earnings predictability
+ # 4. Client Concentration: Large deals impact quarterly performance
+ # 5. Technology Cycles: Cloud, AI adoption drive long-term trends
+ # 6. Visa Dependencies: H1B policies affect sentiment and costs
+ # 7. Margin Pressure: Wage inflation vs. pricing power dynamics
+ #
+ # OPTIMIZATION STRATEGY ANALYSIS:
+ # ------------------------------
+ # Total Combinations: 9 fast_ma x 4 slow_ma = 36 parameter sets
+ # 
+ # Expected Results by Objective:
+ # - Sharpe Optimization: Balanced risk-return parameters
+ # - Calmar Optimization: Conservative longer-term parameters
+ # - Profit Factor: Focus on trade quality over quantity
+ #
+ # SECTOR-SPECIFIC CONSIDERATIONS:
+ # ------------------------------
+ # - IT stocks show lower volatility than broader market
+ # - Strong trend-following characteristics during tech cycles
+ # - Quarterly earnings announcements create temporary volatility
+ # - Dollar strength cycles affect multi-year performance trends
+ # - ESG and sustainability themes increasingly important
+ #
+ # USAGE EXAMPLES:
+ # --------------
+ # 1. Comprehensive optimization:
+ #    python run.py optimize single examples/infosys_sector_optimization.yaml --report --verbose
+ #
+ # 2. Quick parameter scan:
+ #    python run.py optimize single examples/infosys_sector_optimization.yaml --no-progress
+ #
+ # 3. Generate detailed analysis:
+ #    python run.py optimize single examples/infosys_sector_optimization.yaml --report --output-dir ./it_sector_analysis

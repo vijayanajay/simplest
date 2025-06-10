@@ -235,10 +235,9 @@ The optimization engine supports multiple objective functions for strategy evalu
 Enable optimization by adding an `optimization_config` section to your YAML:
 
 ```yaml
-optimization_config:
-  active: true                    # Must be true to enable optimization
+optimization_config:  active: true                    # Must be true to enable optimization
   algorithm: "GridSearch"         # or "RandomSearch"
-  objective_function: "sharpe"    # Metric to optimize
+  objective_function: "SharpeRatio"    # Metric to optimize
   max_trials: 1000               # For RandomSearch only
   cache_results: true            # Cache intermediate results
   parallel_jobs: 1               # Future: parallel execution
@@ -415,7 +414,7 @@ strategy_params:               # Strategy-specific parameters
 optimization_config:           # Optimization settings (optional)
   active: true                 # Enable optimization mode
   algorithm: GridSearch        # Algorithm to use
-  objective_function: sharpe   # Metric to optimize
+  objective_function: SharpeRatio   # Metric to optimize
 ```
 
 ### Field Details
@@ -486,7 +485,7 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"
-  objective_function: "sharpe"
+  objective_function: "SharpeRatio"
   objective_params:
     risk_free_rate: 0.02
 ```
@@ -510,11 +509,10 @@ strategy_params:
     step: 1
 
 optimization_config:
-  active: true
-  algorithm: "RandomSearch"
+  active: true  algorithm: "RandomSearch"
   algorithm_params:
     n_trials: 100
-  objective_function: "sharpe"
+  objective_function: "SharpeRatio"
 ```
 
 ## Output and Reporting

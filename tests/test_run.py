@@ -24,15 +24,15 @@ class TestRunPyScript:
 
     def teardown_method(self):
         """Clean up after tests."""
-        # Restore original sys.path
-        sys.path.clear()
+        # Restore original sys.path        sys.path.clear()
         sys.path.extend(self.original_sys_path)
 
     def test_project_paths_setup(self):
         """Test that project paths are correctly calculated."""
         # Test the path setup logic without importing run.py
-        run_py_path = Path("d:/Code/simplest/run.py")
-        project_root = run_py_path.parent
+        # Use relative path calculation instead of hardcoded paths
+        project_root = Path(__file__).parent.parent
+        run_py_path = project_root / "run.py"
         src_path = project_root / "src"
         
         assert project_root.name == "simplest"
@@ -42,7 +42,8 @@ class TestRunPyScript:
     def test_sys_path_modification_logic(self):
         """Test that sys.path modification logic works correctly."""
         # Test the logic without patching sys.path itself (which causes issues)
-        project_root = Path("d:/Code/simplest")
+        # Use relative path calculation instead of hardcoded paths
+        project_root = Path(__file__).parent.parent
         src_path = project_root / "src"
         
         # Simulate path not in sys.path
@@ -55,7 +56,8 @@ class TestRunPyScript:
 
     def test_sys_path_already_present_logic(self):
         """Test that sys.path is not modified when src path is already present."""
-        project_root = Path("d:/Code/simplest")
+        # Use relative path calculation instead of hardcoded paths
+        project_root = Path(__file__).parent.parent
         src_path = project_root / "src"
         
         # Simulate path already in sys.path
@@ -70,8 +72,7 @@ class TestRunPyScript:
         assert str(src_path) in test_path_list
 
     def test_import_error_handling_pattern(self):
-        """Test the import error handling pattern used in run.py."""
-        # Test the error handling logic pattern without actually breaking imports
+        """Test the import error handling pattern used in run.py."""        # Test the error handling logic pattern without actually breaking imports
         # This follows memory.md guidance on proper exception testing
         
         def simulate_run_py_error_handling():
@@ -82,7 +83,8 @@ class TestRunPyScript:
             except ImportError as e:
                 # This is the pattern used in run.py
                 error_msg = f"Error: Failed to import MEQSAP modules: {e}"
-                project_root = Path("d:/Code/simplest")
+                # Use relative path calculation instead of hardcoded paths
+                project_root = Path(__file__).parent.parent
                 additional_msg = f"Make sure you're running this from the project root directory: {project_root}"
                 install_msg = "If the error persists, try installing the package in development mode:"
                 pip_msg = "  pip install -e ."
@@ -128,36 +130,56 @@ class TestRunPyScript:
         # Test the pattern logic without executing actual main
         script_name = "__main__"
         module_name = "__not_main__"
-        
-        # Simulate the guard
+          # Simulate the guard
         def should_run_main(name):
             return name == "__main__"
-        
         assert should_run_main(script_name) is True
         assert should_run_main(module_name) is False
 
     def test_shebang_line_compatibility(self):
         """Test that the shebang line is compatible with Unix systems."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation (same pattern as test_docstring_presence)
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
-        if run_py_path.exists():
+        # Validate that run.py exists - this is a critical entry point file
+        if not run_py_path.exists():
+            pytest.fail(
+                f"run.py not found at expected location: {run_py_path.resolve()}. "
+                f"This file is required as the main entry point for the project."
+            )
+        
+        try:
             with open(run_py_path, 'r', encoding='utf-8') as f:
                 first_line = f.readline().strip()
-                if first_line.startswith('#!'):
-                    # Verify it's a proper shebang for Python
-                    assert 'python' in first_line.lower()
+        except (OSError, IOError) as e:
+            pytest.fail(f"Failed to read run.py: {e}")
+        
+        # If there's no shebang, skip the test (it's optional for project entry points)
+        if not first_line.startswith('#!'):
+            pytest.skip("No shebang line found in run.py (this is optional for Windows compatibility)")
+          # Verify it's a proper shebang for Python
+        assert 'python' in first_line.lower(), (
+            f"Shebang line '{first_line}' should contain 'python' for Unix compatibility. "
+            f"Expected patterns: '#!/usr/bin/env python3' or '#!/usr/bin/python3'"
+        )
 
     def test_docstring_presence(self):
         """Test that run.py has proper module documentation."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use relative path from test file to project root
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
-        if run_py_path.exists():
-            with open(run_py_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Look for module docstring
-                assert '"""' in content or "'''" in content
-                # Look for usage examples
-                assert 'Usage:' in content or 'usage:' in content
+        # Fail test if run.py doesn't exist - this is required for the project
+        if not run_py_path.exists():
+            pytest.fail(f"run.py not found at expected location: {run_py_path}")
+        
+        with open(run_py_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+            # Look for module docstring - this is required
+            assert '"""' in content or "'''" in content, "run.py should have a module docstring"
+            
+            # Look for usage examples - this is required for user-facing entry point
+            assert 'Usage:' in content or 'usage:' in content, "run.py should contain usage examples in its docstring"
 
 
 class TestRunPyIntegration:
@@ -218,7 +240,8 @@ class TestRunPyDocumentation:
 
     def test_usage_examples_in_docstring(self):
         """Test that run.py contains proper usage examples."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
         if run_py_path.exists():
             with open(run_py_path, 'r', encoding='utf-8') as f:
@@ -229,26 +252,26 @@ class TestRunPyDocumentation:
                     'python run.py',
                     'analyze',
                     '--help',
-                    'config.yaml'
-                ]
+                    'config.yaml'                ]
                 
                 for pattern in expected_patterns:
                     assert pattern in content, f"Expected pattern '{pattern}' not found in run.py docstring"
 
     def test_project_description_present(self):
         """Test that run.py contains project description."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
         if run_py_path.exists():
             with open(run_py_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                
-                # Check for MEQSAP project description
+                  # Check for MEQSAP project description
                 assert 'MEQSAP' in content or 'Market Equity Quantitative' in content
 
     def test_error_message_templates(self):
         """Test that run.py error messages follow expected patterns."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
         if run_py_path.exists():
             with open(run_py_path, 'r', encoding='utf-8') as f:
@@ -266,7 +289,8 @@ class TestRunPyStructure:
 
     def test_proper_imports(self):
         """Test that run.py imports are structured correctly."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
         if run_py_path.exists():
             with open(run_py_path, 'r', encoding='utf-8') as f:
@@ -283,7 +307,8 @@ class TestRunPyStructure:
 
     def test_cross_platform_compatibility(self):
         """Test that run.py uses cross-platform compatible patterns."""
-        run_py_path = Path("d:/Code/simplest/run.py")
+        # Use consistent relative path calculation
+        run_py_path = Path(__file__).parent.parent / "run.py"
         
         if run_py_path.exists():
             with open(run_py_path, 'r', encoding='utf-8') as f:

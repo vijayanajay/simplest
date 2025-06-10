@@ -57,46 +57,33 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
 
 
 def create_progress_callback(progress: Progress, task_id: int, 
-                           max_param_length: int = 60) -> Callable[[ProgressData], None]:
+                           max_param_length: int = 60) -> Tuple[Callable[[ProgressData], None], Progress]:
     """Create a callback to update the progress bar from optimization engine."""
+    # The progress object itself is the context manager needed by the caller.
+    # This function now returns the callback and the context.
     def callback(progress_data: ProgressData):
         # Truncate params string if too long
         params_str = str(progress_data.current_params)
         if len(params_str) > max_param_length:
-            params_str = params_str[:max_param_length-3] + "..."
-        
-        # Update progress bar
-        best_score_display = "N/A"
-        if progress_data.best_score is not None and not np.isnan(progress_data.best_score):
-            best_score_display = f"{progress_data.best_score:.4f}"
-
-        progress.update(
-            task_id,
-            completed=progress_data.current_trial,
-            total=progress_data.total_trials,
-            fields={
-                "best_score": best_score_display,
-                "current_params": params_str
-            }
-        )
-        
-        # Display error summary if there are failures
-        if progress_data.failed_trials_summary:
-            error_parts = [f"{error_type}: {count}" for error_type, count in progress_data.failed_trials_summary.items()]
+            params_str = params_str[:max_param_length] + "..."
+        progress.update(task_id, advance=1, description=f"Trial {progress_data.trial_number}: {params_str}")
+        if progress_data.errors:
+            error_parts = [f"{k}: {v}" for k, v in progress_data.errors.items()]
             error_str = " | ".join(error_parts)
             console.print(f"[yellow]Failures:[/yellow] {error_str}", style="dim")
-    
-    return callback
+    return callback, progress
+ 
 
-
-def display_optimization_summary(result: OptimizationResult) -> None:
+def display_optimization_summary(result: OptimizationResult, ticker: Optional[str] = None) -> None:
     """Display comprehensive optimization results summary.
-    
-    Args:
-        result: OptimizationResult containing all optimization data
+     
+     Args:
+         result: OptimizationResult containing all optimization data
+         ticker: The ticker symbol, for context in the title.
     """
     console.print("\n")
-    console.print("[bold cyan]Optimization Complete![/bold cyan]")
+    title = f"Optimization Complete for {ticker}!" if ticker else "Optimization Complete!"
+    console.print(f"[bold cyan]{title}[/bold cyan]")
     console.print("="*60)
     
     # Display run statistics

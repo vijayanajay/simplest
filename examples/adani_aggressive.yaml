@@ -34,27 +34,24 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"          # Systematic exploration for small space
-  objective_function: "total_return"  # Optimize for maximum returns (aggressive)
+  objective_function: "ProfitFactor"  # Optimize for profit quality (aggressive)
   objective_params:
     risk_free_rate: 0.06          # Indian benchmark rate
   cache_results: true
   
 # ALTERNATIVE OBJECTIVES FOR AGGRESSIVE TRADING:
 # ---------------------------------------------
-# Uncomment different objective functions to optimize for different metrics:
+# Change the objective_function above to optimize for different metrics:
 #
-# For maximum profit potential:
-# objective_function: "total_return"
+# For risk-adjusted returns:
+# objective_function: "SharpeRatio"
 #
-# For trade frequency optimization:  
-# objective_function: "win_rate"
+# For drawdown-adjusted returns:
+# objective_function: "CalmarRatio"
 #
 # For profit quality:
-# objective_function: "profit_factor"
-#
-# For risk management:
-# objective_function: "max_drawdown"  # Minimize drawdown
-
+# objective_function: "ProfitFactor"
+ 
 # HIGH VOLATILITY STOCK CHARACTERISTICS
 # -------------------------------------
 # 1. Extreme price movements (±5-10% daily swings common)

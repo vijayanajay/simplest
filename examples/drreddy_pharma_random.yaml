@@ -38,7 +38,7 @@ optimization_config:
   algorithm: "RandomSearch"        # Efficient for large parameter spaces
   algorithm_params:
     n_trials: 200                 # Test 200 random combinations (~9% of total space)
-  objective_function: "sharpe"     # Risk-adjusted return optimization
+  objective_function: "SharpeRatio"     # Risk-adjusted return optimization
   objective_params:
     risk_free_rate: 0.06          # Indian benchmark rate
   cache_results: true

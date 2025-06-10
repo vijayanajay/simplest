@@ -37,7 +37,7 @@ strategy_params:
 optimization_config:
   active: true
   algorithm: "GridSearch"          # Systematic exploration of all combinations
-  objective_function: "profit_factor"  # Gross profit / Gross loss ratio
+  objective_function: "ProfitFactor"  # Gross profit / Gross loss ratio
   objective_params:
     min_trades: 5                # Minimum trades required for valid results
   cache_results: true
