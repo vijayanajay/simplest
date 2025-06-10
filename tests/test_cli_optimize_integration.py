@@ -276,15 +276,30 @@ class TestOptimizeCommandIntegration:
             assert result.exit_code == 0
             assert "Overriding trials to 50" in result.stdout
         finally:
-            os.unlink(config_path)
-
+            os.unlink(config_path)    
+    
+    @patch('src.meqsap.cli.commands.optimize.display_optimization_summary')
+    @patch('src.meqsap.cli.commands.optimize.create_progress_callback')
+    @patch('src.meqsap.cli.commands.optimize.create_optimization_progress_bar')
     @patch('src.meqsap.cli.commands.optimize.OptimizationEngine')
     @patch('src.meqsap.cli.commands.optimize.fetch_market_data')
     @patch('src.meqsap.cli.commands.optimize.load_yaml_config')
-    def test_optimize_single_with_verbose_flag(self, mock_load_config, mock_fetch_data, mock_engine_class):
+    def test_optimize_single_with_verbose_flag(self, mock_load_config, mock_fetch_data, mock_engine_class,
+                                             mock_progress_bar, mock_progress_callback, mock_display_summary):
         """Test optimization with verbose logging enabled."""
         mock_load_config.return_value = yaml.safe_load(VALID_OPTIMIZATION_YAML)
         mock_fetch_data.return_value = self.mock_market_data
+        
+        # Mock progress UI components
+        mock_progress = Mock()
+        mock_progress.__enter__ = Mock(return_value=mock_progress)
+        mock_progress.__exit__ = Mock(return_value=None)
+        mock_task_id = 1
+        mock_progress_bar.return_value = (mock_progress, mock_task_id)
+        mock_callback = Mock()
+        # The CLI code expects create_progress_callback to return two values (callback, context)
+        # The context should be the progress instance which is a context manager
+        mock_progress_callback.return_value = (mock_callback, mock_progress)
         
         mock_engine = Mock(spec=OptimizationEngine)
         mock_engine.run_optimization.return_value = self.mock_optimization_result

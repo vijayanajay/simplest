@@ -23,6 +23,13 @@ class TestOptimizationErrorHandling:
             "strategy_params": {
                 "fast_ma": {"type": "range", "start": 5, "stop": 15, "step": 1},
                 "slow_ma": {"type": "range", "start": 20, "stop": 50, "step": 5}
+            },
+            "optimization_config": {
+                "active": False,
+                "algorithm": "RandomSearch",
+                "objective_function": "SharpeRatio",
+                "objective_params": {},
+                "algorithm_params": {}
             }
         }
         

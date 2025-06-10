@@ -127,17 +127,11 @@ StrategyParamsDict = Dict[str, Any]
 class OptimizationConfig(BaseModel):
     """Defines the configuration for a parameter optimization run."""
     active: bool = Field(False, description="Whether optimization is active for this run.")
-    algorithm: str = Field("RandomSearch", description="The optimization algorithm to use (e.g., 'GridSearch', 'RandomSearch').")
+    algorithm: Literal["GridSearch", "RandomSearch"] = Field("RandomSearch", description="The optimization algorithm to use.")
     objective_function: str = Field(..., description="The name of the objective function to maximize or minimize.")
     objective_params: Dict[str, Any] = Field(default_factory=dict, description="Parameters for the objective function.")
     algorithm_params: Dict[str, Any] = Field(default_factory=dict, description="Parameters for the chosen algorithm (e.g., 'n_trials').")
     cache_results: bool = Field(True, description="Whether to cache intermediate backtest results during optimization.")
-
-    @field_validator('algorithm')
-    def algorithm_must_be_supported(cls, v: str) -> str:
-        if v not in ["GridSearch", "RandomSearch"]:
-            raise ValueError(f"Unsupported algorithm: {v}. Supported algorithms are 'GridSearch', 'RandomSearch'.")
-        return v
 
 
 class StrategyConfig(BaseModel):

@@ -224,10 +224,11 @@ MEQSAP includes a powerful parameter optimization engine that systematically sea
 
 The optimization engine supports multiple objective functions for strategy evaluation:
 
-- **`sharpe`**: Sharpe ratio (risk-adjusted returns) - *default*
-- **`total_return`**: Total portfolio return percentage
-- **`max_drawdown`**: Maximum drawdown (minimized)
-- **`profit_factor`**: Ratio of gross profit to gross loss
+ - **`SharpeRatio`**: Sharpe ratio (risk-adjusted returns) – *default*
+ - **`TotalReturn`**: Total portfolio return percentage
+ - **`MaxDrawdown`**: Maximum drawdown (minimised)
+ - **`ProfitFactor`**: Ratio of gross profit to gross loss
+ - **`WinRate`**: Percentage of profitable trades
 - **`win_rate`**: Percentage of profitable trades
 
 ### Configuration
@@ -235,9 +236,10 @@ The optimization engine supports multiple objective functions for strategy evalu
 Enable optimization by adding an `optimization_config` section to your YAML:
 
 ```yaml
-optimization_config:  active: true                    # Must be true to enable optimization
-  algorithm: "GridSearch"         # or "RandomSearch"
-  objective_function: "SharpeRatio"    # Metric to optimize
+optimization_config:
+  active: true                     # Must be true to enable optimisation
+  algorithm: "GridSearch"          # or "RandomSearch"
+  objective_function: "SharpeRatio"  # Metric to optimise
   max_trials: 1000               # For RandomSearch only
   cache_results: true            # Cache intermediate results
   parallel_jobs: 1               # Future: parallel execution

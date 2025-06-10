@@ -34,9 +34,9 @@ src\meqsap\backtest.py                                       436    112    74%
 src\meqsap\cli\__init__.py                                   172     13    92%
 src\meqsap\cli\commands\__init__.py                            2      0   100%
 src\meqsap\cli\commands\optimize.py                          101     11    89%
-src\meqsap\cli\optimization_ui.py                             92     23    75%
+src\meqsap\cli\optimization_ui.py                             93     24    74%
 src\meqsap\cli\utils.py                                       81      0   100%
-src\meqsap\config.py                                         155     18    88%
+src\meqsap\config.py                                         150     17    89%
 src\meqsap\data.py                                            68     11    84%
 src\meqsap\exceptions.py                                      18      0   100%
 src\meqsap\indicators_core\__init__.py                         5      0   100%
@@ -64,7 +64,7 @@ tests\test_backtest.py                                       164      0   100%
 tests\test_cli.py                                            335      0   100%
 tests\test_cli_comprehensive.py                              255      1    99%
 tests\test_cli_enhanced.py                                   333      0   100%
-tests\test_cli_optimize_integration.py                       310      0   100%
+tests\test_cli_optimize_integration.py                       320      0   100%
 tests\test_config.py                                         125      0   100%
 tests\test_data.py                                           107      0   100%
 tests\test_float_handling.py                                  77      1    99%
@@ -74,5 +74,5 @@ tests\test_optimizer\test_optimization_error_handling.py      81      0   100%
 tests\test_reporting.py                                      333     10    97%
 tests\test_run.py                                            165     10    94%
 ------------------------------------------------------------------------------
-TOTAL                                                       4448    433    90%
-======================= 257 passed, 1 skipped in 31.01s =======================
+TOTAL                                                       4454    433    90%
+======================= 257 passed, 1 skipped in 26.73s =======================

@@ -66,9 +66,17 @@ def create_progress_callback(progress: Progress, task_id: int,
         params_str = str(progress_data.current_params)
         if len(params_str) > max_param_length:
             params_str = params_str[:max_param_length] + "..."
-        progress.update(task_id, advance=1, description=f"Trial {progress_data.trial_number}: {params_str}")
-        if progress_data.errors:
-            error_parts = [f"{k}: {v}" for k, v in progress_data.errors.items()]
+
+        best_score_str = f"{progress_data.best_score:.4f}" if progress_data.best_score is not None else "N/A"
+
+        progress.update(
+            task_id,
+            advance=1,
+            best_score=best_score_str,
+            current_params=f"Trial {progress_data.current_trial}: {params_str}"
+        )
+        if progress_data.failed_trials_summary:
+            error_parts = [f"{k}: {v}" for k, v in progress_data.failed_trials_summary.items()]
             error_str = " | ".join(error_parts)
             console.print(f"[yellow]Failures:[/yellow] {error_str}", style="dim")
     return callback, progress
