@@ -1,24 +1,23 @@
-# MEQSAP Architecture Document - v2.3 (Revised)
+# MEQSAP Architecture Document - v2.3 (Final, Revised)
 
-**Document Version:** v2.3, Updated June 5, 2025, based on review feedback.
-**Previous Version:** v2.3 (Initial)
+**Document Version:** v2.3 (Final, Revised), Updated June 12, 2025.
+**Previous Version:** v2.3 (Final, Unabridged)
 
 ## Technical Summary
 
-This document outlines the architecture for the Minimum Viable Quantitative Strategy Analysis Pipeline (MEQSAP). The system is designed as a command-line tool that orchestrates a suite of powerful, existing Python libraries to provide an end-to-end backtesting and analysis workflow. It takes a simple YAML configuration file as input, runs a backtest, performs a series of validation and robustness checks, and presents a clear verdict in the terminal.
+This document outlines the architecture for the Minimum Viable Quantitative Strategy Analysis Pipeline (MEQSAP). The system is designed as a command-line tool that orchestrates a suite of powerful, existing Python libraries to provide an end-to-end backtesting and analysis workflow.
 
-**Version 2.2 Foundation:** This version incorporated the **Enhanced Indicator & Parameter Definition Framework** (`meqsap_indicators_core`) and introduced the **Phase 2: Parameter Optimization Engine (Single Indicator)** as defined in PRD v2.2.
-**Version 2.3 Revisions (Current - Revised):** This version incorporates review feedback to further refine the v2.3 architecture, ensuring closer alignment with PRD v2.2 requirements and enhancing clarity for future development. Key architectural updates include:
-*   Explicit definition of the **objective function registry** and **`ObjectiveFunction` protocol** within `meqsap_optimizer.objectives`.
-*   Detailed specification of **optimization progress reporting** mechanisms (Optuna callbacks integrated with `rich` progress bars).
-*   Clear methodology for calculating **constraint adherence metrics**, particularly `pct_trades_in_target_hold_period`.
-*   Enhanced **error handling strategies** within the optimization loop, reflected in sequence diagrams.
-*   Clarified integration of **PDF reporting for optimized strategies**.
-*   Introduction of **extension points** and explicit **roadmap alignment** to better prepare for future phases (Phases 3-10).
-*   Recommendation for **Optuna's RDB storage** for trial history logging and future persistence.
-*   Proposal for a **`TradeConstraint` protocol** for more formal and extensible constraint handling.
+**Version 2.2 Foundation:** This architecture incorporated the **Enhanced Indicator & Parameter Definition Framework** (`meqsap_indicators_core`) and the **Parameter Optimization Engine** (`meqsap_optimizer`) using Optuna.
 
-The primary goal remains to validate a high-level orchestration approach, prioritizing rapid development and reliability by leveraging battle-tested components to solve the immediate requirements for automated parameter tuning.
+**Version 2.3 Revisions (Current - Revised):** This version incorporates the requirements from **PRD v2.3 (Epic 5)**, introducing a robust comparative analysis framework. Key architectural updates include:
+* **Baseline Strategy Comparison:** The core workflow is updated to run a second backtest for a user-defined baseline strategy (e.g., Buy & Hold), enabling direct performance comparison.
+* **Advanced HTML Reporting:** Integration of the `QuantStats` library into the `reporting` module to generate comprehensive, comparative HTML reports via a new `--report-html` flag.
+* **Enhanced Reporting Architecture:** The `reporting` module will adopt a **Strategy design pattern** to cleanly manage multiple report formats (Terminal, PDF, HTML), improving modularity and extensibility.
+* **New Data Models:** Introduction of a `ComparativeAnalysisResult` to hold results for both the candidate and baseline strategies, and updates to `StrategyConfig` to include a `baseline_config` block.
+* **CLI Enhancements:** Addition of `--report-html` and `--no-baseline` flags to provide users with greater control over output and performance.
+* **Resilience:** The backtesting process is designed to gracefully handle failures in the baseline strategy run, ensuring the primary analysis can still complete.
+
+The primary goal is to validate a high-level orchestration approach, prioritizing rapid development and reliability by leveraging battle-tested components.
 
 ## High-Level Overview
 
@@ -26,59 +25,55 @@ The MEQSAP application is built as a **Modular Monolith** contained within a **s
 
 The primary data flows are:
 
-1.  **Analysis Path (existing):**
-    *   User invokes `meqsap analyze`, providing a strategy `.yaml` file (with fixed or default parameters).
-    *   Configuration is loaded and validated via `config` module.
-    *   Market data is acquired via `data` module (using `yfinance` and caching).
-    *   Backtest is run by `backtest` module (using `vectorbt` and indicator logic from `meqsap_indicators_core`).
-    *   Results are presented by `reporting` module.
+1.  **Analysis Path (Updated for v2.3):**
+    * User invokes `meqsap analyze`. The CLI's sole responsibility is to parse arguments and invoke the appropriate workflow orchestrator.
+    * The `AnalysisWorkflow` orchestrator manages the process. It first loads and validates the `.yaml` configuration, including the new optional `baseline_config`. If no baseline is specified, it defaults to Buy & Hold (unless disabled).
+    * The system runs a backtest for the **candidate strategy**.
+    * If enabled, the system runs a second backtest for the **baseline strategy**. The workflow gracefully handles baseline failures.
+    * Results from both runs are packaged into a `ComparativeAnalysisResult`.
+    * The `reporting` module is called to present a side-by-side comparison in the terminal and generate a comparative HTML report (`QuantStats`) or a PDF report for the candidate (`pyfolio`).
 
-2.  **Optimization Path (New for v2.2/2.3 - Refined):**
-    *   User invokes `meqsap optimize-single`, providing a strategy `.yaml` file that includes parameter search spaces and an `optimization_config` block.
-    *   Configuration is loaded and validated by `config` module.
-    *   The `meqsap_optimizer` module (using `Optuna`) takes over:
-        *   It uses the defined parameter search spaces and the `optimization_config`.
-        *   It iteratively generates parameter sets using the chosen algorithm (e.g., Grid Search via `Optuna`'s grid sampler). **Progress is reported to the user via `rich` progress bars, driven by Optuna callbacks managed by the `cli` module.**
-        *   For each parameter set (Optuna trial), it invokes `run_complete_backtest` (from `meqsap.backtest`) to get performance and trade duration statistics. It **handles individual backtest failures gracefully** (e.g., by logging the error and allowing Optuna to prune the trial or assign a poor score).
-        *   It evaluates these results against the specified objective function (selected from a registry), which incorporates constraint handling.
-        *   It identifies and reports the best parameter set found. **Trial history can be logged using Optuna's RDB storage for persistence and later analysis.**
-    *   Results, including the best parameters, their performance, and constraint adherence, are presented by the `reporting` module. If the `--report` flag is used, a PDF report for the *best found strategy* is generated.
+2.  **Optimization Path (Updated for v2.3):**
+    * User invokes `meqsap optimize-single`. The CLI invokes the `OptimizationWorkflow`. This path now also supports the `--report-html` and `--no-baseline` flags.
+    * The `meqsap_optimizer` finds the best parameter set for the candidate strategy.
+    * After optimization, the **best candidate strategy** is compared against the **baseline strategy** in the same manner as the Analysis Path.
+    * The `reporting` module presents the optimization summary, a side-by-side comparison of the best candidate vs. the baseline, and can generate comparative reports.
 
 ```mermaid
 graph TD
     subgraph "User Interaction"
-        A[Strategist] --invokes `analyze`--> B{MEQSAP CLI};
-        A --invokes `optimize-single [--report]`--> B;
+        A[Strategist] --invokes `analyze` or `optimize-single`--> B{MEQSAP CLI};
     end
 
-    subgraph "MEQSAP Core - Analysis Path"
-        B --.yaml (fixed/default params)--> C[1. Load & Validate Config (config.py)];
-        C --uses--> MIC((meqsap_indicators_core));
-        C --uses--> D[Pydantic Schema];
-        C --on success--> E[2. Acquire Data (data.py)];
-        E --checks--> F[(File Cache)];
-        F --on miss--> G(yfinance API);
-        G --stores--> F;
-        F --provides data--> H[3. Run Backtest (backtest.py)];
-        E --provides data--> H;
-        H --uses vectorbt & indicator logic from--> MIC;
-        H --generates--> I[Signals & Stats];
-        I --results--> J[4. Present Verdict & Report (reporting.py)];
+    subgraph "MEQSAP Core"
+        B --flags & config path--> WO[Workflow Orchestrator];
+        WO --> C[1. Load & Validate Config];
+        C --on success--> E[2. Acquire Data];
+        E --provides data--> H[3. Run Candidate Backtest];
+        H --Candidate Results--> K[5. Package Results];
+        
+        subgraph "Baseline Comparison (Conditional)"
+            WO --if baseline enabled--> BL_H[4. Run Baseline Backtest];
+            BL_H --Baseline Results (or failure warning)--> K;
+        end
+        
+        K --ComparativeAnalysisResult--> J[6. Generate Reports & Verdict];
     end
     
-    subgraph "MEQSAP Core - Optimization Path (v2.3 Revised)"
-        B --.yaml (param spaces & opt_config)--> C;
-        C --Validated Config & Opt Config--> Optimizer[meqsap_optimizer (uses Optuna)];
-        Optimizer --uses param spaces from (Config -> IndicatorsCore)--> MIC;
-        Optimizer --iteratively calls (with progress reporting via CLI & error handling)--> H;
-        H --BacktestAnalysisResult (incl. trade duration)--> Optimizer;
-        Optimizer --evaluates with ObjectiveFunction (from registry, incl. constraint checks)--> Optimizer;
-        Optimizer --Best Params & Results (Optuna Study for history)--> J;
+    subgraph "Modules & Libraries"
+       Optimizer((meqsap_optimizer));
+       WO --for optimization path--> Optimizer;
+       Optimizer --iteratively calls--> H;
+       Optimizer --Best Candidate--> H;
+
+       ReportingLib((reporting));
+       J --uses--> ReportingLib;
     end
 
     subgraph "Output"
-        J --uses rich, pyfolio--> K[Formatted Terminal Verdict/Optimization Summary (incl. progress, constraint adherence)];
-        J --if --report with optimize-single--> PDFReport((PDF Report for Best Optimized Strategy));
+        ReportingLib --uses rich--> Term[Terminal: Side-by-Side Verdict];
+        ReportingLib --if --report-html (uses QuantStats)--> HTML[Comparative HTML Report];
+        ReportingLib --if --report (uses pyfolio)--> PDF[Candidate PDF Report];
     end
 ```
 
@@ -86,55 +81,36 @@ graph TD
 
 The following high-level patterns guide the system's design:
 
-*   **Pattern 1: Modular Monolith:** A single deployable unit, ideal for a CLI tool. Structured into distinct modules (`config`, `data`, `backtest`, `reporting`, `indicators_core`, and new `optimizer`) with clear boundaries.
-*   **Pattern 2: Orchestration & Facade:** MEQSAP acts as a simplifying facade to underlying libraries (`vectorbt`, `pyfolio`, `Optuna`, etc.) and internal modules.
-*   **Pattern 3: Declarative Configuration:** Users declare strategy parameters and optimization settings in `.yaml`. The application interprets this, separating definition from logic.
-*   **Pattern 4: Schema-Driven Validation:** Pydantic defines strict schemas for YAML, ensuring input integrity and clear error feedback.
-*   **Pattern 5: Caching:** File-based caching for market data improves performance.
-*   **Pattern 6: Library-based Componentization:** `meqsap_indicators_core` and `meqsap_optimizer` are dedicated internal modules promoting high cohesion and loose coupling.
-*   **Pattern 7: Strategy Pattern (within Optimizer):** The `meqsap_optimizer` can use different optimization algorithms (via `Optuna` samplers) and objective functions (via a registry and `ObjectiveFunction` protocol) interchangeably, supporting future expansion. This pattern can also be applied to `TradeConstraint` implementations.
+* **Pattern 1: Modular Monolith:** A single deployable unit, ideal for a CLI tool. Structured into distinct modules (`config`, `data`, `backtest`, `reporting`, `indicators_core`, `optimizer`, and `workflows`).
+* **Pattern 2: Orchestration & Facade:** MEQSAP acts as a simplifying facade to underlying libraries (`vectorbt`, `pyfolio`, `Optuna`, `QuantStats`) and internal modules.
+* **Pattern 3: Declarative Configuration:** Users declare strategy, baseline, and optimization settings in `.yaml`. The application interprets this, separating definition from logic.
+* **Pattern 4: Schema-Driven Validation:** Pydantic defines strict schemas for YAML, ensuring input integrity and clear error feedback.
+* **Pattern 5: Caching:** File-based caching for market data improves performance.
+* **Pattern 6: Library-based Componentization:** `meqsap_indicators_core` and `meqsap_optimizer` are dedicated internal modules promoting high cohesion and loose coupling.
+* **Pattern 7: Strategy Pattern (Expanded for v2.3):**
+    * Used within `meqsap_optimizer` for interchangeable algorithms (via `Optuna` samplers) and objective functions.
+    * **Newly applied to the `reporting` module.** A `BaseReporter` protocol will define a common interface, with concrete implementations like `TerminalReporter`, `HtmlReporter` (using `QuantStats`), and `PdfReporter` (using `pyfolio`). This aligns with PRD v2.3 NFRs for a more maintainable and extensible reporting architecture.
 
 ## Component View
 
 The MEQSAP application comprises the following primary modules:
 
-*   **`config` Module:** Loads strategy `.yaml` files. Utilizes `meqsap_indicators_core` for indicator parameter definitions. Parses and validates the `optimization_config` block and parameter space definitions against Pydantic models.
-*   **`data` Module:** Handles market data acquisition (`yfinance`), caching, and integrity checks.
-*   **`meqsap_indicators_core` Module:** Standardizes definition, parameterization (fixed, range, choice), validation, and calculation logic for technical indicators.
-*   **`backtest` Module:** Core backtesting engine.
-    *   `StrategySignalGenerator` uses `meqsap_indicators_core` for indicator logic.
-        *   *Future Extension Point (Phase 5):* This module will integrate with a `meqsap_signal_combiner` for rule-based signal generation.
-    *   Executes backtests using `vectorbt`.
-    *   `run_complete_backtest` populates `BacktestResult` with **mandatory** trade duration statistics. Trade durations are calculated from `vectorbt`'s `trades.records_readable`.
-        *   *Future Extension Point (Phase 7):* The `run_complete_backtest` signature will be extended to accept an optional `regime_data: Optional[pd.Series] = None` parameter.
-*   **`meqsap_optimizer` Module (New for v2.2, Simplified in v2.3, Refined):** Responsible for automated parameter optimization.
-    *   **Engine (`engine.py`):** Orchestrates the optimization loop (using Optuna).
-        *   Provides a simple callback mechanism (`progress_callback`) for the `cli` module to hook into for progress updates. This decouples the optimizer from any specific UI library like `rich`.
-        *   Handles individual backtest failures within a trial gracefully (e.g., logs error, Optuna prunes or assigns a bad score).
-        *   Supports Optuna's RDB storage (e.g., SQLite) for persisting trial history, enabling future resumption or detailed analysis of optimization runs.
-    *   **Algorithms:** Implements Grid Search, Random Search by using the appropriate `Optuna` samplers.
-    *   **Objective Functions (`objectives.py`):**
-        *   Defines an `ObjectiveFunction` protocol (as per PRD Epic4 Story2 AC1):
-            ```python
-            from typing import Protocol, Any
-            # from meqsap.backtest import BacktestAnalysisResult # Or a more specific result type
-
-            class ObjectiveFunction(Protocol):
-                def __call__(self, result: Any, # BacktestAnalysisResult or similar
-                             objective_params: dict[str, Any]) -> float:
-                    ...
-            ```
-        *   Implements a registry (e.g., a dictionary `OBJECTIVE_FUNCTION_REGISTRY`) mapping YAML names to `ObjectiveFunction` implementations (PRD Epic4 Story2 AC4).
-        *   Includes the explicit **"SharpeWithHoldPeriodConstraint"** function, which uses trade duration statistics from `BacktestResult` to apply penalties to the objective score if constraints are not met.
-        *   *Future Extension Point:* Will incorporate a `TradeConstraint` protocol for composable and extensible constraint handling.
-    *   **Data Models (`models.py`):** Contains Pydantic models for the `optimization_config` block and the `OptimizationResult`.
-*   **`reporting` Module:** Presents results. For analysis, shows standard backtest verdict. For optimization, shows a summary (best params, score, etc.) and detailed verdict for the best strategy. Optimization summary **explicitly includes constraint adherence metrics**, particularly hold period statistics (PRD Epic4/Story6/AC4).
-    *   If the `--report` flag is used with `optimize-single`, it generates a PDF report for the *best found strategy* using `pyfolio`.
-*   **`cli` Module:** Main entry point package. Parses arguments and orchestrates workflows.
-    *   `__init__.py`: Main `analyze` command and pipeline orchestration.
-    *   `commands/`: Contains sub-commands like `optimize`.
-    *   `utils.py`: Contains shared utilities like the error handling decorator.
-    *   `optimization_ui.py`: Manages `rich` progress bars and UI for optimization, driven by callbacks from the `meqsap_optimizer.engine`.
+* **`cli` Module:** Main entry point package using `Typer`. Its sole responsibility is to parse command-line arguments and invoke the correct workflow from the `workflows` module.
+* **`workflows` Module (NEW):** Orchestrates the high-level application logic, separating it from the CLI. This improves testability and adheres to the Single Responsibility Principle.
+    * Contains classes like `AnalysisWorkflow` and `OptimizationWorkflow`.
+    * Manages the dual backtest workflow: triggers the candidate backtest, and conditionally triggers the baseline backtest (respecting the `--no-baseline` flag). 
+    * Manages `rich`-based **real-time status updates** to inform the user of the current stage with explicit messages like "Running candidate strategy...", "Running baseline strategy...", and "Generating HTML report...". 
+    * Catches failures from the baseline run, ensuring the main analysis proceeds while displaying a clear user-facing warning (e.g., `⚠️ Baseline strategy backtest failed. Displaying candidate results only.`). 
+* **`config` Module:** Loads strategy `.yaml` files. Parses and validates `optimization_config` and the new `baseline_config` block against Pydantic models. During validation, it injects a default "Buy & Hold" configuration if `baseline_config` is absent and not disabled via the CLI.
+* **`data` Module:** Handles market data acquisition (`yfinance`), caching, and integrity checks.
+* **`meqsap_indicators_core` Module:** Standardizes definition, parameterization (fixed, range, choice), validation, and calculation logic for technical indicators.
+* **`backtest` Module:** Core backtesting engine. The orchestrating logic (now in `workflows`) must gracefully handle exceptions from this module during the baseline run. `run_complete_backtest` populates `BacktestResult` with mandatory trade duration statistics.
+* **`meqsap_optimizer` Module:** Responsible for automated parameter optimization using Optuna. Its output (the best strategy) is fed into the new comparative analysis workflow.
+* **`reporting` Module (Enhanced for v2.3):**
+    * Refactored to implement the **Strategy Pattern** for different report formats.
+    * The `TerminalReporter` implementation is responsible for presenting the side-by-side terminal view using `rich` and for calculating the final "Verdict vs. Baseline" (e.g., "Outperformed") based on the primary objective function.
+    * **Integrates `QuantStats`** via an `HtmlReporter` to generate comprehensive, comparative HTML reports when `--report-html` is used. 
+    * Handles the new `ComparativeAnalysisResult` data model.
 
 ```mermaid
 graph TD
@@ -143,11 +119,12 @@ graph TD
     end
 
     subgraph "Core Logic & Libraries"
+        Workflows[workflows]
         ConfigModule[config]
         IndicatorsCore[meqsap_indicators_core]
         DataModule[data]
         BacktestModule[backtest]
-        OptimizerModule[meqsap_optimizer (uses Optuna)]
+        OptimizerModule[meqsap_optimizer]
         ReportingModule[reporting]
     end
 
@@ -156,80 +133,65 @@ graph TD
         PyYAML
         yfinance
         Optuna
-        PandasTA["pandas-ta (via IndicatorsCore)"]
         vectorbt
         rich
         pyfolio
+        QuantStats[QuantStats]
     end
 
-    CLI -- "analyze" / "optimize-single [--report]" --> ConfigModule
-    ConfigModule --uses--> Pydantic
-    ConfigModule --uses for indicator defs & validation--> IndicatorsCore
-    ConfigModule --Validated Config--> DataModule
-    ConfigModule --Validated Config & Opt.Settings--> OptimizerModule
+    CLI -- "analyze" / "optimize-single" --> Workflows
+    Workflows --> ConfigModule
+    ConfigModule --uses--> PyYAML & Pydantic
+    ConfigModule --uses for indicator defs--> IndicatorsCore
 
+    Workflows --Market Data Request--> DataModule
     DataModule --uses--> yfinance
-    DataModule --Market Data--> BacktestModule
-    
-    OptimizerModule --uses param spaces from (Config -> IndicatorsCore)--> IndicatorsCore
-    OptimizerModule --runs backtests for param sets via (with progress updates to CLI & error handling)--> BacktestModule
-    OptimizerModule --Optuna Study (RDB for history)--> Optuna
-    BacktestModule --BacktestAnalysisResult (incl. trade duration)--> OptimizerModule
-    OptimizerModule --Best params & results--> ReportingModule
+    DataModule --Market Data--> Workflows
 
-    BacktestModule --uses for indicator logic & calculation--> IndicatorsCore
-    IndicatorsCore --may wrap--> PandasTA
-    BacktestModule --uses--> vectorbt
-    BacktestModule --Raw Results (for analyze path)--> ReportingModule
+    Workflows --runs candidate backtest via--> BacktestModule
+    Workflows --runs baseline backtest via--> BacktestModule
+    BacktestModule --uses--> vectorbt & IndicatorsCore
     
-    ReportingModule --uses--> rich
-    ReportingModule --uses--> pyfolio
-    ReportingModule --> TerminalOutput[Terminal Verdict / Opt. Summary]
-    ReportingModule --if --report with optimize-single--> PDFReport((PDF Report for Best Strategy))
+    Workflows --for optimization path--> OptimizerModule
+    OptimizerModule --runs backtests for param sets via--> BacktestModule
+    OptimizerModule --uses--> Optuna
+    
+    BacktestModule --Results--> Workflows
+    OptimizerModule --Best params & results--> Workflows
+    
+    Workflows --ComparativeAnalysisResult--> ReportingModule
+    ReportingModule --uses--> rich, pyfolio, QuantStats
+    ReportingModule --> TerminalOutput[Terminal Verdict] & HTMLReport((HTML Report)) & PDFReport((PDF Report))
 ```
 
 ## Project Structure
 
-The project uses a standard `src` layout.
+The project uses a standard `src` layout, updated to reflect the new workflow orchestration and reporting strategy.
 
 ```plaintext
 meqsap/
 ├── docs/
-│   ├── adr/                    # Architectural Decision Records
-│   ├── policies/               # Development policies and guidelines
 │   ├── architecture.md         # This document
-│   ├── prd.md                  # Product Requirements Document
-│   └── ...
-├── examples/
-│   └── ...
+│   └── prd.md                  # Product Requirements Document
 ├── src/
 │   └── meqsap/
 │       ├── __init__.py
-│       ├── backtest.py           # Core backtesting, StrategySignalGenerator, BacktestResult enhanced
-│       │                         # Future: regime_data param, SignalCombiner hook
-│       ├── cli/                  # Main CLI package
-│       │   ├── __init__.py       # Main CLI entrypoint, command orchestration
-│       │   ├── commands/         # Command implementations (e.g., optimize)
-│       │   ├── optimization_ui.py # UI components for optimization
-│       │   └── utils.py          # CLI utilities (e.g., error handlers)
+│       ├── backtest.py           # Core backtesting logic
+│       ├── cli.py                # Main CLI entry point (using Typer)
 │       ├── config.py             # Pydantic schema, YAML loading
 │       ├── data.py               # Data acquisition and caching
 │       ├── exceptions.py         # Custom application exceptions
-│       ├── reporting.py          # Terminal output and PDF generation
-│       ├── indicators_core/      # Indicator definitions and logic
-│       │   └── ...
-│       ├── optimizer/            # NEW: meqsap_optimizer module
+│       ├── reporting/            # ENHANCED: Reporting module
 │       │   ├── __init__.py
-│       │   ├── engine.py         # Core optimization engine (using Optuna, callbacks, RDB storage)
-│       │   ├── models.py         # Pydantic models for optimizer (config, results)
-│       │   └── objectives.py     # ObjectiveFunction protocol, registry, implementations
-│       │                         # Future: TradeConstraint protocol
-│       └── py.typed
+│       │   ├── main.py           # Main reporting orchestrator/facade
+│       │   ├── reporters.py      # NEW: BaseReporter protocol and implementations
+│       │   └── models.py         # Pydantic models for reporting
+│       ├── workflows/            # NEW: Core application logic orchestration
+│       │   ├── __init__.py
+│       │   └── analysis.py       # e.g., AnalysisWorkflow, OptimizationWorkflow
+│       ├── indicators_core/      # Indicator definitions and logic
+│       └── optimizer/            # Parameter optimization module
 ├── tests/
-│   ├── optimizer/              # NEW: Tests for the simplified optimizer module
-│   │   ├── __init__.py
-│   │   ├── test_engine.py
-│   │   └── test_objectives.py
 │   └── ...
 ├── .gitignore
 ├── pyproject.toml
@@ -237,167 +199,154 @@ meqsap/
 └── requirements.txt
 ```
 
+## Testing Strategy & Key Scenarios for v2.3 (NEW)
+
+To ensure the new features are robust, the testing plan (using `pytest`) must be updated to include:
+
+* **Configuration Tests:** Unit tests to validate the correct parsing of `baseline_config`, including successful validation, error cases, and injection of the default baseline.
+* **Workflow & CLI Flag Tests:** Integration tests to verify:
+    * The `--no-baseline` flag correctly prevents the baseline execution.
+    * The `--report-html` flag correctly invokes the `HtmlReporter` and generates an HTML file.
+* **Resilience Test:** An integration test that uses a mock to simulate a failure during the baseline backtest run and asserts that the application completes the candidate analysis and prints the correct warning message to the user.
+* **Reporting Logic Test:** A unit test for the `TerminalReporter` to verify that the "Outperformed" / "Underperformed" verdict is calculated correctly based on different input results.
+
 ## Definitive Tech Stack Selections
 
-| Category                 | Technology                | Version / Details         | Justification                                                                                                |
-| :----------------------- | :------------------------ | :------------------------ | :----------------------------------------------------------------------------------------------------------- |
-| **Languages** | Python                    | 3.9+                      | Specified.                                                                                                   |
-| **CLI Framework** | Typer                     | Latest                    | Integrates well with Pydantic for robust CLI building.                                                       |
-| **Data Handling** | pandas                    | Latest                    | Industry standard for core data manipulation.                                                                |
-|                          | yfinance                  | Latest                    | Meets requirements for historical OHLCV data.                                                                |
-| **Technical Analysis** | pandas-ta                 | Latest                    | Comprehensive TA library, wrapped by `meqsap_indicators_core`.                                               |
-| **Backtesting** | vectorbt                  | Latest                    | Powerful and modern vectorized backtesting engine.                                                           |
-| **Configuration** | PyYAML, Pydantic          | Latest                    | Standard and secure YAML loading combined with strict schema validation for data integrity.                  |
-| **Reporting & UI** | rich                      | Latest                    | Provides polished CLI UX and progress indicators.                                                            |
-|                          | pyfolio                   | Latest                    | Industry standard for generating PDF tear sheets.                                                            |
-| **Internal Components** | `meqsap_indicators_core`  | N/A (Internal)            | Ensures modularity, maintainability, and readiness for optimization.                                         |
-|                          | `meqsap_optimizer`        | N/A (Internal)            | Implements Phase 2 (PRD v2.2) for automated parameter tuning.                                                |
-| **Optimization** | Optuna                    | Latest                    | A powerful, standard framework for hyperparameter optimization. Its trial, sampler, callback, and storage (RDB) abstractions simplify implementation and provide a clear path to advanced features. |
-| **Testing** | pytest                    | Latest                    | De facto standard for unit and integration testing.                                                          |
-| **CI/CD** | GitHub Actions            | N/A                       | Well-integrated for automation.                                                                              |
+| Category | Technology | Version / Details | Justification |
+| :--- | :--- | :--- | :--- |
+| **Languages** | Python | 3.9+ | Specified. |
+| **CLI Framework** | Typer | Latest | Integrates well with Pydantic for robust CLI building. |
+| **Data Handling** | pandas | Latest | Industry standard for core data manipulation. |
+| | yfinance | Latest | Meets requirements for historical OHLCV data. |
+| **Technical Analysis**| pandas-ta | Latest | Comprehensive TA library, wrapped by `meqsap_indicators_core`. |
+| **Backtesting** | vectorbt | Latest | Powerful and modern vectorized backtesting engine. |
+| **Configuration** | PyYAML, Pydantic | Latest | Standard and secure YAML loading combined with strict schema validation. |
+| **Reporting & UI** | rich | Latest | Provides polished CLI UX and progress indicators. |
+| | pyfolio | Latest | Industry standard for generating PDF tear sheets. |
+| | **QuantStats (NEW)** | **Latest** | **Required for generating comprehensive, comparative HTML reports as per PRD v2.3.** |
+| **Internal Components**| `meqsap_indicators_core` | N/A (Internal) | Ensures modularity and readiness for optimization. |
+| | `meqsap_optimizer` | N/A (Internal) | Implements Phase 2 (PRD v2.2) for automated parameter tuning. |
+| **Optimization** | Optuna | Latest | A powerful, standard framework for hyperparameter optimization. |
+| **Testing** | pytest | Latest | De facto standard for unit and integration testing. |
+| **CI/CD** | GitHub Actions | N/A | Well-integrated for automation. |
 
 ## API Reference
 
 ### External APIs Consumed
-*   **`yfinance` API**: For historical market data.
-*   **`Optuna` API**: For defining studies, trials, samplers, callbacks, and storage backends within `meqsap_optimizer`.
+* **`yfinance` API**: For historical market data. Consumed by the `data` module.
+* **`Optuna` API**: For defining studies, trials, and samplers within `meqsap_optimizer`.
+* **`QuantStats` API**: For generating HTML reports within the `reporting` module.
 
 ### Internal APIs Provided
 Not applicable. MEQSAP is a self-contained command-line tool.
 
 ## Data Models
 
-*   **`StrategyConfig`** (`meqsap.config`): Represents the complete configuration from YAML, including `ticker`, `start_date`, `end_date`, `strategy_params` (which can be fixed values or parameter space definitions), and an optional `optimization_config` block.
-*   **`OptimizationConfig`** (`meqsap.optimizer.models`): A Pydantic model defining the optimization `algorithm`, `objective_function`, and their respective parameters (e.g., `objective_params` like `min_hold_days`, `max_hold_days`).
-*   **Indicator & Parameter Definitions** (`meqsap_indicators_core`): `IndicatorBase`, `ParameterDefinition`, `ParameterSpace`, etc., are foundational for the optimizer.
-*   **`BacktestResult`** (`meqsap.backtest`): Holds detailed performance metrics. **Enhanced for v2.2/2.3 (Mandatory Fields):**
-    *   `avg_trade_duration_days: float`
-    *   `pct_trades_in_target_hold_period: float`
-    *   **Calculation Methodology for `pct_trades_in_target_hold_period`**:
-        `(Number of trades where objective_params['min_hold_days'] <= trade_duration_days <= objective_params['max_hold_days']) / (Total number of trades) * 100`.
-        Trade durations are derived from `vectorbt`'s `trades.records_readable` using `(trades.exit_timestamp - trades.entry_timestamp).dt.days`.
-    *   *Future Extension Point (Phase 8):* `diagnostic_report: Optional[DiagnosticReport] = None` (where `DiagnosticReport` would be a Pydantic model defined by `meqsap_strategy_doctor`).
-*   **`OptimizationResult`** (`meqsap_optimizer.models`): A Pydantic model holding results from an optimization run, including `best_params`, `best_score`, the full analysis for the best strategy, and a summary of constraint adherence.
-*   **`ObjectiveFunction` Protocol** (`meqsap.optimizer.objectives`): Defines the interface for objective functions.
-*   **`TradeConstraint` Protocol** (Conceptual, for future implementation in `meqsap.optimizer.objectives` or `constraints.py`):
+* **`StrategyConfig`** (`meqsap.config`): Updated to include `baseline_config: Optional[BaselineConfig] = None`.
+* **`BaselineConfig`** (`meqsap.config`): A new Pydantic model containing `active: bool`, `strategy_type: str`, and `params: dict`.
+* **`BacktestAnalysisResult`** (in `reporting.models` or `backtest`): A model holding the comprehensive results of a *single* backtest run.
+* **`ComparativeAnalysisResult`** (in `reporting.models`): A new, simplified Pydantic model to hold the results of both backtests.
     ```python
-    from typing import Protocol, Any
-    # from meqsap.backtest import BacktestAnalysisResult 
-
-    class TradeConstraint(Protocol):
-        def is_met(self, result: Any, # BacktestAnalysisResult or trade list
-                   constraint_params: dict[str, Any]) -> bool:
-            ...
-        def calculate_penalty(self, result: Any, # BacktestAnalysisResult or trade list
-                              constraint_params: dict[str, Any]) -> float: # e.g., 0 if met, >0 if not
-            ...
-        def get_description(self) -> str:
-            ...
+    from typing import Optional
+    from pydantic import BaseModel
+    
+    class ComparativeAnalysisResult(BaseModel):
+        candidate_results: BacktestAnalysisResult
+        baseline_results: Optional[BacktestAnalysisResult] = None
+        # Note: If baseline_results is None, it implies the run
+        # was either skipped (via --no-baseline) or it failed.
+        # The workflow is responsible for logging the specific reason.
     ```
-    Objective functions can then compose multiple `TradeConstraint` objects.
+* Models like `OptimizationConfig`, `BacktestResult`, and `OptimizationResult` remain functionally the same, though their consumption is now part of the comparative workflow.
 
 ## Core Workflow / Sequence Diagrams
 
-### Analysis Path (`meqsap analyze`)
+### Analysis Path (`meqsap analyze --report-html`)
 
 ```mermaid
 sequenceDiagram
     actor User
     participant CLI as cli
-    participant Config as config
-    participant Data as data
+    participant Workflow as AnalysisWorkflow
     participant Backtest as backtest
     participant Reporting as reporting
 
-    User->>CLI: `meqsap analyze --config strategy.yaml`
-    CLI->>Config: load_and_validate_config(path)
-    Config-->>CLI: StrategyConfig (fixed/default params)
-    CLI->>Data: get_market_data(StrategyConfig)
-    Data-->>CLI: Market DataFrame
-    CLI->>Backtest: run_complete_backtest(StrategyConfig, DataFrame)
-    Backtest-->>CLI: BacktestAnalysisResult
-    CLI->>Reporting: generate_output(BacktestAnalysisResult)
-    Reporting-->>User: Formatted verdict
+    User->>CLI: `meqsap analyze --config strategy.yaml --report-html`
+    CLI->>Workflow: start_analysis(args)
+    
+    Workflow->>Workflow: Load Config, Get Data
+    Workflow->>Workflow: Display "Running candidate strategy..."
+    Workflow->>Backtest: run_complete_backtest(candidate_config, DataFrame)
+    Backtest-->>Workflow: candidate_results: BacktestAnalysisResult
+    
+    alt Baseline Enabled
+        Workflow->>Workflow: Display "Running baseline strategy..."
+        try
+            Workflow->>Backtest: run_complete_backtest(baseline_config, DataFrame)
+            Backtest-->>Workflow: baseline_results: BacktestAnalysisResult
+        catch Exception
+            Workflow->>Workflow: Log warning: "Baseline run failed."
+            Workflow-->>Workflow: baseline_results = None
+        end
+    end
+
+    Workflow->>Reporting: generate_output(candidate_results, baseline_results, flags)
+    Reporting-->>User: Terminal: Side-by-side verdict
+    Reporting-->>User: File: report.html (Comparative report via QuantStats)
 ```
 
-### Optimization Path (`meqsap optimize-single`)
+### Optimization Path (`meqsap optimize-single --report-html`)
 
 ```mermaid
 sequenceDiagram
     actor User
     participant CLI as cli
-    participant Config as config
-    participant Optimizer as meqsap_optimizer_engine
-    participant OptunaLib as Optuna_Library
-    participant Data as data
+    participant Workflow as OptimizationWorkflow
+    participant Optimizer as meqsap_optimizer
     participant Backtest as backtest_engine
     participant Reporting as reporting
 
-    User->>CLI: `meqsap optimize-single --config strategy_optimizable.yaml [--report]`
-    CLI->>Config: load_and_validate_config(path)
-    Config-->>CLI: StrategyConfig (with search spaces & opt_config)
-
-    CLI->>Data: get_market_data(StrategyConfig)
-    Data-->>CLI: Market DataFrame
-    
-    CLI->>Optimizer: run_optimization(StrategyConfig, Market DataFrame, cli_progress_callback)
-    Optimizer->>OptunaLib: Create Study (with sampler from opt_config, RDB storage, callbacks=[cli_progress_callback])
+    User->>CLI: `meqsap optimize-single --config optimizable.yaml --report-html`
+    CLI->>Workflow: start_optimization(args)
+    Workflow->>Optimizer: run_optimization(Config, DataFrame)
     
     loop For each Optuna trial
-        OptunaLib->>Optimizer: Suggest next parameter set
-        alt Successful Backtest
-            Optimizer->>Backtest: run_complete_backtest(concrete_params, DataFrame)
-            Backtest-->>Optimizer: BacktestAnalysisResult (incl. trade duration stats)
-            Optimizer->>Optimizer: Evaluate result with ObjectiveFunction (from registry, using objective_params, checks constraints like hold period)
-            Optimizer->>OptunaLib: Report trial result (score)
-        else Backtest Fails (e.g., insufficient data, runtime error)
-            Optimizer->>Optimizer: Log error, assign poor score or let Optuna handle (e.g., TrialPruned)
-            Optimizer->>OptunaLib: Report trial result (e.g., NaN, or specific pruned state)
+        Optimizer->>Backtest: run_complete_backtest(params, DataFrame)
+        Backtest-->>Optimizer: BacktestAnalysisResult
+    end
+    
+    Optimizer-->>Workflow: OptimizationResult (incl. best_found_candidate_results)
+    
+    alt Baseline Enabled
+        Workflow->>Workflow: Display "Running baseline strategy..."
+        try
+            Workflow->>Backtest: run_complete_backtest(baseline_config, DataFrame)
+            Backtest-->>Workflow: baseline_results: BacktestAnalysisResult
+        catch Exception
+            Workflow->>Workflow: Log warning: "Baseline run failed."
         end
     end
     
-    OptunaLib-->>Optimizer: Best trial (params, value), Study object
-    Optimizer-->>CLI: OptimizationResult (best_params, best_score, best_strategy_analysis, constraint_adherence_metrics, study_summary)
-    
-    CLI->>Reporting: generate_optimization_summary_output(OptimizationResult)
-    Reporting-->>User: Formatted optimization summary & best strategy verdict
-    
-    alt --report flag provided
-        CLI->>Reporting: generate_pdf_report(OptimizationResult.best_strategy_analysis)
-        Reporting-->>User: PDF report for best strategy
-    end
+    Workflow->>Reporting: generate_optimization_output(OptimizationResult, baseline_results, flags)
+    Reporting-->>User: Terminal: Opt. Summary & Side-by-Side Verdict
+    Reporting-->>User: File: report.html (Comparative report for Best vs. Baseline)
 ```
 
 ## Future Considerations & Technical Debt
 
-*   **Parallel Execution for Optimization:** The current design is single-threaded. For larger parameter spaces, parallel execution will be necessary. `Optuna`'s support for distributed optimization can be explored in a future phase. This is considered **technical debt (TD-ARCH-20250605-001)**.
-*   **Deferred Technologies:** To adhere to YAGNI principles for this version, the following libraries are considered out of scope for the definitive tech stack but are noted for future phases:
-    *   **`QuantStats`:** Planned for **Phase 3+** to provide richer, interactive HTML reports and advanced portfolio analytics.
-    *   **`Mlfinlab` & `skfolio`:** Identified for **Future ML Phases** for advanced features like financial ML, bet sizing, and modern portfolio optimization.
-*   **Advanced Optimization Algorithms:** While the Strategy Pattern supports new algorithms, implementing more advanced ones (Bayesian, Genetic via `Optuna`'s advanced samplers) is deferred to **Roadmap Phase 9**.
-*   **Optimization State Persistence & Resumption:** The current architecture supports logging trial history to an RDB (e.g., SQLite) via Optuna. Full, robust interrupt/resume functionality for long optimization runs would require further specific implementation beyond Optuna's basic storage and is deferred.
+* **Parallel Execution for Optimization:** The current design is single-threaded. For larger parameter spaces, parallel execution will be necessary. `Optuna`'s support for distributed optimization can be explored in a future phase. This is considered **technical debt (TD-ARCH-20250605-001)**.
+* **Deferred Technologies:** To adhere to YAGNI principles for this version, the following libraries are considered out of scope for the definitive tech stack but are noted for future phases:
+    * **`Mlfinlab` & `skfolio`:** Identified for **Future ML Phases** for advanced features like financial ML, bet sizing, and modern portfolio optimization.
+* **Advanced Optimization Algorithms:** While the Strategy Pattern supports new algorithms, implementing more advanced ones (Bayesian, Genetic via `Optuna`'s advanced samplers) is deferred to **Roadmap Phase 9**.
+* **Optimization State Persistence & Resumption:** The current architecture supports logging trial history to an RDB (e.g., SQLite) via Optuna. Full, robust interrupt/resume functionality for long optimization runs would require further specific implementation and is deferred.
 
-### Roadmap Alignment & Extension Points
+## Roadmap Alignment & Extension Points
 
-This architecture is designed to support the current PRD v2.2 requirements (Phase 2 of the roadmap) and provide a solid foundation for future phases:
+This architecture is designed to implement PRD v2.3 requirements (Phase 3 of the roadmap) and provide a solid foundation for future phases:
 
-*   **Phase 3 (Baseline & Comparative Analysis):**
-    *   `BacktestResult` and `BacktestAnalysisResult` are structured to hold all necessary metrics for a single strategy run. The `reporting` module can be extended to compare two such results (candidate vs. baseline).
-    *   `QuantStats` integration will enhance `meqsap.reporting`.
-*   **Phase 4 (Expanding Indicator Suite):**
-    *   `meqsap_indicators_core` is designed for easy addition of new indicators and their parameter spaces.
-*   **Phase 5 (Multi-Signal/Indicator Combination):**
-    *   The `meqsap.backtest.StrategySignalGenerator` will be the integration point for a new `meqsap_signal_combiner` module. The current focus on single indicators keeps this interface simple for now.
-*   **Phase 6 (Automated Tuning for Combined Strategies):**
-    *   The `meqsap_optimizer` (using Optuna) is inherently capable of handling larger, multi-dimensional parameter spaces that would arise from combined strategies. The `StrategyConfig` would need to be extended to define these combined parameter spaces.
-*   **Phase 7 (Market Regime Detection):**
-    *   The `run_complete_backtest` function in `meqsap.backtest` is designed to be extensible with an optional `regime_data: Optional[pd.Series] = None` parameter. A new `meqsap_market_regime` module would produce this series.
-*   **Phase 8 (Automated Strategy Improvement - Strategy Doctor):**
-    *   `BacktestResult` can be augmented with a `diagnostic_report: Optional[DiagnosticReport]` field, where `DiagnosticReport` would be a Pydantic model produced by the `meqsap_strategy_doctor`. The doctor module would consume `BacktestAnalysisResult` and the strategy's YAML.
-*   **Phase 9 (Advanced Optimization Techniques):**
-    *   `meqsap_optimizer`'s reliance on `Optuna` makes it straightforward to switch to or enable more advanced samplers (Bayesian, TPE, Genetic Algorithms) provided by Optuna.
-*   **Phase 10 (Analyst-in-the-Loop & Portfolio Construction):**
-    *   The CLI and `meqsap_optimizer` can be extended to support more nuanced goals and interactive refinement.
-    *   Integration of `skfolio` would likely occur as a new CLI command or an extension to the reporting/analysis phase, taking multiple strategy configurations or backtest results as input.
-
-The use of protocols (`ObjectiveFunction`, `TradeConstraint`) and clear module responsibilities aims to make these future integrations manageable.
+* **Phase 3 (Baseline & Comparative Analysis): COMPLETE**. This architecture directly implements this phase.
+* **Phase 4 (Expanding Indicator Suite):** `meqsap_indicators_core` is designed for easy addition of new indicators.
+* **Phase 5 (Multi-Signal/Indicator Combination):** The `meqsap.backtest.StrategySignalGenerator` will be the integration point for a new `meqsap_signal_combiner` module.
+* **Phase 7 (Market Regime Detection):** The `run_complete_backtest` function in `meqsap.backtest` is designed to be extensible with an optional `regime_data` parameter.
+* **Phase 8 (Automated Strategy Improvement - Strategy Doctor):** `BacktestAnalysisResult` can be augmented with diagnostic data from a future `meqsap_strategy_doctor` module.
+* **Phase 10 (Analyst-in-the-Loop & Portfolio Construction):** Integration of `skfolio` would likely occur as a new CLI command or an extension to the reporting/analysis phase.

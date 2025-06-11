@@ -1,193 +1,192 @@
-# MEQSAP Product Requirements Document (PRD) - v2.2
+# MEQSAP Product Requirements Document (PRD) - v2.3
 
 ## Version History
 
-*   **v2.2 (June 5, 2025):** Incorporates Phase 2 of the Automated Strategy Discovery roadmap.
-    *   Introduced a Parameter Optimization Engine for single-indicator strategies.
-    *   Added an objective function framework, with initial support for standard metrics and a crucial focus on incorporating target trade holding period constraints.
-    *   Implemented initial optimization algorithms: Grid Search and Random Search.
-    *   New CLI command `meqsap optimize-single` to invoke the optimization.
-    *   Enhanced `BacktestResult` to include trade duration statistics.
-    *   Updated reporting to summarize optimization outcomes, including adherence to constraints.
-    *   Added **Epic 4: Parameter Optimization Engine (Single Indicator)**.
-    *   Updated User Stories, Functional Requirements, Non-Functional Requirements (Modularity for `meqsap_optimizer`), and Technical Assumptions.
-*   **v2.1 (June 4, 2025):** Incorporates Phase 1 of the Automated Strategy Discovery roadmap.
-    *   This version laid the groundwork for optimization by enhancing the parameter definition framework.
-    *   Enhanced parameter definition framework supporting ranges, choices, and steps for strategy parameters.
-    *   Refactored `BaseStrategyParams`, `StrategyConfig`, and `StrategySignalGenerator` to accommodate the new parameterization.
-    *   Introduced the design and planned integration of the `meqsap_indicators_core` library for modular indicator management.
-    *   Added **Epic 3: Enhanced Parameterization Framework for Optimization Readiness**.
-*   **v2.0 (Initial Release Date):** Initial MVP definition for core backtesting pipeline and reporting.
+* **(NEW for v2.3) (June 11, 2025):** Incorporates Phase 3 of the Automated Strategy Discovery roadmap.
+    * Introduced the concept of a baseline strategy (e.g., Buy & Hold) for comparative analysis.
+    * Added `baseline_config` to the YAML configuration schema.
+    * Updated the backtesting pipeline to run both the candidate strategy and the baseline strategy.
+    * Enhanced terminal reporting to display a side-by-side comparison of the candidate strategy vs. the baseline.
+    * Integrated the `QuantStats` library to generate comprehensive HTML reports via a new `--report-html` flag.
+    * Updated `BacktestAnalysisResult` to accommodate comparative results.
+    * Added **Epic 5: Baseline Comparison & Advanced Reporting**.
+    * Updated User Stories, Functional Requirements, Non-Functional Requirements, and Technical Assumptions.
+    * Refined requirements to include graceful baseline failure handling, an option to disable baseline comparison for faster runs, a more robust reporting architecture, and enhanced real-time CLI feedback.
+* **v2.2 (June 5, 2025):** Incorporates Phase 2 of the Automated Strategy Discovery roadmap.
+    * Introduced a Parameter Optimization Engine for single-indicator strategies.
+    * Added an objective function framework, with initial support for standard metrics and a crucial focus on incorporating target trade holding period constraints.
+    * Implemented initial optimization algorithms: Grid Search and Random Search.
+    * New CLI command `meqsap optimize-single` to invoke the optimization.
+    * Enhanced `BacktestResult` to include trade duration statistics.
+    * Updated reporting to summarize optimization outcomes, including adherence to constraints.
+    * Added **Epic 4: Parameter Optimization Engine (Single Indicator)**.
+    * Updated User Stories, Functional Requirements, Non-Functional Requirements (Modularity for `meqsap_optimizer`), and Technical Assumptions.
+* **v2.1 (June 4, 2025):** Incorporates Phase 1 of the Automated Strategy Discovery roadmap.
+    * This version laid the groundwork for optimization by enhancing the parameter definition framework.
+    * Enhanced parameter definition framework supporting ranges, choices, and steps for strategy parameters.
+    * Refactored `BaseStrategyParams`, `StrategyConfig`, and `StrategySignalGenerator` to accommodate the new parameterization.
+    * Introduced the design and planned integration of the `meqsap_indicators_core` library for modular indicator management.
+    * Added **Epic 3: Enhanced Parameterization Framework for Optimization Readiness**.
+* **v2.0 (Initial Release Date):** Initial MVP definition for core backtesting pipeline and reporting.
 
 ## 1. Goal, Objective, and Context
 
-*   **Goal:** To build a command-line tool, the Minimum Viable Quantitative Strategy Analysis Pipeline (MEQSAP), that can take a simple strategy configuration file, run a complete backtest, perform robustness checks, and present a clear, actionable verdict. The system is evolving to support automated strategy optimization and more advanced analysis capabilities.
-*   **Objective:** The core principle remains to rapidly develop an end-to-end "happy path" by orchestrating powerful, existing Python libraries. Version 2.1 established a flexible parameter definition framework. **Version 2.2 introduces a parameter optimization engine for single-indicator strategies**, allowing users to automatically find optimal parameters based on defined objectives, including constraints like target trade holding periods. This focuses on delivering a practical first step in optimization, leveraging the modularity already built.
-*   **Context:** This project is for a user who wants to quickly and reliably analyze and now *optimize* quantitative trading strategies using a simple, configuration-driven CLI tool. The v2.1 enhancements prepared for this optimization step.
+* **Goal:** To build a command-line tool, the Minimum Viable Quantitative Strategy Analysis Pipeline (MEQSAP), that can take a simple strategy configuration file, run a complete backtest, perform robustness checks, and present a clear, actionable verdict. The system is evolving to support automated strategy optimization and more advanced analysis capabilities.
+* **Objective:** The core principle remains to rapidly develop an end-to-end "happy path" by orchestrating powerful, existing Python libraries. Version 2.2 introduced a parameter optimization engine. **Version 2.3 introduces baseline comparisons and advanced HTML reporting**, allowing users to quantitatively and qualitatively compare their strategies against a benchmark like "Buy & Hold" to prove their alpha.
+* **Context:** This project is for a user who wants to quickly and reliably analyze and optimize quantitative trading strategies and now *prove their value* against a standard benchmark using a simple, configuration-driven CLI tool.
 
 ## 2. User Stories
 
-1.  As a strategist, I want to define a trading strategy (e.g., a moving average crossover) in a simple `.yaml` file, including the ability to specify single values for parameters, **so that** I can configure a backtest without writing any Python code. (No change from v2.1)
-2.  As a strategist, I want the tool to validate my `.yaml` configuration against a predefined schema, including new parameter space definitions and optimization settings, **so that** I am immediately alerted to typos or invalid parameter combinations. (Acceptance Criteria updated for v2.2)
-3.  As a strategist, I want the tool to automatically download the necessary historical price data for a given ticker **so that** I don't have to manage data files manually. (No change from v2.0)
-4.  As a strategist, I want the tool to cache downloaded data **so that** subsequent runs on the same data are fast and don't repeatedly call the data provider's API. (No change from v2.0)
-5.  As a strategist, I want the tool to run a complete backtest on my defined strategy (using specific parameter values if ranges/choices are defined, or default/first values if not optimizing via the `analyze` command) using a single command **so that** I can see its performance statistics. (Clarified for v2.2)
-6.  As a strategist, I want to see a clean, formatted "Executive Verdict" table in my terminal **so that** I can quickly assess the strategy's performance and the results of all validation checks. (No change from v2.0)
-7.  As a strategist, I want the tool to automatically perform "Vibe Checks" **so that** I can instantly spot obviously flawed or inactive strategies. (No change from v2.0)
-8.  As a strategist, I want the tool to run automated robustness checks **so that** I can understand how sensitive my strategy is to real-world costs. (No change from v2.0)
-9.  As a strategist, I want the option to generate a comprehensive, institutional-grade PDF report using a command-line flag (`--report`) **so that** I can perform a deeper analysis or share the results. (No change from v2.0)
-10. As a developer, I want the tool to provide clear, user-friendly error messages (e.g., for a bad ticker, malformed config file, errors in parameter space definitions, or optimization failures) **so that** users can self-diagnose and fix problems easily. (Acceptance Criteria updated for v2.2)
-11. As a strategist, I want to define parameter search spaces (e.g., ranges, choices, steps) for my strategy indicators within the `.yaml` configuration file **so that** I can prepare my strategy for automated parameter optimization. (No change from v2.1)
-12. **(NEW for v2.2) As a strategist, I want to define an objective function (e.g., maximize Sharpe Ratio) and constraints (e.g., average trade hold period between 5 and 20 days) in my YAML configuration so that the system can optimize parameters towards my specific goals.**
-13. **(NEW for v2.2) As a strategist, I want to run an automated parameter optimization for a single-indicator strategy using Grid Search or Random Search via a new CLI command (e.g., `meqsap optimize-single`) so that I can discover better performing parameter sets without manual trial and error.**
-14. **(NEW for v2.2) As a strategist, I want to see a report of the optimization process, including the best parameters found, their performance, and how well they met constraints like hold periods, so that I can understand the outcome of the optimization.**
-15. **(NEW for v2.2) As a developer, I want the `BacktestResult` to include detailed trade duration statistics (e.g., average hold time, percentage of trades within a target range) so that objective functions can use this information for optimization.**
+1.  As a strategist, I want to define a trading strategy (e.g., a moving average crossover) in a simple `.yaml` file, including the ability to specify single values for parameters, **so that** I can configure a backtest without writing any Python code.
+2.  As a strategist, I want the tool to validate my `.yaml` configuration against a predefined schema, including new parameter space definitions, optimization settings, and baseline configurations, **so that** I am immediately alerted to typos or invalid parameter combinations.
+3.  As a strategist, I want the tool to automatically download the necessary historical price data for a given ticker **so that** I don't have to manage data files manually.
+4.  As a strategist, I want the tool to cache downloaded data **so that** subsequent runs on the same data are fast and don't repeatedly call the data provider's API.
+5.  As a strategist, I want the tool to run a complete backtest on my defined strategy (using specific parameter values if ranges/choices are defined, or default/first values if not optimizing via the `analyze` command) using a single command **so that** I can see its performance statistics.
+6.  As a strategist, I want to see a clean, formatted "Executive Verdict" table in my terminal **so that** I can quickly assess the strategy's performance and the results of all validation checks.
+7.  As a strategist, I want the tool to automatically perform "Vibe Checks" **so that** I can instantly spot obviously flawed or inactive strategies.
+8.  As a strategist, I want the tool to run automated robustness checks **so that** I can understand how sensitive my strategy is to real-world costs.
+9.  As a strategist, I want the option to generate a comprehensive, institutional-grade PDF report using a command-line flag (`--report`) **so that** I can perform a deeper analysis or share the results.
+10. As a developer, I want the tool to provide clear, user-friendly error messages (e.g., for a bad ticker, malformed config file, errors in parameter space definitions, or optimization failures) **so that** users can self-diagnose and fix problems easily.
+11. As a strategist, I want to define parameter search spaces (e.g., ranges, choices, steps) for my strategy indicators within the `.yaml` configuration file **so that** I can prepare my strategy for automated parameter optimization.
+12. As a strategist, I want to define an objective function (e.g., maximize Sharpe Ratio) and constraints (e.g., average trade hold period between 5 and 20 days) in my YAML configuration **so that** the system can optimize parameters towards my specific goals.
+13. As a strategist, I want to run an automated parameter optimization for a single-indicator strategy using Grid Search or Random Search via a new CLI command (e.g., `meqsap optimize-single`) **so that** I can discover better performing parameter sets without manual trial and error.
+14. As a strategist, I want to see a report of the optimization process, including the best parameters found, their performance, and how well they met constraints like hold periods, **so that** I can understand the outcome of the optimization.
+15. As a developer, I want the `BacktestResult` to include detailed trade duration statistics (e.g., average hold time, percentage of trades within a target range) **so that** objective functions can use this information for optimization.
+16. **(NEW for v2.3) As a strategist, I want to define a baseline strategy, such as Buy & Hold or a simple fixed-parameter strategy, in my YAML file so that I have a benchmark to compare my primary strategy against.**
+17. **(NEW for v2.3) As a strategist, I want the tool to automatically run a backtest for the baseline strategy alongside my main strategy so that I can see a direct performance comparison in a single execution.**
+18. **(NEW for v2.3) As a strategist, I want to see a comparative analysis in my terminal, showing my strategy's key performance metrics side-by-side with the baseline's, so that I can quickly determine if it provides a quantifiable edge.**
+19. **(NEW for v2.3) As a strategist, I want the option to generate a comprehensive HTML report using a new command-line flag (`--report-html`) so that I can get advanced analytics and detailed charts comparing my strategy to the baseline for deeper analysis or sharing.**
+20. **(NEW for v2.3)** As a strategist, I want the option to disable the baseline comparison for a specific run, so I can get a faster analysis when I don't need the comparison.
+21. **(NEW for v2.3)** As a strategist, I want to see real-time status updates during a backtest run, so I understand what the tool is doing and why it might be taking longer.
 
 ## 3. Functional Requirements
 
 The system must be able to:
 
-*   **Strategy Configuration (Updates for v2.2):**
-    1.  Load a backtest strategy from a `.yaml` configuration file. The configuration can include fixed parameters, parameter search spaces (from v2.1), and a new **`optimization_config` block**.
-    2.  The `optimization_config` block (optional) allows specifying:
-        *   `active`: boolean to enable/disable optimization for a run.
-        *   `algorithm`: Choice of optimization algorithm (e.g., "GridSearch", "RandomSearch").
-        *   `objective_function`: Name of the objective function to use (e.g., "SharpeRatio", "CalmarRatio", or custom ones like "SharpeWithHoldPeriodConstraint").
-        *   `objective_params`: Parameters for the objective function, such as `min_hold_days`, `max_hold_days`.
-        *   `algorithm_params`: Parameters specific to the chosen algorithm (e.g., `random_search_iterations`).
-    3.  Validate the loaded configuration, including the `optimization_config` block and its parameters.
-    4.  (No change from v2.1) Interpret parameter definitions within `BaseStrategyParams` supporting fixed values, ranges, choices.
-    5.  (No change from v2.1) Ensure `get_required_data_coverage_bars` correctly calculates data length considering parameter ranges.
+* **Strategy Configuration (Updates for v2.3):**
+    1.  Load a backtest strategy from a `.yaml` configuration file. The configuration can include fixed parameters, parameter search spaces, `optimization_config`, and a new **`baseline_config` block**.
+    2.  The `optimization_config` block (optional) allows specifying optimization parameters.
+    3.  **(New for v2.3)** The `baseline_config` block (optional) allows specifying:
+        * `active`: boolean to enable/disable baseline comparison for a run.
+        * `strategy_type`: The type of baseline to run (e.g., "BuyAndHold", "MovingAverageCrossover").
+        * `params`: A block containing fixed parameters for the baseline strategy if it is not parameter-less (e.g., `fast_ma`, `slow_ma` for a baseline MA cross).
+    4.  Validate the loaded configuration, including the `baseline_config` block and its parameters. If no baseline is provided, it should default to an active Buy & Hold baseline, unless disabled via the `--no-baseline` CLI flag.
+    5.  Interpret parameter definitions within `BaseStrategyParams` supporting fixed values, ranges, choices.
+    6.  Ensure `get_required_data_coverage_bars` correctly calculates data length considering parameter ranges.
 
-*   **Data Handling:** (No change from v2.1)
-    6.  Acquire historical OHLCV data via `yfinance`.
-    7.  Implement file-based caching.
-    8.  Perform data integrity "Vibe Checks".
+* **Data Handling:** (No change from v2.1)
+    7.  Acquire historical OHLCV data via `yfinance`.
+    8.  Implement file-based caching.
+    9.  Perform data integrity "Vibe Checks".
 
-*   **Backtesting Core (Updates for v2.2):**
-    9.  (No change from v2.1) Generate entry and exit signals. `StrategySignalGenerator` accepts concrete parameter sets.
-    10. (No change from v2.1) Execute a full backtest using `vectorbt`.
-    11. **(New for v2.2)** The `BacktestResult` Pydantic model (in `meqsap.backtest`) must be enhanced to include:
-        *   `avg_trade_duration_days: Optional[float]`
-        *   `pct_trades_in_target_hold_period: Optional[float]` (if target hold period is defined)
-        *   Other relevant trade duration statistics as needed by objective functions.
-        *   These statistics are to be calculated from the `trade_details` list within the `run_backtest` function or a helper.
+* **Backtesting Core (Updates for v2.3):**
+    10. Generate entry and exit signals. `StrategySignalGenerator` accepts concrete parameter sets.
+    11. Execute a full backtest using `vectorbt`.
+    12. **(New for v2.3)** The backtesting process must be able to run a second backtest for the baseline strategy defined in `baseline_config`.
+    13. The `BacktestResult` Pydantic model must be enhanced to include duration statistics.
+    14. **(New for v2.3)** The backtesting process must gracefully handle failures in the baseline strategy backtest, allowing the candidate strategy analysis to complete.
 
-*   **Parameter Optimization Engine (New for v2.2):**
-    12. Implement a new module, `meqsap_optimizer`, responsible for parameter optimization.
-    13. The engine must take a `StrategyConfig` (with parameter search spaces from `meqsap_indicators_core` and `optimization_config`), an objective function, and a chosen algorithm.
-    14. Implement **Grid Search**: Systematically iterate through all combinations in the defined parameter space.
-    15. Implement **Random Search**: Randomly sample a specified number of combinations from the parameter space.
-    16. For each parameter combination, the engine must call `run_complete_backtest` to get a full `BacktestAnalysisResult`.
-    17. Evaluate the `BacktestAnalysisResult` against the specified objective function.
-    18. Track and identify the best-performing parameter set according to the objective function.
+* **Parameter Optimization Engine:** (No change from v2.2)
+    15. Implement a module, `meqsap_optimizer`, for parameter optimization.
+    16. Implement Grid Search and Random Search.
+    17. The engine must call `run_complete_backtest` for each parameter combination.
+    18. Evaluate results against the specified objective function.
+    19. Identify the best-performing parameter set.
 
-*   **Objective Function Framework (New for v2.2):**
-    19. Create a system within `meqsap_optimizer` for defining and selecting objective functions.
-    20. Implement standard objective functions: Maximize Sharpe Ratio, Maximize Calmar Ratio, Maximize Profit Factor.
-    21. Implement at least one objective function that incorporates trade holding period constraints. This function will use the new trade duration statistics from `BacktestResult` and penalize or filter out parameter sets where trades predominantly fall outside the user-defined `min_hold_days` and `max_hold_days`.
+* **Objective Function Framework:** (No change from v2.2)
+    20. Create a system for defining and selecting objective functions.
+    21. Implement standard objective functions (Maximize Sharpe, etc.).
+    22. Implement at least one objective function that incorporates trade holding period constraints.
 
-*   **Results & Reporting (Updates for v2.2):**
-    22. (No change from v2.1) Print core performance statistics.
-    23. (No change from v2.1) Perform "Vibe Checks".
-    24. (No change from v2.1) Conduct automated robustness "Vibe Checks".
-    25. (No change from v2.1) Display formatted "Executive Verdict" using `rich`.
-    26. (No change from v2.1) Generate PDF report via `pyfolio` with `--report`.
-    27. **(New for v2.2)** When optimization is run:
-        *   Output the best parameter set found.
-        *   Output the full `BacktestAnalysisResult` (including Executive Verdict) for this best parameter set.
-        *   Provide a summary of the optimization process (e.g., algorithm used, number of iterations, best objective score).
-        *   Clearly report on how well the best parameter set met the specified constraints, especially the target hold period.
+* **Results & Reporting (Updates for v2.3):**
+    23. **(New for v2.3)** The CLI must display real-time status indicators to inform the user of the current process stage (e.g., candidate backtest, baseline backtest).
+    24. **(New for v2.3)** Create a new data model, `ComparativeAnalysisResult`, that can hold two `BacktestAnalysisResult` objects: one for the candidate strategy and one for the baseline.
+    25. Print core performance statistics.
+    26. Perform "Vibe Checks".
+    27. Conduct automated robustness "Vibe Checks".
+    28. **(Enhanced for v2.3)** Display a formatted "Executive Verdict" using `rich` that presents a side-by-side comparison of key metrics (e.g., Sharpe Ratio, Calmar Ratio, Total Return %) for the candidate strategy and the baseline strategy. It should include a clear "Verdict vs. Baseline" assessment (e.g., "Outperformed", "Underperformed"). The 'Verdict vs. Baseline' assessment will be based on the primary objective function defined in the `optimization_config` (from Phase 2), defaulting to a key performance metric like Sharpe Ratio if no objective function is specified.
+    29. Generate PDF report via `pyfolio` with `--report`.
+    30. When optimization is run, output the best parameter set and its full `BacktestAnalysisResult`.
+    31. **(New for v2.3)** Implement a new command-line flag `--report-html`. When used, the system must generate a comprehensive HTML report using the `QuantStats` library. This report should compare the candidate strategy's returns against the baseline strategy's returns.
 
-*   **Modular Indicator Management:** (No change from v2.1, `meqsap_indicators_core` is foundational)
-    28. Utilize `meqsap_indicators_core` for standardized indicator definition, parameter management, and calculation logic.
+* **Modular Indicator Management:** (No change from v2.1, `meqsap_indicators_core` is foundational)
+    32. Utilize `meqsap_indicators_core` for standardized indicator definition, parameter management, and calculation logic.
 
-*   **CLI & Diagnostics (Updates for v2.2):**
-    29. **(New for v2.2)** Implement a new CLI command: `meqsap optimize-single <config.yaml>`.
-        *   This command reads the `optimization_config` block from the YAML.
-        *   It invokes the `OptimizationEngine`.
-    30. (No change from v2.1) Provide `--verbose` and `--version` flags.
+* **CLI & Diagnostics (Updates for v2.3):**
+    33. Implement a CLI command: `meqsap optimize-single <config.yaml>`.
+    34. **(New for v2.3)** Add a `--no-baseline` flag to the `analyze` and `optimize-single` commands.
+    35. **(New for v2.3)** Add a `--report-html` flag to the `analyze` and `optimize-single` commands.
+    36. Provide `--verbose` and `--version` flags.
 
 ## 4. Non-Functional Requirements
 
-*   **Reliability:** (No change) Consistent, reproducible results.
-*   **Modularity & Maintainability:** (Enhanced for v2.2)
-    *   The new `meqsap_optimizer` module will encapsulate all optimization-specific logic, maintaining separation from core backtesting, data, and config modules.
-*   **Code Quality:** (No change) Pydantic for validation, Python type hints.
-*   **Dependency Management:** (No change) Explicitly defined and frozen.
-*   **Performance:**
-    *   Individual backtests within the optimization loop must remain efficient.
-    *   Optimization runs (especially Grid Search) can be time-consuming; this is acceptable for v2.2. Progress indicators should be provided for long-running optimization tasks.
-*   **Packaging:** (No change) Distributable via PyPI.
+* **Reliability:** (No change) Consistent, reproducible results.
+* **Modularity & Maintainability:** (Enhanced for v2.3)
+    * The new `meqsap_optimizer` module will encapsulate all optimization-specific logic.
+    * **(New for v2.3)** Logic for generating `QuantStats` reports should be cleanly integrated within the `meqsap.reporting` module.
+    * **(New for v2.3)** The `meqsap.reporting` module should be refactored to use a Strategy design pattern (e.g., a `BaseReporter` with `TerminalReporter`, `HtmlReporter`, `PdfReporter` implementations) to cleanly manage multiple output formats and ensure future extensibility.
+* **Code Quality:** (No change) Pydantic for validation, Python type hints.
+* **Dependency Management:** (Updated for v2.3) Explicitly defined and frozen. `QuantStats` will be added as a dependency.
+* **Performance:**
+    * Individual backtests within the optimization loop must remain efficient.
+    * Optimization runs (especially Grid Search) can be time-consuming; this is acceptable. Progress indicators should be provided. The `--no-baseline` flag is provided to mitigate the performance impact of dual backtests for users who prioritize speed.
+* **Packaging:** (No change) Distributable via PyPI.
 
 ## 5. Technical Assumptions
 
-*   **Repository & Service Architecture:** (No change) Monolith, single repository.
-*   **Core Libraries:** (Updated for v2.2) `yfinance`, `vectorbt`, `pyyaml`, `pydantic`, `pandas`, `pandas-ta`, `rich`, `pyfolio`. The `meqsap_indicators_core` module is established.
-    *   **Parameter Optimization (Phase 2 & 9):** `Optuna` will be the primary library for implementing optimization algorithms (Grid Search, Random Search, and advanced techniques like Bayesian optimization in future phases) within the `meqsap_optimizer` module.
-    *   **Enhanced Reporting & Analytics (Phase 3):** `QuantStats` will be integrated for generating comprehensive HTML reports, advanced portfolio analytics, and statistical tear sheets, complementing `pyfolio`'s PDF capabilities.
-    *   **Machine Learning Based Features (Future Phases):** `Mlfinlab` (for financial data structures, labeling, feature engineering) and `skfolio` (for advanced portfolio optimization) are planned for integration in later roadmap phases.
-    *   **Internal Modules:** `meqsap_optimizer` will be developed, leveraging `Optuna`.
-*   **Language:** (No change) Python 3.9+.
-*   **Platform:** (No change) Command-line tool.
+* **Repository & Service Architecture:** (No change) Monolith, single repository.
+* **Core Libraries:** (Updated for v2.3) `yfinance`, `vectorbt`, `pyyaml`, `pydantic`, `pandas`, `pandas-ta`, `rich`, `pyfolio`, `optuna`.
+    * **Parameter Optimization (Phase 2 & 9):** `Optuna` is the primary library for implementing optimization algorithms.
+    * **Enhanced Reporting & Analytics (Phase 3):** **`QuantStats` will be integrated** for generating comprehensive HTML reports, advanced portfolio analytics, and statistical tear sheets, complementing `pyfolio`'s PDF capabilities.
+    * **Machine Learning Based Features (Future Phases):** `Mlfinlab` and `skfolio` are planned for integration in later roadmap phases.
+    * **Internal Modules:** `meqsap_optimizer` will be developed, leveraging `Optuna`.
+* **Language:** (No change) Python 3.9+.
+* **Platform:** (No change) Command-line tool.
 
 ## 6. Epic Overview
 
 **Epic 1: Core Backtesting Pipeline (MVP Foundation)** (Completed in v2.0)
 **Epic 2: Analysis, Reporting & UX (MVP Enhancement)** (Completed in v2.0)
 **Epic 3: Enhanced Parameterization Framework for Optimization Readiness** (Completed in v2.1)
+**Epic 4: Parameter Optimization Engine (Single Indicator)** (Completed in v2.2)
 
-**(NEW for v2.2) Epic 4: Parameter Optimization Engine (Single Indicator)**
-*   **Goal:** To implement an automated parameter optimization engine for single-indicator strategies, enabling users to find optimal parameters based on defined objectives and constraints, particularly target trade holding periods.
-*   **User Stories for Epic 4:**
-    1.  **As a developer, I want to enhance `BacktestResult` to include detailed trade duration statistics** (e.g., average hold time, percentage of trades within a target range) **so that** this data is available for objective functions.
-        *   **Acceptance Criteria (No change):**
-            *   AC1: `BacktestResult` Pydantic model in `meqsap.backtest.py` includes new fields like `avg_trade_duration_days: Optional[float]` and `pct_trades_in_target_hold_period: Optional[float]`.
-            *   AC2: The `run_backtest` function calculates and populates these new duration statistics from `vectorbt`'s trade records.
-            *   AC3: Unit tests verify the correct calculation of these duration statistics.
-    2.  **As a developer, I want to create an `ObjectiveFunction` framework within `meqsap_optimizer`** that allows defining various optimization goals (e.g., Sharpe Ratio, Calmar Ratio) and can incorporate constraints like target trade hold periods, **so that** the optimization process can be guided by specific criteria.
-        *   **Acceptance Criteria:**
-            *   AC1: An `ObjectiveFunction` base class or protocol is defined in `meqsap_optimizer.objective_functions`.
-            *   AC2: Implementations for standard objectives like "Maximize Sharpe Ratio" and "Maximize Calmar Ratio" are provided.
-            *   AC3: At least one objective function (e.g., "SharpeWithHoldPeriodConstraint") is implemented that uses the new trade duration statistics from `BacktestResult` to penalize or filter strategies not meeting hold period criteria specified in `optimization_config.objective_params`.
-            *   AC4: The framework allows for easy addition of new objective functions.
-    3.  **As a developer, I want to implement Grid Search and Random Search algorithms** within the `meqsap_optimizer.algorithms` submodule, **so that** users have basic methods to explore parameter spaces defined via `meqsap_indicators_core`.
-        *   **Note**: These algorithms will be implemented leveraging the `Optuna` library.
-        *   **Acceptance Criteria:**
-            *   AC1: `GridSearchOptimizer` (using Optuna's grid sampler) correctly generates all parameter combinations.
-            *   AC2: `RandomSearchOptimizer` (using Optuna's random sampler) correctly samples a specified number of combinations.
-            *   AC3: Both optimizers integrate with Optuna's study and trial objects and correctly interpret parameter spaces.
-    4.  **As a developer, I want to build an `OptimizationEngine` core within `meqsap_optimizer.engine`** that orchestrates the optimization process. It should take a strategy configuration, an objective function, and an algorithm, then run backtests for parameter combinations and identify the best set, **so that** the optimization workflow is managed.
-        *   **Acceptance Criteria:**
-            *   AC1: `OptimizationEngine` can be initialized with a `StrategyConfig` (containing parameter spaces and `optimization_config`), a selected objective function instance, and a selected algorithm instance (which internally uses `Optuna`).
-            *   AC2: The engine correctly iterates/samples parameter sets using the chosen algorithm.
-            *   AC3: For each parameter set, the engine calls `run_complete_backtest` (from `meqsap.backtest`) to get `BacktestAnalysisResult`.
-            *   AC4: The engine evaluates each `BacktestAnalysisResult` using the provided objective function.
-            *   AC5: The engine tracks and returns the parameter set that yielded the best objective score.
-    5.  **As a strategist, I want a new CLI command `meqsap optimize-single <config.yaml>`** to initiate the parameter optimization for a single-indicator strategy, using settings from the YAML's `optimization_config` block, **so that** I can easily run optimizations.
-        *   **Acceptance Criteria:**
-            *   AC1: A new command `optimize-single` is added to `meqsap.cli.py`.
-            *   AC2: The command accepts a path to a YAML configuration file.
-            *   AC3: The command loads the YAML, extracts `StrategyConfig` and the `optimization_config` block.
-            *   AC4: It initializes and runs the `OptimizationEngine` based on these configurations.
-            *   AC5: Appropriate error handling for invalid or missing `optimization_config`.
-    6.  **As a strategist, I want the `optimize-single` command to report** the best parameters found, their full backtest performance (Executive Verdict), a summary of the optimization run, and how well constraints (especially hold period) were met, **so that** I can understand and use the optimization results.
-        *   **Acceptance Criteria:**
-            *   AC1: CLI output for `optimize-single` clearly states the best parameter set found.
-            *   AC2: The full "Executive Verdict" (from `meqsap.reporting`) for the best parameter set is displayed.
-            *   AC3: A summary of the optimization is provided (e.g., "GridSearch tested 100 combinations. Best Sharpe: 1.25").
-            *   AC4: If hold period constraints were active, the report explicitly states the average hold period and % trades in range for the best strategy.
-            *   AC5: If `--report` flag is used with `optimize-single`, a PDF report for the *best found strategy* is generated.
+**(NEW for v2.3) Epic 5: Baseline Comparison & Advanced Reporting**
+* **Goal:** To integrate baseline strategy comparisons and advanced HTML reporting to provide users with a clear, quantitative measure of their strategy's performance against a standard benchmark.
+* **User Stories for Epic 5:**
+    1.  **As a strategist, I want to define a baseline strategy in my YAML file so that I have a benchmark to compare my primary strategy against.**
+        * **Acceptance Criteria:**
+            * AC1: `StrategyConfig` Pydantic model is updated to include an optional `baseline_config` block.
+            * AC2: The YAML validation schema is updated to support `baseline_config`, which can define a `strategy_type` (e.g., "BuyAndHold") and optional fixed `params`.
+            * AC3: If `baseline_config` is omitted or disabled in the config, the system defaults to using "BuyAndHold" as the baseline, unless the `--no-baseline` flag is used.
+            * AC4: The system correctly parses the baseline strategy definition.
+    2.  **As a strategist, I want to see a comparative analysis in my terminal, showing my strategy's key performance metrics side-by-side with the baseline's.**
+        * **Acceptance Criteria:**
+            * AC1: The main backtest runner is updated to execute a backtest for both the candidate strategy and the defined baseline strategy (if not disabled).
+            * AC2: A `ComparativeAnalysisResult` data model is created to hold the results of both backtests.
+            * AC3: The "Executive Verdict" `rich` table in the terminal output is modified to include two columns of metrics: "Candidate" and "Baseline".
+            * AC4: The table includes a summary row or field indicating if the candidate "Outperformed" or "Underperformed" the baseline on a key metric (e.g., Sharpe Ratio).
+            * AC5: If the baseline strategy backtest fails, the tool completes the candidate analysis and prints a warning to the terminal indicating the baseline could not be run.
+    3.  **As a strategist, I want the option to generate a comprehensive HTML report using a new command-line flag (`--report-html`).**
+        * **Acceptance Criteria:**
+            * AC1: A new flag, `--report-html`, is added to the `analyze` and `optimize-single` CLI commands.
+            * AC2: When the flag is used, the system generates a file named `report.html`.
+            * AC3: The HTML report is generated using the `QuantStats` library.
+            * AC4: The report correctly compares the returns of the **best-found candidate strategy** against the returns of the baseline strategy.
+            * AC5: The `QuantStats` library is added as a project dependency.
+    4.  **As a strategist, I want the option to disable the baseline comparison for a specific run.**
+        * **Acceptance Criteria:**
+            * AC1: A new flag, `--no-baseline`, is added to the `analyze` and `optimize-single` commands.
+            * AC2: When `--no-baseline` is used, the baseline backtest is skipped, and all reports (terminal, HTML) only show results for the candidate strategy.
+    5.  **As a strategist, I want to see real-time status updates during a backtest run.**
+        * **Acceptance Criteria:**
+            * AC1: The CLI provides feedback via status indicators for key stages, such as "Running candidate strategy...", "Running baseline strategy...", and "Generating HTML report...".
 
-## 7. Explicitly Out of Scope for v2.2
+## 7. Explicitly Out of Scope for v2.3
 
-To ensure focus, the following are **not** part of the v2.2 update:
+To ensure focus, the following are **not** part of the v2.3 update:
 
-*   **Advanced Optimization Algorithms:** Bayesian optimization, Genetic Algorithms, PSO (these are planned for later phases as per roadmap, leveraging advanced features of `Optuna`). v2.2 focuses on Grid and Random Search via `Optuna`.
-*   **Optimization for Multi-Signal/Indicator Strategies:** Phase 2 is strictly for single-indicator strategies where parameters are directly tied to one indicator's definition (e.g., optimizing `fast_ma` and `slow_ma` for `MovingAverageCrossover`). Combined strategy optimization is Phase 6.
-*   **Automated Strategy Discovery/Modification & ML Features:** The "Strategy Doctor" concept (Phase 8) and integration of `Mlfinlab` or `skfolio` for ML-driven features are out of scope for v2.2. This phase only finds optimal parameters for a *given* strategy structure.
-*   **Sophisticated UI for Optimization:** All interactions are CLI-driven.
-*   **Distributed/Parallel Execution of Optimization:** While desirable for performance, implementing robust parallel execution for optimization runs is a separate effort, deferred to keep v2.2 focused. The underlying `run_complete_backtest` should remain efficient.
-*   **Optimization State Persistence & Resumption:** The ability to interrupt and resume long optimization runs is out of scope for this phase. Each `optimize-single` run is self-contained.
-*   **Out-of-Sample/Walk-Forward Validation within Optimization Loop:** While important, integrating these complex validation schemes directly into the v2.2 optimization loop is deferred. The focus is on in-sample optimization first. Standard robustness checks will still apply to the *best found* strategy.
-*   **Full QuantStats Reporting Integration:** While `QuantStats` is identified as a key library for Phase 3, its full integration for HTML reports and advanced analytics is deferred. Phase 2 reporting focuses on summarizing optimization results.
+* **Advanced Baseline Strategies:** The initial implementation will focus on simple baselines like Buy & Hold and strategies with fixed parameters. Complex or dynamic baselines are out of scope.
+* **Advanced `QuantStats` Features:** The primary goal is to generate the comparative HTML report. Other advanced features of `QuantStats` (e.g., portfolio-level analysis, custom tear sheets) are deferred.
+* **Expanding Indicator Suite (Phase 4):** No new indicators will be added in this phase.
+* **Multi-Signal/Indicator Strategies (Phase 5 & 6):** All optimization and comparison work remains focused on single-indicator strategies.
+* **Automated Strategy Discovery/Modification & ML Features (Phase 8+):** The "Strategy Doctor" concept and `Mlfinlab`/`skfolio` integrations are out of scope.s
