@@ -282,3 +282,11 @@
   - **Be Specific**: Catch specific, custom application exceptions (`MEQSAPError` subclasses) first.
   - **Ignore Control Flow**: Explicitly catch and re-raise framework exceptions like `typer.Exit` *before* the generic `except Exception:` block to allow the framework to handle its own control flow.
   - **Alternative (Stricter Design)**: Adhere to a stricter pattern where command logic *never* calls `typer.Exit` directly, but instead raises specific, typed exceptions that the decorator is designed to map to exit codes. The immediate fix was to make the decorator more robust, but the long-term solution is to enforce the stricter pattern.
+
+### Structural Issue Discovered (2025-06-16)
+- **Symptom**: Tests for objective function validation failed, as they expected strict case-sensitive matching for function names (e.g., "SharpeRatio"), but the implementation allowed some case-insensitive variants (e.g., "sharperatio").
+- **Root Cause**: A lookup function (`get_objective_function`) was implemented with case-normalization logic (`name.lower()`, `key.lower()`), creating a discrepancy between the strict contract defined in example configurations and tests, and the more lenient behavior in the code. This led to inconsistent and unpredictable configuration validation.
+
+### Lesson & Design Principle
+- **Principle: Enforce Strict Configuration Contracts.** Configuration lookups, especially for string-based keys like function or strategy names, should be explicit and case-sensitive by default. Avoid "helpful" normalization (like case-insensitivity) in core logic, as it can hide user typos, create ambiguity, and lead to inconsistent behavior. If flexibility is needed, it should be an explicit design decision documented in an ADR, not an implicit implementation detail.
+- **Action**: When implementing registry or factory patterns that use string keys from user configuration, perform a direct key lookup. Ensure that error messages for failed lookups are clear and list the exact, case-sensitive names of available options.

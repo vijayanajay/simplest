@@ -58,7 +58,11 @@ def create_optimization_progress_bar(algorithm: str, total_trials: Optional[int]
 
 def create_progress_callback(progress: Progress, task_id: int, 
                            max_param_length: int = 60) -> Tuple[Callable[[ProgressData], None], Progress]:
-    """Create a callback to update the progress bar from optimization engine."""
+    """Create a callback to update the progress bar from optimization engine.
+    
+    The callback uses the current trial count from ProgressData to set the absolute 
+    progress position, preventing double-counting if called multiple times per trial.
+    """
     # The progress object itself is the context manager needed by the caller.
     # This function now returns the callback and the context.
     def callback(progress_data: ProgressData):
@@ -71,12 +75,15 @@ def create_progress_callback(progress: Progress, task_id: int,
 
         progress.update(
             task_id,
-            advance=1,
+            completed=progress_data.current_trial,
             best_score=best_score_str,
             current_params=f"Trial {progress_data.current_trial}: {params_str}"
         )
-        if progress_data.failed_trials_summary:
-            error_parts = [f"{k}: {v}" for k, v in progress_data.failed_trials_summary.items()]
+        
+        # Safely check for error summary with backward compatibility
+        error_summary = getattr(progress_data, 'failed_trials_summary', None) or getattr(progress_data, 'errors', None)
+        if error_summary:
+            error_parts = [f"{k}: {v}" for k, v in error_summary.items()]
             error_str = " | ".join(error_parts)
             console.print(f"[yellow]Failures:[/yellow] {error_str}", style="dim")
     return callback, progress

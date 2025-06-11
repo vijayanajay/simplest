@@ -38,6 +38,30 @@ class TestObjectiveFunctionRegistry:
         assert "invalid_function_name" in str(exc_info.value)
         assert "Available functions" in str(exc_info.value)
 
+    def test_get_objective_function_case_sensitive(self):
+        """Test that the lookup is case-sensitive."""
+        # Should work
+        assert get_objective_function("SharpeRatio") is not None
+        # Should fail
+        with pytest.raises(ConfigurationError):
+            get_objective_function("sharperatio")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("SHARPERATIO")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("Sharpe_Ratio")
+ 
+    def test_common_lowercase_names_are_invalid(self):
+        """Test that common lowercase variants are properly rejected."""
+        lowercase_variants = [
+            "sharpe", "sharperatio", "sharpe_ratio",
+            "calmar", "calmarratio", "calmar_ratio",
+            "profit", "profitfactor", "profit_factor"
+        ]
+    
+        for name in lowercase_variants:
+            with pytest.raises(ConfigurationError):
+                get_objective_function(name)    
+
     def test_registry_contains_expected_functions(self):
         """Test that the registry contains all expected objective functions."""
         expected_functions = {
@@ -48,18 +72,6 @@ class TestObjectiveFunctionRegistry:
         }
         
         assert set(OBJECTIVE_FUNCTION_REGISTRY.keys()) == expected_functions
-
-    def test_common_lowercase_names_are_invalid(self):
-        """Test that common lowercase variants are properly rejected."""
-        lowercase_variants = [
-            "sharpe", "sharperatio", "sharpe_ratio",
-            "calmar", "calmarratio", "calmar_ratio",
-            "profit", "profitfactor", "profit_factor"
-        ]
-        
-        for name in lowercase_variants:
-            with pytest.raises(ConfigurationError):
-                get_objective_function(name)
 
     @pytest.mark.parametrize("func_name,func_impl", [
         ("SharpeRatio", maximize_sharpe_ratio),

@@ -54,7 +54,7 @@ def optimize_single(
     
     def _load_and_validate_config(config_path: str, trials: Optional[int]) -> StrategyConfig:
         """Load and validate the optimization configuration."""
-        console.print(f"[blue]Loading configuration from {config_path}...[\/blue]")
+        console.print(f"[blue]Loading configuration from {config_path}...[/blue]")
         config_data = load_yaml_config(config_path)
 
         # Check for optimization config before full validation
@@ -69,9 +69,9 @@ def optimize_single(
             if optimization_config.get('algorithm') == 'RandomSearch':
                 optimization_config['algorithm_params'] = optimization_config.get('algorithm_params', {})
                 optimization_config['algorithm_params']['n_trials'] = trials
-                console.print(f"[yellow]Overriding trials to {trials} for RandomSearch[\/yellow]")
+                console.print(f"[yellow]Overriding trials to {trials} for RandomSearch[/yellow]")
             else:
-                console.print("[yellow]Warning: --trials option only applies to RandomSearch algorithm[\/yellow]")
+                console.print("[yellow]Warning: --trials option only applies to RandomSearch algorithm[/yellow]")
         
         # Now perform full validation
         config = validate_config(config_data)
@@ -79,7 +79,7 @@ def optimize_single(
 
     def _setup_optimization_engine(config: StrategyConfig) -> OptimizationEngine:
         """Initialize the optimization engine from the configuration."""
-        console.print("[blue]Initializing optimization engine...[\/blue]")
+        console.print("[blue]Initializing optimization engine...[/blue]")
         optimization_config = config.optimization_config
         if not optimization_config:
             raise ConfigurationError("optimization_config block is missing or invalid in the configuration.")
@@ -132,7 +132,7 @@ def optimize_single(
         display_optimization_summary(result)
 
         if report and result.best_params and result.best_strategy_analysis:
-            console.print("[blue]Generating PDF report for best strategy...[\/blue]")
+            console.print("[blue]Generating PDF report for best strategy...[/blue]")
             try:
                 from meqsap.reporting import generate_pdf_report
 
@@ -141,10 +141,10 @@ def optimize_single(
 
                 best_analysis = BacktestAnalysisResult(**result.best_strategy_analysis)
                 generate_pdf_report(best_analysis, output_path=str(report_path))
-                console.print(f"[green]✓[\/green] Report saved to {report_path}")
+                console.print(f"[green]✓[/green] Report saved to {report_path}")
 
             except ImportError:
-                console.print("[yellow]Warning: PDF reporting not available. Install pyfolio and matplotlib for PDF generation.[\/yellow]")
+                console.print("[yellow]Warning: PDF reporting not available. Install pyfolio and matplotlib for PDF generation.[/yellow]")
             except Exception as e:
                 raise ReportingError(f"Failed to generate PDF report: {e}") from e
 
@@ -162,13 +162,13 @@ def optimize_single(
     # Load and validate configuration first
     config = _load_and_validate_config(config_path, trials)
     
-    console.print("[blue]Acquiring market data...[\/blue]")
+    console.print("[blue]Acquiring market data...[/blue]")
     market_data = fetch_market_data(
         ticker=config.ticker, start_date=config.start_date, end_date=config.end_date
     )
     if market_data.empty:
         raise DataError(f"No market data available for ticker {config.ticker}")
-    console.print(f"[green]✓[\/green] Acquired {len(market_data)} data points for {config.ticker}")
+    console.print(f"[green]✓[/green] Acquired {len(market_data)} data points for {config.ticker}")
 
     engine = _setup_optimization_engine(config)
 

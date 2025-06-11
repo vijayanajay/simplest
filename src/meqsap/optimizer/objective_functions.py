@@ -75,7 +75,19 @@ OBJECTIVE_FUNCTION_REGISTRY: Dict[str, ObjectiveFunction] = {
 
 
 def get_objective_function(name: str) -> ObjectiveFunction:
-    """Retrieves an objective function from the registry by name."""
+    """
+    Retrieves an objective function from the registry by name.
+
+    Args:
+        name: The name of the objective function.
+
+    Returns:
+        The objective function callable.
+
+    Raises:
+        ConfigurationError: If the objective function is not found.
+    """
+    # Perform a direct, case-sensitive lookup.
     func = OBJECTIVE_FUNCTION_REGISTRY.get(name)
     if func is None:
         raise ConfigurationError(
