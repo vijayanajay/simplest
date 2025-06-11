@@ -1,73 +1,43 @@
-# MEQSAP Architectural Review - 2025-06-11
+# MEQSAP Architectural Review - 2025-06-18
 
 This document outlines architectural directives, new critical flaws, and strategic imperatives identified during the audit.
 
-**Audit Date:** 2025-06-11
+**Audit Date:** 2025-06-18
 
 ## Part 1A: Compliance Audit of Prior Architectural Mandates
 
 **-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250601-001 (Local ConfigError in config.py)
+**Directive Reference (from arch_review.md):** Documentation Inaccuracy in `examples/indian_stock_sample.yaml`
 **Current Status:** RESOLVED
 **Evidence & Justification for Status:**
-   Remains compliant. The canonical `ConfigurationError` from `src/meqsap/exceptions.py` is used correctly.
+    The incorrect comment in `examples/indian_stock_sample.yaml` at line 42 has been corrected to state that `objective_function` names are case-sensitive. This now aligns with the implementation in `src/meqsap/optimizer/objective_functions.py` and prevents user confusion. The fix is verified by code inspection.
 **Required Action (If Not Fully Resolved/Regressed):** N/A
 
 **-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250601-002 (Doc misalignment for CLI exceptions)
+**Directive Reference (from arch_review.md):** Critical Logic Failure & Architectural Degeneration in `optimize.py` and `engine.py`
 **Current Status:** RESOLVED
 **Evidence & Justification for Status:**
-   Remains compliant. Documentation correctly reflects the CLI exception hierarchy.
-**Required Action (If Not Fully Resolved/Regressed):** N/A
-
-**-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250601-003 (Doc inaccuracy in architecture.md project structure)
-**Current Status:** RESOLVED
-**Evidence & Justification for Status:**
-   The issue described in the prior audit has been addressed. `docs/architecture.md` now correctly represents the `src/meqsap/cli/` as a package with its submodules, both in the text and the project structure diagram. The documentation is now aligned with the codebase.
-**Required Action (If Not Fully Resolved/Regressed):** N/A
-
-**-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250601-004 (Doc error in adr-002-date-range-handling.md validation logic)
-**Current Status:** RESOLVED
-**Evidence & Justification for Status:**
-   Remains compliant. The validation logic example in the ADR is correct.
-**Required Action (If Not Fully Resolved/Regressed):** N/A
-
-**-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250602-001 (Incorrect Error Handling & Exit Code in CLI)
-**Current Status:** RESOLVED
-**Evidence & Justification for Status:**
-   Remains compliant. The `handle_cli_errors` decorator correctly maps exceptions to exit codes.
-**Required Action (If Not Fully Resolved/Regressed):** N/A
-
-**-- AUDIT OF PRIOR DIRECTIVE --**
-**Directive Reference (from arch_review.md):** FLAW-20250602-002 (Default Pass for Data Coverage Check)
-**Current Status:** RESOLVED
-**Evidence & Justification for Status:**
-   Remains compliant. `get_required_data_coverage_bars` is an abstract method, and `perform_vibe_checks` correctly handles its absence.
+    The codebase was inspected and found to be compliant with the required actions for this directive.
+    1.  **Exit Code Policy:** The `handle_cli_errors` decorator in `src/meqsap/cli/utils.py` correctly maps `OptimizationError` to exit code 6 and `OptimizationInterrupted` to exit code 7. The `optimize` command logic in `src/meqsap/cli/commands/optimize.py` correctly raises these exceptions instead of calling `typer.Exit`.
+    2.  **Interruption Handling:** The `OptimizationEngine` in `src/meqsap/optimizer/engine.py` correctly contains a `try/except KeyboardInterrupt` block that sets the `was_interrupted` flag on the `OptimizationResult`. The CLI command in `optimize.py` does not contain a conflicting `try/except` block and correctly inspects the result flag to determine the outcome.
+    This flaw is considered fully resolved.
 **Required Action (If Not Fully Resolved/Regressed):** N/A
 
 ## Part 1B: New Critical Architectural Flaws
 
-**-- AUDIT OF PRIOR DIRECTIVE (from Part 1B of previous review) --**
-**Directive Reference:** Critical Logic Failure (Type mismatch in `analyze` command call chain)
-**Current Status:** RESOLVED
-**Evidence & Justification for Status:**
-   The root cause was identified as `run_complete_backtest` being called with inconsistent types for its `strategy_config` parameter (a `StrategyConfig` object from the CLI path, and a `dict` from the optimizer path). This has been resolved by refactoring the call chain to be consistent and robust. The `meqsap.optimizer.engine` now creates a temporary `StrategyConfig` object for each trial, injecting the trial's specific parameters. The `run_complete_backtest` and `generate_signals` functions were simplified to remove the now-redundant `concrete_params` argument, strengthening their API contract.
-**Required Action (If Not Fully Resolved/Regressed):** N/A
+No new critical architectural flaws were identified during this audit cycle.
 
 ## Part 2: Strategic Architectural Imperatives
 
-N/A. No new systemic issues identified that require strategic imperatives.
+N/A.
 
 ## Part 3: Actionable Technical Debt Rectification
 
-No new technical debt logged. All identified critical flaws were fixed.
+No new technical debt logged. All identified critical flaws are being fixed in this cycle.
 
 ## Part 4: Audit Conclusion & Next Steps Mandate
 
-1.  **Critical Path to Compliance:** All identified issues from the previous audit cycle have been addressed and verified as resolved.
-2.  **System Integrity Verdict:** **IMPROVED**. The critical regression bug has been fixed, and a minor documentation drift was resolved. The API contract between the optimizer and backtesting engine has been strengthened, improving overall system integrity.
-3.  **`arch_review.md` Update Instruction:** This document serves as the updated `arch_review.md`. There are no outstanding unresolved issues to carry forward to the next audit cycle.
-4.  **`resolved_issues.md` Maintenance Confirmation:** `resolved_issues.md` has been updated to log the resolution of FLAW-20250601-003 and the critical logic failure from the previous audit's Part 1B.
+1.  **Critical Path to Compliance:** All identified architectural flaws from the previous audit have been resolved.
+2.  **System Integrity Verdict:** **IMPROVED**. The resolution of the exit code policy violation, broken interruption handling, and documentation inaccuracy has significantly improved the system's architectural integrity, reliability, and user trust.
+3.  **`arch_review.md` Update Instruction:** This document serves as the updated `arch_review.md`. There are no outstanding issues to carry forward.
+4.  **`resolved_issues.md` Maintenance Confirmation:** `resolved_issues.md` has been updated to log the resolution of the two flaws from the 2025-06-17 audit.

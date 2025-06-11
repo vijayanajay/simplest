@@ -10,7 +10,7 @@ from collections import defaultdict
 import optuna
 from optuna import Trial
 
-from ..exceptions import DataError, BacktestError, ConfigurationError
+from ..exceptions import DataError, BacktestError, ConfigurationError, OptimizationInterrupted
 from ..backtest import run_complete_backtest, BacktestAnalysisResult
 from .models import TrialFailureType, ProgressData, ErrorSummary, OptimizationResult
 from ..config import StrategyFactory, StrategyConfig
@@ -114,6 +114,7 @@ class OptimizationEngine:
         self._successful_trials: int = 0        
         self._best_score: Optional[float] = None
         self._failed_trials_by_type: Dict[TrialFailureType, int] = defaultdict(int)
+        self._was_interrupted: bool = False
     
     def _get_grid_search_space(self) -> Dict[str, List[Any]]:
         """
@@ -244,6 +245,7 @@ class OptimizationEngine:
         self._successful_trials = 0
         self._best_score = None
         self._failed_trials_by_type = defaultdict(int)
+        self._was_interrupted = False
         logger.info(f"Starting optimization with {effective_n_trials} trials")
         
         # Configure Optuna study based on algorithm parameters
@@ -264,16 +266,36 @@ class OptimizationEngine:
         
         # Set timeout if specified
         timeout = self.algorithm_params.get("timeout")
-        try:
-            # Run optimization with configured parameters
+        progress_context = None
+        if progress_callback:
+            # Create a context manager for progress callback to handle interruptions
+            class ProgressContext:
+                def __enter__(self):
+                    return self
+                
+                def __exit__(self, exc_type, exc_val, exc_tb):
+                    if exc_type is not None:
+                        # Exception occurred, propagate as OptimizationInterrupted
+                        raise OptimizationInterrupted("Optimization interrupted by user")
+            
+            progress_context = ProgressContext()
+        
+        def optimize_with_context():
             study.optimize(
                 lambda trial: self._run_single_trial(trial, market_data),
                 n_trials=effective_n_trials,
                 timeout=timeout,
                 callbacks=[self._trial_callback] if progress_callback else []
             )
-                
+            
+        try:
+            if progress_context:
+                with progress_context:
+                    optimize_with_context()
+            else:
+                optimize_with_context()
         except KeyboardInterrupt:
+            self._was_interrupted = True
             logger.info("Optimization interrupted by user")
         except Exception as e:
             logger.error(f"Optimization failed with error: {e}", exc_info=True)
@@ -427,10 +449,12 @@ class OptimizationEngine:
         # Get best trial results
         best_params = None
         best_score = None
+        best_score_trial = None
         best_strategy_analysis = None
         if study.best_trial:
             best_params = study.best_trial.params
             best_score = study.best_value
+            best_score_trial = study.best_trial.number
             
             # Re-run backtest for the best params to get full analysis
             if self._market_data is not None and best_params is not None:
@@ -450,15 +474,13 @@ class OptimizationEngine:
                 except Exception as e:
                     logger.error(f"Failed to re-run backtest for best parameters: {e}", exc_info=True)
         
-        was_interrupted = (self._interruption_event and self._interruption_event.is_set()) if self._interruption_event else False
-        
         return OptimizationResult(
             best_params=best_params,
             best_score=best_score,
-            best_strategy_analysis=best_strategy_analysis,
+            best_score_trial=best_score_trial,
             total_trials=self._current_trial,
             successful_trials=self._successful_trials,
             error_summary=error_summary,
-            was_interrupted=was_interrupted,
+            was_interrupted=self._was_interrupted,
             constraint_adherence=None
         )

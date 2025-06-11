@@ -290,3 +290,30 @@
 ### Lesson & Design Principle
 - **Principle: Enforce Strict Configuration Contracts.** Configuration lookups, especially for string-based keys like function or strategy names, should be explicit and case-sensitive by default. Avoid "helpful" normalization (like case-insensitivity) in core logic, as it can hide user typos, create ambiguity, and lead to inconsistent behavior. If flexibility is needed, it should be an explicit design decision documented in an ADR, not an implicit implementation detail.
 - **Action**: When implementing registry or factory patterns that use string keys from user configuration, perform a direct key lookup. Ensure that error messages for failed lookups are clear and list the exact, case-sensitive names of available options.
+
+## Anti-Pattern: Desynchronized Tests After Policy Changes
+
+### Structural Issue Discovered (2025-06-18)
+- **Symptom**: Multiple integration tests for CLI commands (`test_cli_optimize_integration.py`) failed with exit code mismatches (e.g., `assert 7 == 2`). A separate test (`test_cli_enhanced.py`) failed due to an `UnboundLocalError` in the error handling decorator.
+- **Root Cause**: A core architectural policy for CLI exit codes was updated (as per `docs/arch_review.md`), and the implementation in `src/meqsap/cli/utils.py` was correctly modified to assign new, specific exit codes (6 for `OptimizationError`, 7 for `OptimizationInterrupted`). However, the integration tests were not updated to reflect this new contract and continued to assert against old, incorrect exit codes. This created a desynchronization between the implementation, the tests, and the documented architecture. The `UnboundLocalError` was a separate bug in the same error-handling decorator, where a variable was used out of scope.
+
+### Lesson & Design Principle
+- **Principle: Tests are part of the contract and must evolve with it.** When a cross-cutting concern like an error handling policy or exit code strategy is refactored, the change is not complete until all dependent components, including unit and integration tests, are updated. Stale tests give false negatives and erode trust in the test suite.
+- **Action**: When updating a core policy documented in an ADR or architectural review:
+  1.  Update the implementation to match the new policy.
+  2.  Immediately use "Find Usages" or a global search to locate all tests that assert against the old behavior.
+  3.  Update the test assertions to match the new contract. This ensures the entire system (code, docs, tests) remains consistent and that the test suite accurately validates the current architecture.
+  4.  Ensure all code paths in shared utilities like decorators are tested, including generic exception handlers, to prevent scope-related bugs like `UnboundLocalError`.
+
+## Anti-Pattern: Redundant Exception Handling at Wrong Abstraction Layer
+
+### Structural Issue Discovered (2025-06-19)
+- **Symptom**: A `KeyboardInterrupt` during an optimization run caused all partial progress to be lost. The CLI would report an interruption, but the final results would be empty, rather than showing the best parameters found before the interruption.
+- **Root Cause**: A structural flaw where a `KeyboardInterrupt` was being handled at two different layers of the application with conflicting logic.
+  1.  The `OptimizationEngine` correctly implemented a `try/except` block to catch the interrupt, set a `was_interrupted` flag, and then proceed to compile partial results from the `optuna` study object. This is the correct behavior.
+  2.  The `cli/commands/optimize.py` module, which *calls* the `OptimizationEngine`, had its own redundant `try/except KeyboardInterrupt` block. This outer block would catch the interrupt, discard whatever the engine was trying to return, and create a new, empty `OptimizationResult` object. This incorrect, higher-level handler shadowed the correct, lower-level one, leading to data loss.
+
+### Lesson & Design Principle
+- **Principle: Handle exceptions at the appropriate layer.** The component responsible for managing a long-running, stateful process (the `OptimizationEngine`) is the correct place to handle exceptions related to that process, like an interruption. It has the context (the `optuna` study) needed to recover gracefully (compile partial results).
+- **Principle: Higher-level callers should trust, not shadow.** The calling layer (the CLI command) should not re-implement exception handling for events that the callee is designed to manage. Instead, it should trust the callee to handle the event and return a result object with a status flag (e.g., `was_interrupted=True`). The caller's job is then to inspect the result object and react to the flag, not to intercept the exception itself.
+- **Action**: Remove redundant, higher-level exception handlers that shadow more specific, lower-level ones. Ensure that the component closest to the work is responsible for its state management during exceptions.

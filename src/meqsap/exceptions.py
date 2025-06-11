@@ -26,6 +26,16 @@ class ReportingError(MEQSAPError):
     pass
 
 
+class OptimizationError(MEQSAPError):
+    """Errors related to the optimization process failing to find a valid result."""
+    pass
+
+
+class OptimizationInterrupted(MEQSAPError):
+    """Raised when the optimization process is interrupted by the user."""
+    pass
+
+
 # CLI-specific exception hierarchy
 class CLIError(MEQSAPError):
     """Base exception for CLI-specific errors."""

@@ -18,6 +18,8 @@ from ..exceptions import (
     DataAcquisitionError,
     DataError,
     ReportGenerationError,
+    OptimizationError,
+    OptimizationInterrupted,
     ReportingError,
 )
 
@@ -34,6 +36,10 @@ def _get_recovery_suggestions(exception: Exception) -> list[str]:
         suggestions.extend(["Verify your strategy parameters are reasonable", "Check that your data has sufficient history for the strategy", "Ensure moving average periods are less than data length", "Try reducing the complexity of your strategy parameters", "Check for data quality issues in your date range", "Consider using --verbose for more detailed error information"])
     elif isinstance(exception, (ReportingError, ReportGenerationError)):
         suggestions.extend(["Check that the output directory exists and is writable", "Ensure you have sufficient disk space", "Try running without --report flag to skip PDF generation", "Verify all required dependencies for PDF generation are installed", "Check file permissions in the output directory", "Try specifying a different output directory with --output-dir"])
+    elif isinstance(exception, OptimizationError):
+        suggestions.extend(["Check if parameter ranges allow for valid combinations (e.g., fast_ma < slow_ma)", "Widen parameter search space", "Try a different objective function", "Ensure backtest for a single parameter set works correctly"])
+    elif isinstance(exception, OptimizationInterrupted):
+        suggestions.extend(["Run the optimization again to complete", "Partial results (if any) may have been displayed"])
     else:
         suggestions.extend(["Try running with --verbose for more details", "Check the documentation for troubleshooting guides", "Verify all dependencies are properly installed", "Try running --version to check dependency status", "Consider using --dry-run to isolate configuration issues", "Check if this is a known issue in the project documentation"])
     return suggestions
@@ -107,10 +113,23 @@ def handle_cli_errors(func: Any) -> Any:
             error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
             console.print(error_msg)
             raise typer.Exit(code=exit_code)
+        except OptimizationError as e:
+            exit_code = 6
+            logger.error(f"{type(e).__name__}: {e}", exc_info=verbose)
+            error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+            console.print(error_msg)
+            raise typer.Exit(code=exit_code)
+        except OptimizationInterrupted as e:
+            exit_code = 7
+            # Interruption is a warning, not an error
+            # The specific command logic is now responsible for printing the user-facing message.
+            logger.warning(f"Process interrupted by user: {e}")
+            raise typer.Exit(code=exit_code)
         except Exception as e:
+            exit_code = 10  # Unexpected errors
             logger.error(f"An unexpected error occurred: {e}", exc_info=verbose)
             error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
             console.print(error_msg)
-            raise typer.Exit(code=10)
+            raise typer.Exit(code=exit_code)
 
     return wrapper

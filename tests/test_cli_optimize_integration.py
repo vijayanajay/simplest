@@ -345,7 +345,7 @@ class TestOptimizeCommandIntegration:
         
         try:
             result = self.runner.invoke(app, ["optimize", "single", config_path])
-            assert result.exit_code == 2  # Interrupted exit code
+            assert result.exit_code == 7  # Interrupted exit code (as per ADR-004)
             assert "completed with interruption" in result.stdout
         finally:
             os.unlink(config_path)
@@ -378,7 +378,7 @@ class TestOptimizeCommandIntegration:
         
         try:
             result = self.runner.invoke(app, ["optimize", "single", config_path])
-            assert result.exit_code == 1  # No valid trials exit code
+            assert result.exit_code == 6  # No valid trials exit code (as per ADR-004)
             assert "no valid trials found" in result.stdout
         finally:
             os.unlink(config_path)

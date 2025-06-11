@@ -19,7 +19,10 @@ from rich.console import Console
 from ...backtest import BacktestAnalysisResult
 from ...config import load_yaml_config, validate_config, StrategyConfig
 from ...data import fetch_market_data
-from ...exceptions import ConfigurationError, DataError, BacktestError, ReportingError
+from ...exceptions import (
+    ConfigurationError, DataError, BacktestError, ReportingError,
+    OptimizationError, OptimizationInterrupted
+)
 from ...optimizer import OptimizationEngine, OptimizationResult
 from ...optimizer.interruption import OptimizationInterruptHandler
 from ...optimizer.objective_functions import get_objective_function
@@ -111,18 +114,12 @@ def optimize_single(
 
         progress_callback, progress_context = (None, None)
         if not no_progress:
-            progress, task_id = create_optimization_progress_bar(total_trials)
+            progress, task_id = create_optimization_progress_bar(algorithm, total_trials)
             progress_callback, progress_context = create_progress_callback(progress, task_id)
         
-        try:
-            if progress_context:
-                with progress_context:
-                    result = engine.run_optimization(market_data, progress_callback=progress_callback)
-            else:
-                result = engine.run_optimization(market_data)
-        except KeyboardInterrupt:
-            console.print("[red]Optimization interrupted by user.[/red]")
-            result = OptimizationResult(was_interrupted=True)
+        # The engine is responsible for handling KeyboardInterrupt and compiling partial results.
+        # The CLI layer should not intercept it, as that would discard progress.
+        result = engine.run_optimization(market_data, progress_callback=progress_callback, progress_context=progress_context)
         return result
 
     def _handle_reporting_and_exit(
@@ -151,13 +148,11 @@ def optimize_single(
         # Exit code logic
         if result.was_interrupted:
             console.print("[yellow]Optimization completed with interruption.[/yellow]")
-            raise typer.Exit(code=2)
+            raise OptimizationInterrupted("Optimization was interrupted by the user.")
         elif not result.best_params:
-            console.print("[red]Optimization completed but no valid trials found.[/red]")
-            raise typer.Exit(code=1)
+            raise OptimizationError("Optimization completed but no valid trials found.")
         else:
             console.print("[green]Optimization completed successfully.[/green]")
-            raise typer.Exit(code=0)
  
     # Load and validate configuration first
     config = _load_and_validate_config(config_path, trials)
