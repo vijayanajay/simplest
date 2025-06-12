@@ -361,7 +361,7 @@ class TestStrategyConfigWithBaseline:
             end_date="2023-12-31",
             strategy_type="MovingAverageCrossover",
             strategy_params={"fast_ma": 10, "slow_ma": 30},
-            baseline_config=BaselineConfig()
+            baseline_config={}
         )
         assert config.baseline_config is not None
         assert config.baseline_config.strategy_type == "BuyAndHold"

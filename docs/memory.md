@@ -145,6 +145,8 @@
 9. **Incomplete Package API Exposure:** When refactoring code into submodules (e.g., `utils.py`), failing to export the necessary functions from the package's `__init__.py`. This breaks the public API contract, leading to `ImportError` in consuming modules. **Fix:** Always review and update the package's `__init__.py` and `__all__` list to explicitly export all symbols intended for public use.
 10. **Module/Package Name Collision:** Avoid creating a `.py` file and a directory with the same name (e.g., `reporting.py` and `reporting/`) in the same package. This leads to ambiguous `ImportError`s. If refactoring a module into a package, delete the original `.py` file.
 11. **Missing Type Hint Imports:** A function signature in one module uses a type hint for a class defined in another module, but the `import` statement is missing. This leads to a `NameError` during static analysis or test collection. **Fix:** Ensure all external types used in function signatures are explicitly imported.
+12. **Nested Data Access Assumptions:** When consuming a data model from another module (e.g., `BacktestAnalysisResult`), accessing its attributes based on assumptions of a flat structure (e.g., `result.ticker`) instead of its explicit definition (e.g., `result.strategy_config['ticker']`). This can lead to `AttributeError` or `KeyError` if the assumed attribute path doesn't exist. **Fix:** Always access nested data explicitly according to the model's definition.
+13. **Circular Package Imports:** A package's `__init__.py` imports a symbol from a submodule (e.g., `reporters.py`), while that submodule imports another symbol from the package's `__init__.py` (e.g., `from ..reporting import ...`). This creates a circular dependency that can lead to `ImportError` and makes mocking in tests complex and brittle. **Fix:** Submodules should import directly from other specific submodules (e.g., `from .format_utils import ...`) instead of relying on the package's `__init__.py` to be an intermediary. Keep the dependency graph acyclic.
 
 ## CLI Orchestration & Error Handling
 
@@ -170,6 +172,7 @@
 - Update mock assertions to match new function signatures
 - Ensure complete data contracts for Pydantic model instantiation
 - Pass consistent object types across command paths
+- **Access nested data explicitly.** When consuming a data model from another module (e.g., `BacktestAnalysisResult`), access its attributes according to its explicit definition (`result.strategy_config['ticker']`), not based on assumptions.
 
 ### DON'T ❌
 - Have downstream functions re-derive objects
@@ -177,6 +180,7 @@
 - Leave failing tests due to signature mismatches
 - Provide incomplete fixture data for model instantiation
 - Create parallel, inconsistent implementations for the same task
+- **Assume a flat data structure.** Don't assume a data model's attributes are at the top level (`result.ticker`) when they might be nested within other objects or dictionaries. This creates brittle coupling that breaks when the producing module's implementation changes.
 
 ## Test Suite Integrity
 
@@ -237,9 +241,4 @@
 - For import errors, inspect the complete package hierarchy
 - For attribute errors, verify all mocked attributes are correctly initialized
 - For type errors, ensure consistency between function signatures and call sites
-
-## Structural Issue: Inconsistent Data Contracts in Reporting Layer After Refactoring
-
-*   **Anti-Pattern:** After refactoring the reporting layer to use a `ReportingOrchestrator` and new data models like `ComparativeAnalysisResult` and `BacktestAnalysisResult`, the downstream reporting functions (e.g., for creating tables, formatting metrics) were not updated to handle the new data structure. These functions still expected the old `BacktestResult` model, leading to `AttributeError`s when trying to access metrics that were now nested deeper (e.g., inside a `primary_result` attribute). This also caused `rich.errors.NotRenderableError` in table-building functions because they were receiving raw numeric data instead of pre-formatted strings.
-
-*   **Lesson Learned:** When refactoring data models or introducing new orchestration layers, it is critical to perform a "full-stack" trace of the data flow. **Always verify that the data contract (the shape and type of data) expected by every consuming function matches the contract provided by the new producer.** A change in a high-level model requires updating all functions that consume it, not just the immediate callers. Tests must also be updated to reflect the new data flow, for example, by ensuring test data passed to a function matches the new, expected format (e.g., passing formatted strings to a table-builder, not raw numbers).
+- For structural issues, perform a full-stack trace of the data flow and update all consuming functions and tests

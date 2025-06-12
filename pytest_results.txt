@@ -15,291 +15,15 @@ tests\test_cli.py ..................                                     [ 24%]
 tests\test_cli_comprehensive.py .......................                  [ 32%]
 tests\test_cli_enhanced.py ...................................           [ 45%]
 tests\test_cli_optimize_integration.py ...................               [ 52%]
-tests\test_config.py ..........................F.                        [ 62%]
+tests\test_config.py ............................                        [ 62%]
 tests\test_data.py .......                                               [ 65%]
 tests\test_float_handling.py ........                                    [ 68%]
 tests\test_objective_functions.py .................                      [ 74%]
 tests\test_optimizer\test_optimization_error_handling.py .......         [ 76%]
 tests\test_reporting\test_models.py ......                               [ 78%]
-tests\test_reporting_main.py .............F.............FF...sF.FF....   [ 93%]
+tests\test_reporting_main.py ................................s........   [ 93%]
 tests\test_run.py .................                                      [100%]
 
-================================== FAILURES ===================================
-______ TestStrategyConfigWithBaseline.test_strategy_config_with_baseline ______
-
-self = <tests.test_config.TestStrategyConfigWithBaseline object at 0x0000029BE1C7AA20>
-
-    def test_strategy_config_with_baseline(self):
-        """Test StrategyConfig with baseline configuration."""
->       config = StrategyConfig(
-            ticker="AAPL",
-            start_date="2023-01-01",
-            end_date="2023-12-31",
-            strategy_type="MovingAverageCrossover",
-            strategy_params={"fast_ma": 10, "slow_ma": 30},
-            baseline_config=BaselineConfig()
-        )
-E       pydantic_core._pydantic_core.ValidationError: 1 validation error for StrategyConfig
-E       baseline_config
-E         Input should be a valid dictionary or instance of BaselineConfig [type=model_type, input_value=BaselineConfig(active=Tru...uyAndHold', params=None), input_type=BaselineConfig]
-E           For further information visit https://errors.pydantic.dev/2.11/v/model_type
-
-tests\test_config.py:358: ValidationError
-_ TestFormatPerformanceMetrics.test_format_performance_metrics_custom_decimals _
-
-self = <tests.test_reporting_main.TestFormatPerformanceMetrics object at 0x0000029BE1D796D0>
-
-    def test_format_performance_metrics_custom_decimals(self):
-        """Test formatting with custom decimal places."""
-        result = self.create_sample_backtest_result()
-        formatted = format_performance_metrics(result, decimal_places=1)
-    
-        # Percentage metrics follow decimal_places exactly
-        assert formatted["total_return"] == "+15.5%"
-        assert formatted["win_rate"] == "+65.0%"
-        assert formatted["volatility"] == "+18.5%"
-    
-        # Ratio metrics (dimensionless) get decimal_places for precision
->       assert formatted["sharpe_ratio"] == "1.25"
-E       AssertionError: assert '1.2' == '1.25'
-E         
-E         - 1.25
-E         ?    -
-E         + 1.2
-
-tests\test_reporting_main.py:259: AssertionError
-_______ TestExecutiveVerdictGeneration.test_generate_executive_verdict ________
-
-self = <tests.test_reporting_main.TestExecutiveVerdictGeneration object at 0x0000029BE1D78FB0>
-mock_console_class = <MagicMock name='Console' id='2868613721232'>
-
-    @patch('src.meqsap.reporting.format_utils.Console')
-    def test_generate_executive_verdict(self, mock_console_class):
-        """Test executive verdict generation."""
-        mock_console = MagicMock()
-        mock_console_class.return_value = mock_console
-    
-        analysis_result = self.create_sample_analysis_result()
-    
-        # The function now returns a dict, not prints to console
->       verdict_data = generate_executive_verdict(analysis_result)
-
-tests\test_reporting_main.py:579: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-src\meqsap\reporting\format_utils.py:365: in generate_executive_verdict
-    statuses = [check.get("status", "").lower() for check in backtest_result.vibe_checks.values()]
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-self = VibeCheckResults(minimum_trades_check=True, signal_quality_check=True, data_coverage_check=True, overall_pass=True, check_messages=['All checks passed'])
-item = 'values'
-
-    def __getattr__(self, item: str) -> Any:
-        private_attributes = object.__getattribute__(self, '__private_attributes__')
-        if item in private_attributes:
-            attribute = private_attributes[item]
-            if hasattr(attribute, '__get__'):
-                return attribute.__get__(self, type(self))  # type: ignore
-    
-            try:
-                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
-                return self.__pydantic_private__[item]  # type: ignore
-            except KeyError as exc:
-                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
-        else:
-            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
-            # See `BaseModel.__repr_args__` for more details
-            try:
-                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
-            except AttributeError:
-                pydantic_extra = None
-    
-            if pydantic_extra:
-                try:
-                    return pydantic_extra[item]
-                except KeyError as exc:
-                    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
-            else:
-                if hasattr(self.__class__, item):
-                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
-                else:
-                    # this is the current error
->                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-E                   AttributeError: 'VibeCheckResults' object has no attribute 'values'
-
-venv\Lib\site-packages\pydantic\main.py:991: AttributeError
-_ TestExecutiveVerdictGeneration.test_generate_executive_verdict_custom_config _
-
-self = <tests.test_reporting_main.TestExecutiveVerdictGeneration object at 0x0000029BE1D78800>
-mock_console_class = <MagicMock name='Console' id='2868615224672'>
-
-    @patch('src.meqsap.reporting.format_utils.Console')
-    def test_generate_executive_verdict_custom_config(self, mock_console_class):
-        """Test executive verdict generation with custom config."""
-        mock_console = MagicMock()
-        mock_console_class.return_value = mock_console
-    
-        analysis_result = self.create_sample_analysis_result()
-        config = ReportConfig(color_output=False, decimal_places=1)
-    
-        # The function now returns a dict, not prints to console
->       verdict_data = generate_executive_verdict(analysis_result, decimal_places=1)
-
-tests\test_reporting_main.py:594: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-src\meqsap\reporting\format_utils.py:365: in generate_executive_verdict
-    statuses = [check.get("status", "").lower() for check in backtest_result.vibe_checks.values()]
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-self = VibeCheckResults(minimum_trades_check=True, signal_quality_check=True, data_coverage_check=True, overall_pass=True, check_messages=['All checks passed'])
-item = 'values'
-
-    def __getattr__(self, item: str) -> Any:
-        private_attributes = object.__getattribute__(self, '__private_attributes__')
-        if item in private_attributes:
-            attribute = private_attributes[item]
-            if hasattr(attribute, '__get__'):
-                return attribute.__get__(self, type(self))  # type: ignore
-    
-            try:
-                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
-                return self.__pydantic_private__[item]  # type: ignore
-            except KeyError as exc:
-                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
-        else:
-            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
-            # See `BaseModel.__repr_args__` for more details
-            try:
-                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
-            except AttributeError:
-                pydantic_extra = None
-    
-            if pydantic_extra:
-                try:
-                    return pydantic_extra[item]
-                except KeyError as exc:
-                    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
-            else:
-                if hasattr(self.__class__, item):
-                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
-                else:
-                    # this is the current error
->                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-E                   AttributeError: 'VibeCheckResults' object has no attribute 'values'
-
-venv\Lib\site-packages\pydantic\main.py:991: AttributeError
-__ TestCompleteReportGeneration.test_generate_complete_report_terminal_only ___
-
-self = <MagicMock name='generate_executive_verdict' id='2868598011904'>
-
-    def assert_called_once(self):
-        """assert that the mock was called only once.
-        """
-        if not self.call_count == 1:
-            msg = ("Expected '%s' to have been called once. Called %s times.%s"
-                   % (self._mock_name or 'mock',
-                      self.call_count,
-                      self._calls_repr()))
->           raise AssertionError(msg)
-E           AssertionError: Expected 'generate_executive_verdict' to have been called once. Called 0 times.
-
-C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:928: AssertionError
-
-During handling of the above exception, another exception occurred:
-
-self = <tests.test_reporting_main.TestCompleteReportGeneration object at 0x0000029BE1D78740>
-mock_generate_verdict = <MagicMock name='generate_executive_verdict' id='2868598011904'>
-
-    @patch('src.meqsap.reporting.generate_executive_verdict')
-    def test_generate_complete_report_terminal_only(self, mock_generate_verdict):
-        """Test complete report generation for terminal only."""
-        analysis_result = self.create_sample_analysis_result()
-    
-        result = generate_complete_report(analysis_result, include_pdf=False)
-    
-        assert result is None  # No PDF generated
->       mock_generate_verdict.assert_called_once()
-E       AssertionError: Expected 'generate_executive_verdict' to have been called once. Called 0 times.
-
-tests\test_reporting_main.py:785: AssertionError
----------------------------- Captured stdout call -----------------------------
-  \U0001f4ca Strategy Performance  \n         Analysis          \n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Metric       \u2502 Value    \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 Total Return \u2502 1550.00% \u2502\n\u2502 Sharpe Ratio \u2502 1.25     \u2502\n\u2502 Calmar Ratio \u2502 1.89     \u2502\n\u2502 Max Drawdown \u2502 -820.00% \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
-_____ TestCompleteReportGeneration.test_generate_complete_report_with_pdf _____
-
-self = <MagicMock name='generate_executive_verdict' id='2868610457168'>
-
-    def assert_called_once(self):
-        """assert that the mock was called only once.
-        """
-        if not self.call_count == 1:
-            msg = ("Expected '%s' to have been called once. Called %s times.%s"
-                   % (self._mock_name or 'mock',
-                      self.call_count,
-                      self._calls_repr()))
->           raise AssertionError(msg)
-E           AssertionError: Expected 'generate_executive_verdict' to have been called once. Called 0 times.
-
-C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:928: AssertionError
-
-During handling of the above exception, another exception occurred:
-
-self = <tests.test_reporting_main.TestCompleteReportGeneration object at 0x0000029BE1C783B0>
-mock_console_class = <MagicMock name='Console' id='2868610185456'>
-mock_pdf_gen = <MagicMock name='generate_pdf_report' id='2868610173216'>
-mock_generate_verdict = <MagicMock name='generate_executive_verdict' id='2868610457168'>
-
-    @patch('src.meqsap.reporting.generate_executive_verdict')
-    @patch('src.meqsap.reporting.generate_pdf_report')
-    @patch('src.meqsap.reporting.format_utils.Console')
-    def test_generate_complete_report_with_pdf(self, mock_console_class, mock_pdf_gen, mock_generate_verdict):
-        """Test complete report generation with PDF."""
-        mock_console = MagicMock()
-        mock_console_class.return_value = mock_console
-        mock_pdf_gen.return_value = "/path/to/report.pdf"
-    
-        with tempfile.TemporaryDirectory() as temp_dir:
-            analysis_result = self.create_sample_analysis_result()
-    
-            result = generate_complete_report(analysis_result, include_pdf=True, output_directory=temp_dir)
-    
-            assert result is not None
->           mock_generate_verdict.assert_called_once()
-E           AssertionError: Expected 'generate_executive_verdict' to have been called once. Called 0 times.
-
-tests\test_reporting_main.py:812: AssertionError
----------------------------- Captured stdout call -----------------------------
-  \U0001f4ca Strategy Performance  \n         Analysis          \n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Metric       \u2502 Value    \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 Total Return \u2502 1550.00% \u2502\n\u2502 Sharpe Ratio \u2502 1.25     \u2502\n\u2502 Calmar Ratio \u2502 1.89     \u2502\n\u2502 Max Drawdown \u2502 -820.00% \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
------------------------------- Captured log call ------------------------------
-INFO     src.meqsap.reporting.reporters:reporters.py:212 \u2705 PDF report generated: report.pdf
-____ TestCompleteReportGeneration.test_generate_complete_report_pdf_error _____
-
-self = <tests.test_reporting_main.TestCompleteReportGeneration object at 0x0000029BE1C915B0>
-mock_console_class = <MagicMock name='Console' id='2868615227744'>
-mock_pdf_gen = <MagicMock name='generate_pdf_report' id='2868615229904'>
-mock_generate_verdict = <MagicMock name='generate_executive_verdict' id='2868615020912'>
-
-    @patch('src.meqsap.reporting.generate_executive_verdict')
-    @patch('src.meqsap.reporting.generate_pdf_report')
-    @patch('src.meqsap.reporting.format_utils.Console')
-    def test_generate_complete_report_pdf_error(self, mock_console_class, mock_pdf_gen, mock_generate_verdict):
-        """Test complete report generation with PDF generation error."""
-        mock_console = MagicMock()
-        mock_console_class.return_value = mock_console
-        mock_pdf_gen.side_effect = ReportingError("PDF generation failed")
-    
-        analysis_result = self.create_sample_analysis_result()
-    
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = generate_complete_report(analysis_result, include_pdf=True, output_directory=temp_dir)
-    
->           assert result is None  # Should return None on error
-E           AssertionError: assert 'C:\\Users\\user\\AppData\\Local\\Temp\\tmpmocwske9\\report.pdf' is None
-
-tests\test_reporting_main.py:829: AssertionError
----------------------------- Captured stdout call -----------------------------
-  \U0001f4ca Strategy Performance  \n         Analysis          \n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 Metric       \u2502 Value    \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 Total Return \u2502 1550.00% \u2502\n\u2502 Sharpe Ratio \u2502 1.25     \u2502\n\u2502 Calmar Ratio \u2502 1.89     \u2502\n\u2502 Max Drawdown \u2502 -820.00% \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
------------------------------- Captured log call ------------------------------
-ERROR    src.meqsap.reporting.reporters:reporters.py:215 PDF report generation failed: PDF generation failed
-ERROR    src.meqsap.reporting.main:main.py:37 Reporter PdfReporter failed: Failed to generate PDF report: PDF generation failed
 =============================== tests coverage ================================
 ______________ coverage: platform win32, python 3.12.10-final-0 _______________
 
@@ -329,10 +53,10 @@ src\meqsap\optimizer\interruption.py                          24     12    50%
 src\meqsap\optimizer\models.py                                32      0   100%
 src\meqsap\optimizer\objective_functions.py                   31      1    97%
 src\meqsap\reporting\__init__.py                               6      0   100%
-src\meqsap\reporting\format_utils.py                         249     82    67%
-src\meqsap\reporting\main.py                                  54     13    76%
+src\meqsap\reporting\format_utils.py                         244     66    73%
+src\meqsap\reporting\main.py                                  41      0   100%
 src\meqsap\reporting\models.py                                53      3    94%
-src\meqsap\reporting\reporters.py                             99     46    54%
+src\meqsap\reporting\reporters.py                            100     46    54%
 test_yfinance_india.py                                        31     27    13%
 tests\__init__.py                                              3      0   100%
 tests\indicators_core\__init__.py                              0      0   100%
@@ -346,7 +70,7 @@ tests\test_cli.py                                            335      0   100%
 tests\test_cli_comprehensive.py                              255      1    99%
 tests\test_cli_enhanced.py                                   333      0   100%
 tests\test_cli_optimize_integration.py                       320      0   100%
-tests\test_config.py                                         166      2    99%
+tests\test_config.py                                         166      0   100%
 tests\test_data.py                                           107      0   100%
 tests\test_float_handling.py                                  77      1    99%
 tests\test_objective_functions.py                             94      0   100%
@@ -354,18 +78,10 @@ tests\test_optimizer\__init__.py                               0      0   100%
 tests\test_optimizer\test_optimization_error_handling.py      81      0   100%
 tests\test_reporting\__init__.py                               0      0   100%
 tests\test_reporting\test_models.py                           50      0   100%
-tests\test_reporting_main.py                                 338     18    95%
+tests\test_reporting_main.py                                 335     11    97%
 tests\test_reporting_models\__init__.py                        0      0   100%
 tests\test_reporting_models\test_models.py                     0      0   100%
 tests\test_run.py                                            165     10    94%
 ------------------------------------------------------------------------------
-TOTAL                                                       4856    575    88%
-=========================== short test summary info ===========================
-FAILED tests/test_config.py::TestStrategyConfigWithBaseline::test_strategy_config_with_baseline
-FAILED tests/test_reporting_main.py::TestFormatPerformanceMetrics::test_format_performance_metrics_custom_decimals
-FAILED tests/test_reporting_main.py::TestExecutiveVerdictGeneration::test_generate_executive_verdict
-FAILED tests/test_reporting_main.py::TestExecutiveVerdictGeneration::test_generate_executive_verdict_custom_config
-FAILED tests/test_reporting_main.py::TestCompleteReportGeneration::test_generate_complete_report_terminal_only
-FAILED tests/test_reporting_main.py::TestCompleteReportGeneration::test_generate_complete_report_with_pdf
-FAILED tests/test_reporting_main.py::TestCompleteReportGeneration::test_generate_complete_report_pdf_error
-================== 7 failed, 267 passed, 1 skipped in 31.97s ==================
+TOTAL                                                       4836    537    89%
+======================= 274 passed, 1 skipped in 33.44s =======================

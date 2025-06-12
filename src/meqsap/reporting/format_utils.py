@@ -354,45 +354,44 @@ def create_recommendations_panel(recommendations: List[str]) -> Panel:
     return Panel(content, title="Strategy Recommendations", border_style="blue")
 
 
-def generate_executive_verdict(backtest_result: Any, decimal_places: int = 2) -> Dict[str, str]:
+def generate_executive_verdict(backtest_result: BacktestAnalysisResult, decimal_places: int = 2) -> Dict[str, str]:
     """Generate an executive verdict with formatted data for reporting."""
     # Format basic metrics
-    metrics = format_performance_metrics(backtest_result.primary_result, decimal_places)
+    metrics = format_performance_metrics(backtest_result.primary_result, decimal_places=decimal_places)
     
     # Determine vibe check status
     vibe_check_status = "Unknown"
     if backtest_result.vibe_checks:
-        statuses = [check.get("status", "").lower() for check in backtest_result.vibe_checks.values()]
-        if all(s == "pass" for s in statuses):
+        if backtest_result.vibe_checks.overall_pass:
             vibe_check_status = "All Checks Passed"
-        elif any(s == "fail" for s in statuses):
+        else:
             vibe_check_status = "Major Concerns"
-        elif any(s == "warn" for s in statuses):
-            vibe_check_status = "Minor Concerns"
     
     # Determine robustness score
     robustness_score = "Unknown"
     if backtest_result.robustness_checks:
-        statuses = [check.get("status", "").lower() for check in backtest_result.robustness_checks.values()]
-        if all(s == "robust" for s in statuses):
+        degradation = backtest_result.robustness_checks.sharpe_degradation
+        if degradation < 25.0:
             robustness_score = "Highly Robust"
-        elif any(s == "sensitive" for s in statuses):
-            robustness_score = "Poorly Robust"
-        elif any(s == "moderate" for s in statuses):
+        elif degradation < 50.0:
             robustness_score = "Moderately Robust"
+        else:
+            robustness_score = "Poorly Robust"
     
     # Format date range
-    start_date = backtest_result.start_date.strftime("%Y-%m-%d")
-    end_date = backtest_result.end_date.strftime("%Y-%m-%d")
+    start_date = backtest_result.strategy_config['start_date'].strftime("%Y-%m-%d")
+    end_date = backtest_result.strategy_config['end_date'].strftime("%Y-%m-%d")
     date_range = f"{start_date} to {end_date}"
     
     # Overall verdict based on metrics
-    overall_verdict = determine_overall_verdict(metrics)
+    overall_verdict, _ = determine_overall_verdict(
+        backtest_result.vibe_checks, backtest_result.robustness_checks, backtest_result.primary_result
+    )
     
     # Create executive verdict data
     return {
-        "strategy_name": backtest_result.strategy_name,
-        "ticker": backtest_result.ticker,
+        "strategy_name": backtest_result.strategy_config['strategy_type'],
+        "ticker": backtest_result.strategy_config['ticker'],
         "date_range": date_range,
         "total_return": metrics["total_return"],
         "annual_return": metrics["annual_return"],

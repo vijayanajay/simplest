@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
+import pandas as pd
 from rich.console import Console
 from rich.table import Table
 from rich import box
@@ -12,6 +13,7 @@ from rich import box
 from .models import ComparativeAnalysisResult
 from ..backtest import BacktestAnalysisResult
 from ..exceptions import ReportingError
+from .format_utils import generate_pdf_report
 
 logger = logging.getLogger(__name__)
 
@@ -206,8 +208,6 @@ class PdfReporter(BaseReporter):
         try:
             # Use existing PDF generation logic for candidate strategy
             # This maintains backward compatibility
-            from ..reporting import generate_pdf_report  # Existing function
-            
             generate_pdf_report(result.candidate_result, str(self.output_path))
             logger.info(f"✅ PDF report generated: {self.output_path}")
             
