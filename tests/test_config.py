@@ -9,6 +9,7 @@ import warnings
 
 import pytest
 import yaml
+from pydantic import ValidationError
 from meqsap.config import BaselineConfig, StrategyConfig
 
 from src.meqsap.config import (
@@ -346,7 +347,7 @@ class TestBaselineConfig:
     
     def test_baseline_config_invalid_strategy_type(self):
         """Test invalid strategy type."""
-        with pytest.raises(ValueError, match="strategy_type must be one of"):
+        with pytest.raises(ValidationError, match="Input should be 'BuyAndHold' or 'MovingAverageCrossover'"):
             BaselineConfig(strategy_type="InvalidStrategy")
 
 class TestStrategyConfigWithBaseline:

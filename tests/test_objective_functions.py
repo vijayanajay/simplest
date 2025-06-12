@@ -38,29 +38,33 @@ class TestObjectiveFunctionRegistry:
         assert "invalid_function_name" in str(exc_info.value)
         assert "Available functions" in str(exc_info.value)
 
-    def test_get_objective_function_case_sensitive(self):
-        """Test that the lookup is case-sensitive."""
-        # Should work
+    def test_get_objective_function_is_case_insensitive(self):
+        """Test that the lookup is case-insensitive."""
         assert get_objective_function("SharpeRatio") is not None
-        # Should fail
-        with pytest.raises(ConfigurationError):
-            get_objective_function("sharperatio")
-        with pytest.raises(ConfigurationError):
-            get_objective_function("SHARPERATIO")
+        assert get_objective_function("sharperatio") is not None
+        assert get_objective_function("SHARPERATIO") is not None
+        # Underscores or different names should still fail
         with pytest.raises(ConfigurationError):
             get_objective_function("Sharpe_Ratio")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("sharpe")
  
-    def test_common_lowercase_names_are_invalid(self):
-        """Test that common lowercase variants are properly rejected."""
-        lowercase_variants = [
-            "sharpe", "sharperatio", "sharpe_ratio",
-            "calmar", "calmarratio", "calmar_ratio",
-            "profit", "profitfactor", "profit_factor"
-        ]
-    
-        for name in lowercase_variants:
-            with pytest.raises(ConfigurationError):
-                get_objective_function(name)    
+    def test_common_lowercase_names_are_handled(self):
+        """Test that common lowercase variants are handled correctly."""
+        # These should pass due to case-insensitivity
+        assert get_objective_function("sharperatio") is not None
+        assert get_objective_function("calmarratio") is not None
+        assert get_objective_function("profitfactor") is not None
+
+        # These should fail as they are not full names
+        with pytest.raises(ConfigurationError):
+            get_objective_function("sharpe")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("calmar")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("profit")
+        with pytest.raises(ConfigurationError):
+            get_objective_function("sharpe_ratio")
 
     def test_registry_contains_expected_functions(self):
         """Test that the registry contains all expected objective functions."""

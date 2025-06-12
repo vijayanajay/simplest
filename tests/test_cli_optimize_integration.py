@@ -481,7 +481,7 @@ class TestOptimizeCommandHelp:
         """Test optimize single subcommand help output."""
         result = self.runner.invoke(app, ["optimize", "single", "--help"])
         assert result.exit_code == 0
-        assert "Optimize a single strategy configuration" in result.output
+        assert "Optimize a single strategy configuration" in result.stdout
         assert "--report" in result.output
         assert "--output-dir" in result.output
         assert "--trials" in result.output

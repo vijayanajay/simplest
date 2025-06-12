@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
@@ -208,12 +208,13 @@ class StrategyConfig(BaseModel):
         ..., description="Type of trading strategy to backtest"
     )
     strategy_params: StrategyParamsDict = Field(
-        ..., description="Strategy-specific parameters"
-    )
+        ..., description="Strategy-specific parameters"    )
     optimization_config: Optional[OptimizationConfig] = Field(
         None, description="Configuration for parameter optimization."
     )
     baseline_config: Optional[BaselineConfig] = None
+
+    model_config = ConfigDict(extra='forbid')
 
     @field_validator("ticker")
     @classmethod

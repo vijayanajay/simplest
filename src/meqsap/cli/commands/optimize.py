@@ -53,6 +53,13 @@ def optimize_single(
     verbose: bool = typer.Option(False, "--verbose", help="Enable verbose logging"),
 ):
     """
+    Optimize a single strategy configuration to find the best parameters.
+    
+    This command runs the optimization engine based on the parameter ranges
+    and objective function defined in the YAML configuration file. It supports
+    Grid Search and Random Search algorithms. After finding the best parameters,
+    it can optionally run a comparative analysis against a baseline.
+
     Optimize strategy parameters and run analysis with baseline comparison.
     """
     if verbose:

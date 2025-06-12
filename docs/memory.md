@@ -48,13 +48,13 @@
 - Use factory functions for complex model creation
 - Add explicit validators for Union types with constraints
 - Handle both raw types and model instances in validators
-- Make configuration value lookups case-insensitive where it improves user experience (e.g., for names of functions, algorithms).
+- **Make configuration value lookups case-insensitive** where it improves user experience (e.g., for names of functions, algorithms).
 
 ### DON'T ❌
 - Change schemas without updating dependent tests
 - Assume Union type validation works automatically
 - Use helper functions expecting raw types on model instances
-- Enforce strict case-sensitivity on user-provided string configurations (like function names) when a case-insensitive match is unambiguous and more user-friendly.
+- **Enforce strict case-sensitivity** on user-provided string configurations (like function names) when a case-insensitive match is unambiguous and more user-friendly.
 
 ## Exception Handling & Error Codes
 
@@ -144,6 +144,7 @@
 8. **Exception Layer Confusion:** Handle exceptions at appropriate layer
 9. **Incomplete Package API Exposure:** When refactoring code into submodules (e.g., `utils.py`), failing to export the necessary functions from the package's `__init__.py`. This breaks the public API contract, leading to `ImportError` in consuming modules. **Fix:** Always review and update the package's `__init__.py` and `__all__` list to explicitly export all symbols intended for public use.
 10. **Module/Package Name Collision:** Avoid creating a `.py` file and a directory with the same name (e.g., `reporting.py` and `reporting/`) in the same package. This leads to ambiguous `ImportError`s. If refactoring a module into a package, delete the original `.py` file.
+11. **Missing Type Hint Imports:** A function signature in one module uses a type hint for a class defined in another module, but the `import` statement is missing. This leads to a `NameError` during static analysis or test collection. **Fix:** Ensure all external types used in function signatures are explicitly imported.
 
 ## CLI Orchestration & Error Handling
 
@@ -236,3 +237,9 @@
 - For import errors, inspect the complete package hierarchy
 - For attribute errors, verify all mocked attributes are correctly initialized
 - For type errors, ensure consistency between function signatures and call sites
+
+## Structural Issue: Inconsistent Data Contracts in Reporting Layer After Refactoring
+
+*   **Anti-Pattern:** After refactoring the reporting layer to use a `ReportingOrchestrator` and new data models like `ComparativeAnalysisResult` and `BacktestAnalysisResult`, the downstream reporting functions (e.g., for creating tables, formatting metrics) were not updated to handle the new data structure. These functions still expected the old `BacktestResult` model, leading to `AttributeError`s when trying to access metrics that were now nested deeper (e.g., inside a `primary_result` attribute). This also caused `rich.errors.NotRenderableError` in table-building functions because they were receiving raw numeric data instead of pre-formatted strings.
+
+*   **Lesson Learned:** When refactoring data models or introducing new orchestration layers, it is critical to perform a "full-stack" trace of the data flow. **Always verify that the data contract (the shape and type of data) expected by every consuming function matches the contract provided by the new producer.** A change in a high-level model requires updating all functions that consume it, not just the immediate callers. Tests must also be updated to reflect the new data flow, for example, by ensuring test data passed to a function matches the new, expected format (e.g., passing formatted strings to a table-builder, not raw numbers).

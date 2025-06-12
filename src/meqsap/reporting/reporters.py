@@ -54,31 +54,31 @@ class TerminalReporter(BaseReporter):
         table.add_column("Baseline", style="blue")
         
         # Extract metrics
-        candidate = result.candidate_result
-        baseline = result.baseline_result
+        candidate = result.candidate_result.primary_result if result.candidate_result else None
+        baseline = result.baseline_result.primary_result if result.baseline_result and result.baseline_result.primary_result else None
         
         # Core performance metrics
         table.add_row(
             "Total Return",
-            f"{candidate.total_return:.2%}",
+            f"{candidate.total_return:.2%}" if candidate else "N/A",
             f"{baseline.total_return:.2%}" if baseline else "N/A"
         )
         
         table.add_row(
             "Sharpe Ratio",
-            f"{candidate.sharpe_ratio:.2f}",
+            f"{candidate.sharpe_ratio:.2f}" if candidate else "N/A",
             f"{baseline.sharpe_ratio:.2f}" if baseline else "N/A"
         )
         
         table.add_row(
             "Calmar Ratio",
-            f"{candidate.calmar_ratio:.2f}",
+            f"{candidate.calmar_ratio:.2f}" if candidate else "N/A",
             f"{baseline.calmar_ratio:.2f}" if baseline else "N/A"
         )
         
         table.add_row(
             "Max Drawdown",
-            f"{candidate.max_drawdown:.2%}",
+            f"{candidate.max_drawdown:.2%}" if candidate else "N/A",
             f"{baseline.max_drawdown:.2%}" if baseline else "N/A"
         )
         
@@ -99,12 +99,12 @@ class TerminalReporter(BaseReporter):
         table.add_column("Metric", style="cyan", no_wrap=True)
         table.add_column("Value", style="green")
         
-        candidate = result.candidate_result
+        candidate = result.candidate_result.primary_result if result.candidate_result else None
         
-        table.add_row("Total Return", f"{candidate.total_return:.2%}")
-        table.add_row("Sharpe Ratio", f"{candidate.sharpe_ratio:.2f}")
-        table.add_row("Calmar Ratio", f"{candidate.calmar_ratio:.2f}")
-        table.add_row("Max Drawdown", f"{candidate.max_drawdown:.2%}")
+        table.add_row("Total Return", f"{candidate.total_return:.2%}" if candidate else "N/A")
+        table.add_row("Sharpe Ratio", f"{candidate.sharpe_ratio:.2f}" if candidate else "N/A")
+        table.add_row("Calmar Ratio", f"{candidate.calmar_ratio:.2f}" if candidate else "N/A")
+        table.add_row("Max Drawdown", f"{candidate.max_drawdown:.2%}" if candidate else "N/A")
         
         # Show baseline failure reason if applicable
         if result.baseline_failed:

@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import Mock
+from pydantic import ValidationError
 
 from meqsap.reporting.models import ComparativeAnalysisResult
 from meqsap.backtest import BacktestAnalysisResult
@@ -77,7 +78,7 @@ class TestComparativeAnalysisResult:
     
     def test_validation_verdict_without_baseline(self, mock_candidate_result):
         """Test validation when verdict is provided without baseline."""
-        with pytest.raises(ValueError, match="comparative_verdict requires successful baseline_result"):
+        with pytest.raises(ValidationError, match="comparative_verdict requires a successful baseline_result"):
             ComparativeAnalysisResult(
                 candidate_result=mock_candidate_result,
                 comparative_verdict="Outperformed"
