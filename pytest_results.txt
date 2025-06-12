@@ -4,25 +4,40 @@ cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
 plugins: cov-6.1.1, mock-3.14.1
-collected 259 items
+collected 240 items / 1 error
 
-tests\indicators_core\indicators\test_moving_average.py ........         [  3%]
-tests\indicators_core\indicators\test_rsi.py ........                    [  6%]
-tests\indicators_core\test_base.py ........                              [  9%]
-tests\indicators_core\test_parameters.py ............                    [ 13%]
-tests\test_backtest.py ............                                      [ 18%]
-tests\test_cli.py ..................                                     [ 25%]
-tests\test_cli_comprehensive.py .......................                  [ 34%]
-tests\test_cli_enhanced.py ...................................           [ 47%]
-tests\test_cli_optimize_integration.py ...................               [ 55%]
-tests\test_config.py ...................                                 [ 62%]
-tests\test_data.py .......                                               [ 65%]
-tests\test_float_handling.py ........                                    [ 68%]
-tests\test_objective_functions.py .................                      [ 74%]
-tests\test_optimizer\test_optimization_error_handling.py .......         [ 77%]
-tests\test_reporting.py ................................s........        [ 93%]
-tests\test_run.py .................                                      [100%]
+=================================== ERRORS ====================================
+________________ ERROR collecting tests/test_reporting_main.py ________________
+ImportError while importing test module 'D:\Code\simplest\tests\test_reporting_main.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\user\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_reporting_main.py:22: in <module>
+    from src.meqsap.reporting import (
+E   ImportError: cannot import name 'ReportConfig' from 'src.meqsap.reporting' (D:\Code\simplest\src\meqsap\reporting\__init__.py)
+============================== warnings summary ===============================
+src\meqsap\config.py:162
+src\meqsap\config.py:162
+  D:\Code\simplest\src\meqsap\config.py:162: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('strategy_type')
 
+src\meqsap\config.py:170
+src\meqsap\config.py:170
+  D:\Code\simplest\src\meqsap\config.py:170: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('params')
+
+src\meqsap\reporting\models.py:17
+src\meqsap\reporting\models.py:17
+  D:\Code\simplest\src\meqsap\reporting\models.py:17: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('baseline_result')
+
+src\meqsap\reporting\models.py:25
+src\meqsap\reporting\models.py:25
+  D:\Code\simplest\src\meqsap\reporting\models.py:25: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('comparative_verdict')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =============================== tests coverage ================================
 ______________ coverage: platform win32, python 3.12.10-final-0 _______________
 
@@ -30,49 +45,59 @@ Name                                                       Stmts   Miss  Cover
 ------------------------------------------------------------------------------
 src\__init__.py                                                0      0   100%
 src\meqsap\__init__.py                                         4      0   100%
-src\meqsap\backtest.py                                       436    112    74%
-src\meqsap\cli\__init__.py                                   172     13    92%
+src\meqsap\backtest.py                                       446    382    14%
+src\meqsap\cli\__init__.py                                   172    124    28%
 src\meqsap\cli\commands\__init__.py                            2      0   100%
-src\meqsap\cli\commands\optimize.py                           92      8    91%
-src\meqsap\cli\optimization_ui.py                             94     25    73%
-src\meqsap\cli\utils.py                                       96      2    98%
-src\meqsap\config.py                                         150     17    89%
-src\meqsap\data.py                                            68     11    84%
-src\meqsap\exceptions.py                                      22      0   100%
+src\meqsap\cli\commands\optimize.py                           92     70    24%
+src\meqsap\cli\optimization_ui.py                             94     78    17%
+src\meqsap\cli\utils.py                                       96     81    16%
+src\meqsap\config.py                                         186    121    35%
+src\meqsap\data.py                                            68     50    26%
+src\meqsap\exceptions.py                                      24      0   100%
 src\meqsap\indicators_core\__init__.py                         5      0   100%
-src\meqsap\indicators_core\base.py                            40      4    90%
+src\meqsap\indicators_core\base.py                            40     22    45%
 src\meqsap\indicators_core\indicators\__init__.py              5      0   100%
-src\meqsap\indicators_core\indicators\moving_average.py       22      0   100%
-src\meqsap\indicators_core\indicators\rsi.py                  22      0   100%
-src\meqsap\indicators_core\parameters.py                      20      0   100%
-src\meqsap\indicators_core\registry.py                        18      3    83%
+src\meqsap\indicators_core\indicators\moving_average.py       22      9    59%
+src\meqsap\indicators_core\indicators\rsi.py                  22      9    59%
+src\meqsap\indicators_core\parameters.py                      20      3    85%
+src\meqsap\indicators_core\registry.py                        18      4    78%
 src\meqsap\optimizer\__init__.py                               4      0   100%
-src\meqsap\optimizer\engine.py                               243    157    35%
+src\meqsap\optimizer\engine.py                               243    211    13%
 src\meqsap\optimizer\interruption.py                          24     12    50%
 src\meqsap\optimizer\models.py                                32      0   100%
-src\meqsap\optimizer\objective_functions.py                   30      1    97%
-src\meqsap\reporting.py                                      264     34    87%
+src\meqsap\optimizer\objective_functions.py                   30     17    43%
+src\meqsap\reporting\__init__.py                               5      0   100%
+src\meqsap\reporting\main.py                                  54     38    30%
+src\meqsap\reporting\models.py                                38     19    50%
+src\meqsap\reporting\reporters.py                             99     71    28%
 test_yfinance_india.py                                        31     27    13%
 tests\__init__.py                                              3      0   100%
 tests\indicators_core\__init__.py                              0      0   100%
 tests\indicators_core\indicators\__init__.py                   0      0   100%
-tests\indicators_core\indicators\test_moving_average.py       44      0   100%
-tests\indicators_core\indicators\test_rsi.py                  45      0   100%
-tests\indicators_core\test_base.py                            71      2    97%
-tests\indicators_core\test_parameters.py                      50      0   100%
-tests\test_backtest.py                                       164      0   100%
-tests\test_cli.py                                            335      0   100%
-tests\test_cli_comprehensive.py                              255      1    99%
-tests\test_cli_enhanced.py                                   333      0   100%
-tests\test_cli_optimize_integration.py                       320      0   100%
-tests\test_config.py                                         125      0   100%
-tests\test_data.py                                           107      0   100%
-tests\test_float_handling.py                                  77      1    99%
-tests\test_objective_functions.py                             87      0   100%
+tests\indicators_core\indicators\test_moving_average.py       44     30    32%
+tests\indicators_core\indicators\test_rsi.py                  45     30    33%
+tests\indicators_core\test_base.py                            71     47    34%
+tests\indicators_core\test_parameters.py                      50     31    38%
+tests\test_backtest.py                                       177    137    23%
+tests\test_cli.py                                            335    238    29%
+tests\test_cli_comprehensive.py                              255    182    29%
+tests\test_cli_enhanced.py                                   333    239    28%
+tests\test_cli_optimize_integration.py                       320    237    26%
+tests\test_config.py                                         165    116    30%
+tests\test_data.py                                           107     82    23%
+tests\test_float_handling.py                                  77     54    30%
+tests\test_objective_functions.py                             87     64    26%
 tests\test_optimizer\__init__.py                               0      0   100%
-tests\test_optimizer\test_optimization_error_handling.py      81      0   100%
-tests\test_reporting.py                                      333     10    97%
-tests\test_run.py                                            165     10    94%
+tests\test_optimizer\test_optimization_error_handling.py      81     67    17%
+tests\test_reporting\__init__.py                               0      0   100%
+tests\test_reporting\test_models.py                           49     34    31%
+tests\test_reporting_main.py                                 333    320     4%
+tests\test_reporting_models\__init__.py                        0      0   100%
+tests\test_reporting_models\test_models.py                    49     34    31%
+tests\test_run.py                                            165    138    16%
 ------------------------------------------------------------------------------
-TOTAL                                                       4491    450    90%
-======================= 258 passed, 1 skipped in 29.78s =======================
+TOTAL                                                       4622   3428    26%
+=========================== short test summary info ===========================
+ERROR tests/test_reporting_main.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+======================== 8 warnings, 1 error in 15.95s ========================

@@ -133,9 +133,11 @@ class StrategySignalGenerator:
             # Extract concrete parameters from the strategy config.
             # For optimization, the config object is created with the trial's specific params.
             validated_params_model = strategy_config.validate_strategy_params()
-            concrete_params = generator_instance._extract_concrete_params(validated_params_model)
+            concrete_params = generator_instance._extract_concrete_params(validated_params_model)            
             if strategy_config.strategy_type == "MovingAverageCrossover":
                 return generator_instance._generate_ma_crossover_signals(data, concrete_params)
+            elif strategy_config.strategy_type == "BuyAndHold":
+                return generator_instance._generate_buy_and_hold_signals(data)
             else:
                 raise BacktestError(f"Unsupported strategy type: {strategy_config.strategy_type}")
         except Exception as e:
@@ -268,9 +270,30 @@ class StrategySignalGenerator:
           # Exit: Fast MA crosses below Slow MA  
         ma_cross_down = (fast_ma_valid < slow_ma_valid) & (fast_ma_valid.shift(1) >= slow_ma_valid.shift(1))
         signals.loc[ma_cross_down, 'exit'] = True
-        
         if signals.empty:
             raise BacktestError("No valid signals generated after removing NaN values")
+        
+        return signals
+
+    def _generate_buy_and_hold_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Generate Buy & Hold signals: buy on first day, hold forever.
+        
+        Args:
+            data: OHLCV market data DataFrame
+            
+        Returns:
+            DataFrame with 'entry' and 'exit' boolean columns
+        """
+        # Create signals DataFrame with same index as data
+        signals = pd.DataFrame(index=data.index)
+        signals['entry'] = False
+        signals['exit'] = False
+        
+        # Entry signal only on first day
+        if len(signals) > 0:
+            signals.iloc[0, signals.columns.get_loc('entry')] = True
+        
+        logger.debug(f"Generated Buy & Hold signals: {signals['entry'].sum()} entry signals, {signals['exit'].sum()} exit signals")
         
         return signals
 

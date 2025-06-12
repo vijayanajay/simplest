@@ -55,3 +55,8 @@ class BacktestExecutionError(CLIError):
 class ReportGenerationError(CLIError):
     """Raised when report generation encounters errors."""
     pass
+
+
+class WorkflowError(MEQSAPError):
+    """Raised when workflow execution fails."""
+    pass

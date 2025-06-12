@@ -9,6 +9,7 @@ import warnings
 
 import pytest
 import yaml
+from meqsap.config import BaselineConfig, StrategyConfig
 
 from src.meqsap.config import (
     load_yaml_config,
@@ -290,3 +291,95 @@ class TestMovingAverageCrossoverParamsCoverage:
             )
             # The error is raised when get_required_data_coverage_bars calls _get_parameter_maximum
             params.get_required_data_coverage_bars()
+
+class TestBaselineConfig:
+    """Test baseline configuration functionality."""
+    
+    def test_baseline_config_defaults(self):
+        """Test default baseline configuration."""
+        config = BaselineConfig()
+        assert config.active is True
+        assert config.strategy_type == "BuyAndHold"
+        assert config.params is None
+    
+    def test_baseline_config_buy_and_hold(self):
+        """Test Buy & Hold baseline configuration."""
+        config = BaselineConfig(
+            active=True,
+            strategy_type="BuyAndHold"
+        )
+        assert config.strategy_type == "BuyAndHold"
+        assert config.params is None
+    
+    def test_baseline_config_ma_crossover_valid(self):
+        """Test valid MovingAverageCrossover baseline configuration."""
+        config = BaselineConfig(
+            strategy_type="MovingAverageCrossover",
+            params={"fast_ma": 20, "slow_ma": 50}
+        )
+        assert config.strategy_type == "MovingAverageCrossover"
+        assert config.params["fast_ma"] == 20
+        assert config.params["slow_ma"] == 50
+    
+    def test_baseline_config_ma_crossover_missing_params(self):
+        """Test MovingAverageCrossover without required parameters."""
+        with pytest.raises(ValueError, match="requires 'params' with 'fast_ma' and 'slow_ma'"):
+            BaselineConfig(
+                strategy_type="MovingAverageCrossover"
+            )
+    
+    def test_baseline_config_ma_crossover_invalid_params(self):
+        """Test MovingAverageCrossover with invalid parameters."""
+        with pytest.raises(ValueError, match="'fast_ma' must be less than 'slow_ma'"):
+            BaselineConfig(
+                strategy_type="MovingAverageCrossover",
+                params={"fast_ma": 50, "slow_ma": 20}
+            )
+    
+    def test_baseline_config_buy_and_hold_with_params(self):
+        """Test Buy & Hold with parameters (should fail)."""
+        with pytest.raises(ValueError, match="BuyAndHold baseline does not accept parameters"):
+            BaselineConfig(
+                strategy_type="BuyAndHold",
+                params={"some_param": "value"}
+            )
+    
+    def test_baseline_config_invalid_strategy_type(self):
+        """Test invalid strategy type."""
+        with pytest.raises(ValueError, match="strategy_type must be one of"):
+            BaselineConfig(strategy_type="InvalidStrategy")
+
+class TestStrategyConfigWithBaseline:
+    """Test StrategyConfig integration with baseline functionality."""
+    
+    def test_strategy_config_with_baseline(self):
+        """Test StrategyConfig with baseline configuration."""
+        config = StrategyConfig(
+            ticker="AAPL",
+            start_date="2023-01-01",
+            end_date="2023-12-31",
+            strategy_type="MovingAverageCrossover",
+            strategy_params={"fast_ma": 10, "slow_ma": 30},
+            baseline_config=BaselineConfig()
+        )
+        assert config.baseline_config is not None
+        assert config.baseline_config.strategy_type == "BuyAndHold"
+    
+    def test_get_baseline_config_with_defaults_no_baseline_flag(self):
+        """Test baseline config with no_baseline flag."""
+        config = StrategyConfig(
+            ticker="AAPL",
+            start_date="2023-01-01", 
+            end_date="2023-12-31",
+            strategy_type="MovingAverageCrossover",
+            strategy_params={"fast_ma": 10, "slow_ma": 30}
+        )
+        
+        # With no_baseline=True, should return None
+        baseline_config = config.get_baseline_config_with_defaults(no_baseline=True)
+        assert baseline_config is None
+        
+        # With no_baseline=False, should inject default
+        baseline_config = config.get_baseline_config_with_defaults(no_baseline=False)
+        assert baseline_config is not None
+        assert baseline_config.strategy_type == "BuyAndHold"

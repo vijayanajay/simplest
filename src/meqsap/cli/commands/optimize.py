@@ -43,14 +43,18 @@ optimize_app = typer.Typer(help="Strategy optimization commands")
 @optimize_app.command("single")
 @handle_cli_errors
 def optimize_single(
-    config_path: str = typer.Argument(..., help="Path to strategy configuration YAML file"),
-    report: bool = typer.Option(False, "--report", help="Generate PDF report for best strategy"),
+    config_file: str = typer.Argument(..., help="Path to YAML configuration file"),
+    report: bool = typer.Option(False, "--report", help="Generate PDF report"),
+    report_html: bool = typer.Option(False, "--report-html", help="Generate comprehensive HTML report using QuantStats"),
+    no_baseline: bool = typer.Option(False, "--no-baseline", help="Skip baseline comparison for faster execution"),
     output_dir: Optional[Path] = typer.Option(None, "--output-dir", help="Directory to save reports and results"),
     trials: Optional[int] = typer.Option(None, "--trials", help="Number of optimization trials (RandomSearch only)"),
     no_progress: bool = typer.Option(False, "--no-progress", help="Disable progress bar"),
     verbose: bool = typer.Option(False, "--verbose", help="Enable verbose logging"),
 ):
-    """Optimize a single strategy configuration using the specified optimization algorithm."""
+    """
+    Optimize strategy parameters and run analysis with baseline comparison.
+    """
     if verbose:
         logging.getLogger('meqsap').setLevel(logging.DEBUG)
         console.print("[dim]Verbose logging enabled[/dim]")
@@ -155,7 +159,7 @@ def optimize_single(
             console.print("[green]Optimization completed successfully.[/green]")
  
     # Load and validate configuration first
-    config = _load_and_validate_config(config_path, trials)
+    config = _load_and_validate_config(config_file, trials)
     
     console.print("[blue]Acquiring market data...[/blue]")
     market_data = fetch_market_data(
@@ -169,7 +173,7 @@ def optimize_single(
 
     result = _run_optimization_with_progress(engine, market_data, no_progress, config)
 
-    _handle_reporting_and_exit(result, config, config_path, report, output_dir, verbose)
+    _handle_reporting_and_exit(result, config, config_file, report, output_dir, verbose)
 
 
 if __name__ == "__main__":

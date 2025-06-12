@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, validator
 from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
@@ -115,8 +115,27 @@ class MovingAverageCrossoverParams(BaseStrategyParams):
             elif param_type == "value":
                 if not isinstance(param["value"], (int, float)):
                     raise ConfigurationError(f"Non-numeric value found in ParameterValue dict for parameter: {param}")
-                return float(param["value"])
-        raise ConfigurationError(f"Unable to determine maximum value for parameter: {param} of type {type(param)}")
+                return float(param["value"])        
+            else:
+                raise ConfigurationError(f"Unknown parameter type: {param_type}")
+            raise ConfigurationError(f"Unable to determine maximum value for parameter: {param} of type {type(param)}")
+
+
+class BuyAndHoldParams(BaseStrategyParams):
+    """Parameters for the Buy & Hold strategy.
+    
+    Buy & Hold strategy requires no parameters - it simply buys on the first day
+    and holds forever. This class serves as a placeholder to maintain consistency
+    with the strategy parameter framework.
+    """
+    
+    def get_required_data_coverage_bars(self) -> int:
+        """Return minimum data requirement for Buy & Hold strategy.
+        
+        Buy & Hold only needs one day of data to execute, but we return 1
+        to satisfy the abstract method requirement.
+        """
+        return 1
 
 
 # Type alias for all possible strategy parameter types (for use in raw YAML data)
@@ -134,6 +153,41 @@ class OptimizationConfig(BaseModel):
     cache_results: bool = Field(True, description="Whether to cache intermediate backtest results during optimization.")
 
 
+class BaselineConfig(BaseModel):
+    """Configuration for baseline strategy comparison."""
+    active: bool = True
+    strategy_type: Literal["BuyAndHold", "MovingAverageCrossover"] = "BuyAndHold"
+    params: Optional[Dict[str, Any]] = None
+    
+    @validator('strategy_type')
+    def validate_strategy_type(cls, v):
+        """Validate that strategy_type is supported."""
+        allowed_types = ["BuyAndHold", "MovingAverageCrossover"]
+        if v not in allowed_types:
+            raise ValueError(f"Baseline strategy_type must be one of {allowed_types}, got: {v}")
+        return v
+    
+    @validator('params')
+    def validate_params_for_strategy(cls, v, values):
+        """Validate parameters based on strategy type."""
+        strategy_type = values.get('strategy_type')
+        
+        if strategy_type == "MovingAverageCrossover":
+            if not v:
+                raise ValueError("MovingAverageCrossover baseline requires 'params' with 'fast_ma' and 'slow_ma'")
+            if 'fast_ma' not in v or 'slow_ma' not in v:
+                raise ValueError("MovingAverageCrossover baseline requires 'fast_ma' and 'slow_ma' parameters")
+            if not isinstance(v['fast_ma'], int) or not isinstance(v['slow_ma'], int):
+                raise ValueError("MovingAverageCrossover 'fast_ma' and 'slow_ma' must be integers")
+            if v['fast_ma'] >= v['slow_ma']:
+                raise ValueError("MovingAverageCrossover 'fast_ma' must be less than 'slow_ma'")
+        
+        elif strategy_type == "BuyAndHold":
+            if v:
+                raise ValueError("BuyAndHold baseline does not accept parameters")
+        
+        return v
+
 class StrategyConfig(BaseModel):
     """
     Configuration for a trading strategy backtest.
@@ -145,11 +199,10 @@ class StrategyConfig(BaseModel):
     Example: start_date="2022-01-01", end_date="2022-12-31" 
     will analyze data from Jan 1 through Dec 31, 2022 (both days included).
     """
-    
     ticker: str = Field(..., description="Stock ticker symbol")
     start_date: date = Field(..., description="Backtest start date")
     end_date: date = Field(..., description="Backtest end date")
-    strategy_type: Literal["MovingAverageCrossover"] = Field(
+    strategy_type: Literal["MovingAverageCrossover", "BuyAndHold"] = Field(
         ..., description="Type of trading strategy to backtest"
     )
     strategy_params: StrategyParamsDict = Field(
@@ -158,6 +211,7 @@ class StrategyConfig(BaseModel):
     optimization_config: Optional[OptimizationConfig] = Field(
         None, description="Configuration for parameter optimization."
     )
+    baseline_config: Optional[BaselineConfig] = None
 
     @field_validator("ticker")
     @classmethod
@@ -180,12 +234,28 @@ class StrategyConfig(BaseModel):
             self.strategy_type, self.strategy_params
         )
 
+    def get_baseline_config_with_defaults(self, no_baseline: bool = False) -> Optional[BaselineConfig]:
+        """Get baseline config with default injection logic."""
+        if no_baseline:
+            return None
+        
+        if self.baseline_config is not None:
+            return self.baseline_config
+        
+        # Default to Buy & Hold baseline if not specified
+        return BaselineConfig(
+            active=True,
+            strategy_type="BuyAndHold",
+            params=None
+        )
+
 
 class StrategyFactory:
     """Factory for creating strategy parameter validators."""
 
     _strategy_validators: Dict[str, Type[BaseStrategyParams]] = {
         "MovingAverageCrossover": MovingAverageCrossoverParams,
+        "BuyAndHold": BuyAndHoldParams,
     }
 
     @classmethod

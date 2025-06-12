@@ -96,6 +96,33 @@ class TestStrategySignalGenerator:
         
         with pytest.raises(ConfigurationError, match="Unknown strategy type"):
             StrategySignalGenerator.generate_signals(data, config)
+    
+    def test_generate_buy_and_hold_signals_success(self):
+        """Test successful Buy and Hold signal generation."""
+        data = self.create_sample_data()
+        config = StrategyConfig(
+            ticker="AAPL",
+            start_date=date(2023, 1, 1),
+            end_date=date(2023, 4, 10),
+            strategy_type="BuyAndHold",
+            strategy_params={}
+        )
+        
+        signals = StrategySignalGenerator.generate_signals(data, config)
+        
+        assert isinstance(signals, pd.DataFrame)
+        assert 'entry' in signals.columns
+        assert 'exit' in signals.columns
+        assert signals.dtypes['entry'] == bool
+        assert signals.dtypes['exit'] == bool
+        assert len(signals) > 0
+        
+        # Buy and Hold should have exactly one entry signal on the first day
+        assert signals['entry'].sum() == 1
+        assert signals.iloc[0]['entry'] == True
+        
+        # Buy and Hold should have no exit signals
+        assert signals['exit'].sum() == 0
 
 
 class TestRunBacktest:
