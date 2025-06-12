@@ -2,7 +2,7 @@
 
 This file tracks issues that have been resolved, including their re-open history.
 
-**Last Updated:** 2025-06-18
+**Last Updated:** 2025-06-19
 
 ---
 **Issue ID:** FLAW-20250617-001
@@ -92,4 +92,13 @@ The resolution for this issue involved two key changes:
 **Last Reopened Date:** 
 **Last Resolution Summary (Concise):** Still compliant. The API contract between the optimizer and backtesting engine has been strengthened, improving overall system integrity.
 **Date Last Resolved:** 2025-06-17
+---
+**Issue ID:** FLAW-20250619-001
+**Original Description (Concise):** An `ImportError` occurred during test collection because `tests/test_reporting_main.py` could not import `create_performance_table` from the `src.meqsap.reporting` package. Additionally, Pydantic v1 validator usage caused deprecation warnings.
+**Initial Resolution Summary (Concise):** The `create_performance_table` function was explicitly exported from `src/meqsap/reporting/__init__.py`. Deprecated `@validator` decorators in `config.py` and `reporting/models.py` were updated to their Pydantic v2 equivalents (`@field_validator` and `@model_validator`), resolving the warnings and improving code structure.
+**Date First Resolved:** 2025-06-19
+**Reopen Count:** 0
+**Last Reopened Date:** 
+**Last Resolution Summary (Concise):** The `create_performance_table` function was explicitly exported from `src/meqsap/reporting/__init__.py`. Deprecated `@validator` decorators in `config.py` and `reporting/models.py` were updated to their Pydantic v2 equivalents (`@field_validator` and `@model_validator`), resolving the warnings and improving code structure.
+**Date Last Resolved:** 2025-06-19
 ---

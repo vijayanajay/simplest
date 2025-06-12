@@ -1,8 +1,36 @@
 """Data models for comparative analysis reporting."""
 
 from typing import Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, model_validator, Field
 from ..backtest import BacktestAnalysisResult
+
+
+class ReportConfig(BaseModel):
+    """Configuration for report generation."""
+    
+    include_pdf: bool = Field(False, description="Whether to generate PDF report")
+    output_directory: str = Field("./reports", description="Directory for report output")
+    filename_prefix: str = Field("meqsap_report", description="Prefix for report filenames")
+    include_plots: bool = Field(True, description="Whether to include plots in PDF")
+    decimal_places: int = Field(2, ge=0, le=6, description="Decimal places for formatting")
+    color_output: bool = Field(True, description="Whether to use colored terminal output")
+
+
+class ExecutiveVerdictData(BaseModel):
+    """Formatted data for executive verdict display."""
+    
+    strategy_name: str = Field(..., description="Name of the strategy")
+    ticker: str = Field(..., description="Stock ticker symbol")
+    date_range: str = Field(..., description="Formatted date range")
+    total_return: str = Field(..., description="Formatted total return")
+    annual_return: str = Field(..., description="Formatted annualized return")
+    sharpe_ratio: str = Field(..., description="Formatted Sharpe ratio")
+    max_drawdown: str = Field(..., description="Formatted maximum drawdown")
+    win_rate: str = Field(..., description="Formatted win rate")
+    total_trades: int = Field(..., description="Total number of trades")
+    vibe_check_status: str = Field(..., description="Overall vibe check status")
+    robustness_score: str = Field(..., description="Formatted robustness assessment")
+    overall_verdict: str = Field(..., description="Overall strategy verdict")
 
 
 class ComparativeAnalysisResult(BaseModel):
@@ -14,27 +42,19 @@ class ComparativeAnalysisResult(BaseModel):
     baseline_failure_reason: Optional[str] = None
     comparative_verdict: Optional[str] = None  # "Outperformed" | "Underperformed"
     
-    @validator('baseline_result')
-    def validate_baseline_consistency(cls, v, values):
-        """Ensure baseline_result consistency with baseline_failed flag."""
-        baseline_failed = values.get('baseline_failed', False)
-        if baseline_failed and v is not None:
+    @model_validator(mode='after')
+    def check_consistency(self) -> 'ComparativeAnalysisResult':
+        """Validate consistency between baseline status and other fields."""
+        # Check baseline consistency
+        if self.baseline_failed and self.baseline_result is not None:
             raise ValueError("baseline_result should be None when baseline_failed is True")
-        return v
-    
-    @validator('comparative_verdict')
-    def validate_verdict_requires_baseline(cls, v, values):
-        """Ensure comparative_verdict is only set when baseline is available."""
-        baseline_result = values.get('baseline_result')
-        baseline_failed = values.get('baseline_failed', False)
-        
-        if v is not None and (baseline_result is None or baseline_failed):
-            raise ValueError("comparative_verdict requires successful baseline_result")
-        
-        if v is not None and v not in ["Outperformed", "Underperformed"]:
-            raise ValueError("comparative_verdict must be 'Outperformed' or 'Underperformed'")
-        
-        return v
+        # Check verdict consistency
+        if self.comparative_verdict is not None:
+            if self.baseline_result is None or self.baseline_failed:
+                raise ValueError("comparative_verdict requires a successful baseline_result")
+            if self.comparative_verdict not in ["Outperformed", "Underperformed"]:
+                raise ValueError("comparative_verdict must be 'Outperformed' or 'Underperformed'")
+        return self
     
     @property
     def has_baseline(self) -> bool:

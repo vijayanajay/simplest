@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import ValidationError # Use pydantic_core's ValidationError for Pydantic v2
 
 from .exceptions import ConfigurationError
@@ -159,34 +159,36 @@ class BaselineConfig(BaseModel):
     strategy_type: Literal["BuyAndHold", "MovingAverageCrossover"] = "BuyAndHold"
     params: Optional[Dict[str, Any]] = None
     
-    @validator('strategy_type')
-    def validate_strategy_type(cls, v):
+    @field_validator('strategy_type')
+    @classmethod
+    def validate_strategy_type(cls, v: str) -> str:
         """Validate that strategy_type is supported."""
         allowed_types = ["BuyAndHold", "MovingAverageCrossover"]
         if v not in allowed_types:
             raise ValueError(f"Baseline strategy_type must be one of {allowed_types}, got: {v}")
         return v
     
-    @validator('params')
-    def validate_params_for_strategy(cls, v, values):
+    @model_validator(mode='after')
+    def validate_params_for_strategy(self) -> 'BaselineConfig':
         """Validate parameters based on strategy type."""
-        strategy_type = values.get('strategy_type')
+        strategy_type = self.strategy_type
+        params = self.params
         
         if strategy_type == "MovingAverageCrossover":
-            if not v:
+            if not params:
                 raise ValueError("MovingAverageCrossover baseline requires 'params' with 'fast_ma' and 'slow_ma'")
-            if 'fast_ma' not in v or 'slow_ma' not in v:
+            if 'fast_ma' not in params or 'slow_ma' not in params:
                 raise ValueError("MovingAverageCrossover baseline requires 'fast_ma' and 'slow_ma' parameters")
-            if not isinstance(v['fast_ma'], int) or not isinstance(v['slow_ma'], int):
+            if not isinstance(params['fast_ma'], int) or not isinstance(params['slow_ma'], int):
                 raise ValueError("MovingAverageCrossover 'fast_ma' and 'slow_ma' must be integers")
-            if v['fast_ma'] >= v['slow_ma']:
+            if params['fast_ma'] >= params['slow_ma']:
                 raise ValueError("MovingAverageCrossover 'fast_ma' must be less than 'slow_ma'")
         
         elif strategy_type == "BuyAndHold":
-            if v:
+            if params:
                 raise ValueError("BuyAndHold baseline does not accept parameters")
         
-        return v
+        return self
 
 class StrategyConfig(BaseModel):
     """

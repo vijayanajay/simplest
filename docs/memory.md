@@ -1,5 +1,15 @@
 # MEQSAP Memory Bank: Concise Do's and Don'ts
 
+## API & Package Contracts
+
+### DO ✅
+- Explicitly export all public symbols from a package's `__init__.py` file.
+- Use Pydantic v2 validators: `@field_validator` for single fields and `@model_validator` for cross-field validation.
+
+### DON'T ❌
+- Assume sub-module contents are automatically part of a package's public API.
+- Use deprecated Pydantic v1 `@validator` for new code.
+
 ## Package Structure & Imports
 
 ### DO ✅
@@ -38,11 +48,13 @@
 - Use factory functions for complex model creation
 - Add explicit validators for Union types with constraints
 - Handle both raw types and model instances in validators
+- Make configuration value lookups case-insensitive where it improves user experience (e.g., for names of functions, algorithms).
 
 ### DON'T ❌
 - Change schemas without updating dependent tests
 - Assume Union type validation works automatically
 - Use helper functions expecting raw types on model instances
+- Enforce strict case-sensitivity on user-provided string configurations (like function names) when a case-insensitive match is unambiguous and more user-friendly.
 
 ## Exception Handling & Error Codes
 
@@ -130,6 +142,8 @@
 6. **API Contract Inconsistency:** Use single canonical implementation for core logic
 7. **Brittle Path Handling:** Use `Path` objects, not strings, until absolutely needed
 8. **Exception Layer Confusion:** Handle exceptions at appropriate layer
+9. **Incomplete Package API Exposure:** When refactoring code into submodules (e.g., `utils.py`), failing to export the necessary functions from the package's `__init__.py`. This breaks the public API contract, leading to `ImportError` in consuming modules. **Fix:** Always review and update the package's `__init__.py` and `__all__` list to explicitly export all symbols intended for public use.
+10. **Module/Package Name Collision:** Avoid creating a `.py` file and a directory with the same name (e.g., `reporting.py` and `reporting/`) in the same package. This leads to ambiguous `ImportError`s. If refactoring a module into a package, delete the original `.py` file.
 
 ## CLI Orchestration & Error Handling
 
