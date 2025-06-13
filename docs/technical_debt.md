@@ -78,3 +78,29 @@ This document tracks identified technical debt items, their context, impact, and
         3.  Code for column discovery in `backtest.py` is simplified.
         4.  Relevant ADRs updated if necessary.
 **Estimated Effort/Priority:** Low / Medium
+
+---
+**-- TECHNICAL DEBT ITEM (NEW/UPDATED) --**
+**Debt Title:** Incomplete Refactoring of `analyze` Command and Workflow Architecture
+**Unique Identifier:** TD-20250619-001
+**Origin/Context:** Architectural audit finding `FLAW-20250619-002` on 2025-06-19.
+**Status (if updating existing):** NOT STARTED
+**Detailed Description:**
+    Current: The `analyze` command has two conflicting implementations. The active one in `src/meqsap/cli/__init__.py` is monolithic and handles all orchestration logic. A newer, but unused and incomplete, implementation exists in `src/meqsap/cli/commands/analyze.py` which correctly attempts to use the `AnalysisWorkflow` as described in `docs/architecture.md`. This indicates a critical, incomplete refactoring.
+    Ideal: The application should have a single, consistent implementation for the `analyze` command that fully utilizes the `workflows` orchestration layer as documented in the architecture. The old, monolithic implementation should be removed.
+    Why Debt: This is being logged as debt because fixing it requires completing a significant refactoring that is beyond the scope of a single audit cycle. It involves fixing the `AnalysisWorkflow`, implementing missing strategy logic, and rewiring the CLI, which requires dedicated development and testing effort.
+**Impact/Consequences:** High maintenance cost as developers must understand two competing implementations. High risk of new features being built on the deprecated monolithic implementation. Architectural drift and erosion of the documented design.
+**Proposed Rectification (Task/Feature):**
+    * Goal: Fully implement the workflow-based architecture for the `analyze` command and remove the old implementation.
+    * Specific Actionable Steps:
+        1.  Complete the `AnalysisWorkflow` in `src/meqsap/workflows/analysis.py` to handle data fetching and correctly call the backtesting and reporting modules.
+        2.  Implement the "BuyAndHold" strategy in `src/meqsap/backtest.py` and register it in `src/meqsap/config.py` to support the default baseline.
+        3.  Remove the old `analyze_command` function from `src/meqsap/cli/__init__.py`.
+        4.  Import and register the new `analyze` command from `src/meqsap/cli/commands/analyze.py` in the main Typer app.
+        5.  Update all relevant integration tests to use and validate the new workflow-based command.
+    * Acceptance Criteria / Definition of Done:
+        1.  The `meqsap analyze` command executes successfully via the `AnalysisWorkflow`.
+        2.  The command fully supports baseline comparison.
+        3.  The old monolithic `analyze_command` implementation is deleted from the codebase.
+        4.  All related integration tests pass.
+**Estimated Effort/Priority:** High / High

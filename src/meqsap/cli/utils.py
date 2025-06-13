@@ -14,6 +14,7 @@ from rich.console import Console
 from ..exceptions import (
     BacktestError,
     BacktestExecutionError,
+    MEQSAPError,
     ConfigurationError,
     DataAcquisitionError,
     DataError,
@@ -21,6 +22,7 @@ from ..exceptions import (
     OptimizationError,
     OptimizationInterrupted,
     ReportingError,
+    WorkflowError,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,25 +31,81 @@ logger = logging.getLogger(__name__)
 def _get_recovery_suggestions(exception: Exception) -> list[str]:
     suggestions = []
     if isinstance(exception, ConfigurationError):
-        suggestions.extend(["Verify the YAML file syntax is correct", "Check that all required fields are present", "Ensure date ranges are valid (start < end, not in future)", "Validate ticker symbol format", "Try using --validate-only to validate configuration without execution", "Check examples in documentation for proper YAML structure"])
+        suggestions.extend([
+            "Verify the YAML file syntax is correct", 
+            "Check that all required fields are present", 
+            "Ensure date ranges are valid (start < end, not in future)", 
+            "Validate ticker symbol format", 
+            "Try using --validate-only to validate configuration without execution", 
+            "Check examples in documentation for proper YAML structure"
+        ])
     elif isinstance(exception, (DataError, DataAcquisitionError)):
-        suggestions.extend(["Check your internet connection", "Verify the ticker symbol exists and is correctly spelled", "Try a different date range (some tickers have limited historical data)", "Wait a moment and try again (rate limiting)", "Check if yfinance service is experiencing issues", "Try using a more common ticker symbol to test connectivity"])
+        suggestions.extend([
+            "Check your internet connection", 
+            "Verify the ticker symbol exists and is correctly spelled", 
+            "Try a different date range (some tickers have limited historical data)", 
+            "Wait a moment and try again (rate limiting)", 
+            "Check if yfinance service is experiencing issues", 
+            "Try using a more common ticker symbol to test connectivity"
+        ])
     elif isinstance(exception, (BacktestError, BacktestExecutionError)):
-        suggestions.extend(["Verify your strategy parameters are reasonable", "Check that your data has sufficient history for the strategy", "Ensure moving average periods are less than data length", "Try reducing the complexity of your strategy parameters", "Check for data quality issues in your date range", "Consider using --verbose for more detailed error information"])
+        suggestions.extend([
+            "Verify your strategy parameters are reasonable", 
+            "Check that your data has sufficient history for the strategy", 
+            "Ensure moving average periods are less than data length", 
+            "Try reducing the complexity of your strategy parameters", 
+            "Check for data quality issues in your date range", 
+            "Consider using --verbose for more detailed error information"
+        ])
     elif isinstance(exception, (ReportingError, ReportGenerationError)):
-        suggestions.extend(["Check that the output directory exists and is writable", "Ensure you have sufficient disk space", "Try running without --report flag to skip PDF generation", "Verify all required dependencies for PDF generation are installed", "Check file permissions in the output directory", "Try specifying a different output directory with --output-dir"])
+        suggestions.extend([
+            "Check that the output directory exists and is writable", 
+            "Ensure you have sufficient disk space", 
+            "Try running without --report flag to skip PDF generation", 
+            "Verify all required dependencies for PDF generation are installed", 
+            "Check file permissions in the output directory", 
+            "Try specifying a different output directory with --output-dir"
+        ])
     elif isinstance(exception, OptimizationError):
-        suggestions.extend(["Check if parameter ranges allow for valid combinations (e.g., fast_ma < slow_ma)", "Widen parameter search space", "Try a different objective function", "Ensure backtest for a single parameter set works correctly"])
+        suggestions.extend([
+            "Check if parameter ranges allow for valid combinations (e.g., fast_ma < slow_ma)", 
+            "Widen parameter search space", 
+            "Try a different objective function", 
+            "Ensure backtest for a single parameter set works correctly"
+        ])
     elif isinstance(exception, OptimizationInterrupted):
-        suggestions.extend(["Run the optimization again to complete", "Partial results (if any) may have been displayed"])
+        suggestions.extend([
+            "Run the optimization again to complete", 
+            "Partial results (if any) may have been displayed"
+        ])
+    elif isinstance(exception, WorkflowError):
+        suggestions.extend([
+            "Try running with --verbose for more details", 
+            "Check the documentation for troubleshooting guides", 
+            "Verify all dependencies are properly installed", 
+            "Try running --version to check dependency status", 
+            "Consider using --dry-run to isolate configuration issues", 
+            "Check if this is a known issue in the project documentation"
+        ])
     else:
-        suggestions.extend(["Try running with --verbose for more details", "Check the documentation for troubleshooting guides", "Verify all dependencies are properly installed", "Try running --version to check dependency status", "Consider using --dry-run to isolate configuration issues", "Check if this is a known issue in the project documentation"])
+        suggestions.extend([
+            "Try running with --verbose for more details", 
+            "Check the documentation for troubleshooting guides", 
+            "Verify all dependencies are properly installed", 
+            "Try running --version to check dependency status", 
+            "Consider using --dry-run to isolate configuration issues", 
+            "Check if this is a known issue in the project documentation"
+        ])
     return suggestions
 
 
 def _generate_error_message(exception: Exception, verbose: bool = False, no_color: bool = False) -> str:
-    error_type = type(exception).__name__
-    error_msg = str(exception)
+    if isinstance(exception, MEQSAPError):
+        error_type = type(exception).__name__
+        error_msg = str(exception)
+    else:
+        error_type = "Unexpected error"
+        error_msg = str(exception)
     if no_color:
         message_parts = [f"{error_type}: {error_msg}"]
     else:
@@ -124,6 +182,12 @@ def handle_cli_errors(func: Any) -> Any:
             # Interruption is a warning, not an error
             # The specific command logic is now responsible for printing the user-facing message.
             logger.warning(f"Process interrupted by user: {e}")
+            raise typer.Exit(code=exit_code)
+        except WorkflowError as e:
+            exit_code = 10  # Map WorkflowError to exit code 10
+            logger.error(f"{type(e).__name__}: {e}", exc_info=verbose)
+            error_msg = _generate_error_message(e, verbose=verbose, no_color=no_color)
+            console.print(error_msg)
             raise typer.Exit(code=exit_code)
         except Exception as e:
             exit_code = 10  # Unexpected errors

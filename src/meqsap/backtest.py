@@ -33,13 +33,13 @@ from pydantic import BaseModel, Field
 
 try:
     # For direct imports when used as a package
-    from .config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams
+    from .config import StrategyConfig, BaseStrategyParams
     from .exceptions import BacktestError
     from .indicators_core.registry import get_indicator_registry # New import
     # Import indicators_core to trigger indicator registration
     from . import indicators_core
 except ImportError: # For imports when running tests or if structure changes
-    from src.meqsap.config import StrategyConfig, BaseStrategyParams, MovingAverageCrossoverParams # type: ignore
+    from src.meqsap.config import StrategyConfig, BaseStrategyParams # type: ignore
     from src.meqsap.exceptions import BacktestError # type: ignore
 
 

@@ -25,7 +25,9 @@ from src.meqsap.backtest import (
     BacktestAnalysisResult,
     BacktestError
 )
-from src.meqsap.config import MovingAverageCrossoverParams, StrategyConfig, ConfigurationError
+from src.meqsap.config import (
+    MovingAverageCrossoverParams, StrategyConfig, ConfigurationError, BuyAndHoldParams
+)
 
 
 class TestStrategySignalGenerator:
@@ -93,36 +95,24 @@ class TestStrategySignalGenerator:
         data = self.create_sample_data()
         config = self.create_sample_config()
         config.strategy_type = "UnknownStrategy"
-        
+
         with pytest.raises(ConfigurationError, match="Unknown strategy type"):
             StrategySignalGenerator.generate_signals(data, config)
     
     def test_generate_buy_and_hold_signals_success(self):
         """Test successful Buy and Hold signal generation."""
         data = self.create_sample_data()
-        config = StrategyConfig(
-            ticker="AAPL",
-            start_date=date(2023, 1, 1),
-            end_date=date(2023, 4, 10),
-            strategy_type="BuyAndHold",
-            strategy_params={}
-        )
+        config = self.create_sample_config()
+        config.strategy_type = "BuyAndHold"
         
         signals = StrategySignalGenerator.generate_signals(data, config)
         
-        assert isinstance(signals, pd.DataFrame)
-        assert 'entry' in signals.columns
-        assert 'exit' in signals.columns
         assert signals.dtypes['entry'] == bool
         assert signals.dtypes['exit'] == bool
         assert len(signals) > 0
-        
-        # Buy and Hold should have exactly one entry signal on the first day
-        assert signals['entry'].sum() == 1
-        assert signals.iloc[0]['entry'] == True
-        
-        # Buy and Hold should have no exit signals
-        assert signals['exit'].sum() == 0
+        assert signals['entry'].sum() == 1, "Expected one entry signal for Buy and Hold"
+        assert signals.iloc[0]['entry'], "First day should be an entry signal"
+        assert signals['exit'].sum() == 0, "Expected no exit signals for Buy and Hold"
 
 
 class TestRunBacktest:

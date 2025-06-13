@@ -1,16 +1,18 @@
 """Analysis workflow orchestration."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
+import pandas as pd
 from rich.console import Console
 from rich.status import Status
 
 from ..config import StrategyConfig
+from ..data import fetch_market_data
 from ..backtest import BacktestAnalysisResult, run_complete_backtest
 from ..reporting.models import ComparativeAnalysisResult
-from ..reporting.main import ReportingOrchestrator
-from ..exceptions import BacktestError, WorkflowError
+from ..reporting.main import ReportingOrchestrator, TerminalReporter, HtmlReporter, PdfReporter
+from ..exceptions import BacktestError, WorkflowError, DataError, ConfigurationError, ReportingError
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +32,8 @@ class AnalysisWorkflow:
     
     def execute(self) -> ComparativeAnalysisResult:
         """Execute the complete analysis workflow."""
-        try:
-            with Status("🔧 Initializing analysis workflow...", console=self.console) as status:
+        with Status("🔧 Initializing analysis workflow...", console=self.console) as status:
+            try:
                 # Show baseline status
                 baseline_config = self.config.get_baseline_config_with_defaults(self.no_baseline)
                 if baseline_config and baseline_config.active:
@@ -39,9 +41,19 @@ class AnalysisWorkflow:
                 else:
                     status.update("🔧 Baseline comparison disabled")
                 
+                # Fetch market data
+                status.update(f"\ud83d\udce1 Fetching market data for {self.config.ticker}...")
+                market_data = fetch_market_data(
+                    ticker=self.config.ticker,
+                    start_date=self.config.start_date,
+                    end_date=self.config.end_date,
+                )
+                if market_data.empty:
+                    raise DataError(f"No market data found for {self.config.ticker}")
+
                 # Execute candidate strategy
-                status.update("📊 Running candidate strategy backtest...")
-                candidate_result = self._run_candidate_backtest()
+                status.update("\ud83d\udcca Running candidate strategy backtest...")
+                candidate_result = self._run_candidate_backtest(market_data)
                 
                 # Execute baseline strategy if enabled
                 baseline_result = None
@@ -49,57 +61,58 @@ class AnalysisWorkflow:
                 baseline_failure_reason = None
                 
                 if baseline_config and baseline_config.active:
-                    status.update("📈 Running baseline strategy backtest...")
-                    baseline_result, baseline_failed, baseline_failure_reason = self._run_baseline_safely(baseline_config)
+                    status.update("\ud83d\udcc8 Running baseline strategy backtest...")
+                    baseline_result, baseline_failed, baseline_failure_reason = self._run_baseline_safely(baseline_config, market_data)
                     
                     if baseline_failed:
-                        status.update("⚠️ Baseline failed, continuing with candidate analysis...")
+                        status.update("\u26a0\ufe0f Baseline failed, continuing with candidate analysis...")
                 
                 # Create comparative result
                 status.update("📋 Analyzing results...")
                 result = self._create_comparative_result(
                     candidate_result, baseline_result, baseline_failed, baseline_failure_reason
-                )
-                
+                )                
                 # Generate reports
                 status.update("📄 Generating reports...")
                 self._generate_reports(result)
                 
                 status.update("✅ Analysis complete!")
                 
-            return result
-            
-        except Exception as e:
-            logger.error(f"Analysis workflow failed: {e}")
-            raise WorkflowError(f"Analysis workflow execution failed: {e}")
+                return result
+            except (DataError, BacktestError, ConfigurationError, ReportingError) as e:
+                # Re-raise known, specific errors so the CLI can handle them correctly
+                raise
+            except Exception as e:
+                logger.error(f"Analysis workflow failed with an unexpected error: {e}", exc_info=True)
+                raise WorkflowError(f"Analysis workflow execution failed: {e}") from e
     
-    def _run_candidate_backtest(self) -> BacktestAnalysisResult:
+    def _run_candidate_backtest(self, market_data: pd.DataFrame) -> BacktestAnalysisResult:
         """Run the candidate strategy backtest."""
         try:
-            return run_complete_backtest(self.config)
+            return run_complete_backtest(self.config, market_data)
         except Exception as e:
             logger.error(f"Candidate backtest failed: {e}")
             raise BacktestError(f"Candidate strategy backtest failed: {e}")
-    
-    def _run_baseline_safely(self, baseline_config) -> tuple[Optional[BacktestAnalysisResult], bool, Optional[str]]:
+
+    def _run_baseline_safely(self, baseline_config, market_data: pd.DataFrame) -> tuple[Optional[BacktestAnalysisResult], bool, Optional[str]]:
         """Run baseline backtest with comprehensive error handling."""
         try:
             # Create baseline strategy config
             baseline_strategy_config = self._create_baseline_strategy_config(baseline_config)
             
             # Execute baseline backtest
-            baseline_result = run_complete_backtest(baseline_strategy_config)
+            baseline_result = run_complete_backtest(baseline_strategy_config, market_data)
             return baseline_result, False, None
             
         except Exception as e:
             error_msg = f"Baseline strategy execution failed: {str(e)}"
             logger.warning(error_msg)
             return None, True, error_msg
-    
+
     def _create_baseline_strategy_config(self, baseline_config) -> StrategyConfig:
         """Create a strategy config for the baseline strategy."""
         # Create a copy of the main config but with baseline strategy settings
-        baseline_dict = self.config.dict()
+        baseline_dict = self.config.model_dump()
         
         # Replace strategy-specific settings with baseline
         if baseline_config.strategy_type == "BuyAndHold":
@@ -133,29 +146,25 @@ class AnalysisWorkflow:
             baseline_result=baseline_result,
             baseline_failed=baseline_failed,
             baseline_failure_reason=baseline_failure_reason,
-            comparative_verdict=comparative_verdict
-        )
+            comparative_verdict=comparative_verdict        )
     
     def _calculate_verdict(self, candidate: BacktestAnalysisResult, baseline: BacktestAnalysisResult) -> str:
         """Calculate performance verdict based on Sharpe ratio."""
-        if candidate.sharpe_ratio > baseline.sharpe_ratio:
+        if candidate.primary_result.sharpe_ratio > baseline.primary_result.sharpe_ratio:
             return "Outperformed"
         else:
             return "Underperformed"
-    
+
     def _generate_reports(self, result: ComparativeAnalysisResult) -> None:
         """Generate reports based on CLI flags."""
-        try:
-            orchestrator = ReportingOrchestrator.from_cli_flags(self.cli_flags)
-            orchestrator.generate_reports(result)
-            
-            # Show completion summary
-            self._show_completion_summary()
-            
-        except Exception as e:
-            logger.error(f"Report generation failed: {e}")
-            # Don't fail the entire workflow for reporting issues
-            self.console.print("⚠️ Some reports failed to generate. Check logs for details.")
+        orchestrator = ReportingOrchestrator()
+        orchestrator.add_reporter(TerminalReporter())
+        if self.report_html:
+            orchestrator.add_reporter(HtmlReporter())
+        if self.report_pdf:
+            orchestrator.add_reporter(PdfReporter())
+        orchestrator.generate_reports(result)
+        self._show_completion_summary()
     
     def _show_completion_summary(self) -> None:
         """Show completion summary with generated files."""

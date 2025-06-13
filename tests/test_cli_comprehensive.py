@@ -16,7 +16,7 @@ from io import StringIO
 from src.meqsap.cli import app
 from src.meqsap.config import StrategyConfig
 from src.meqsap.exceptions import ConfigurationError
-from src.meqsap.data import DataError
+from src.meqsap.data import DataError, fetch_market_data
 from src.meqsap.backtest import BacktestError, BacktestAnalysisResult, BacktestResult
 from src.meqsap.reporting import ReportingError
 from src.meqsap.exceptions import MEQSAPError
@@ -35,10 +35,8 @@ class TestConfigurationErrorScenarios:
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
             assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            # For handled errors in _main_pipeline leading to typer.Exit,
-            # _generate_error_message is NOT called by analyze_command's main except block.
-            # Stdout will only contain what was printed before the exit.
-            assert "Loading configuration from" in result.stdout
+            assert "Configuration validation failed" in result.stdout
+            assert "Field required" in result.stdout
         finally:
             os.unlink(config_file)
     
@@ -54,7 +52,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
             assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Loading configuration from" in result.stdout
+            assert "Input should be a valid date" in result.stdout
         finally:
             os.unlink(config_file)
     
@@ -70,7 +68,7 @@ strategy_params: { "fast_ma": -5, "slow_ma": 20 }""")
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
             assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Loading configuration from" in result.stdout
+            assert "fast_ma must be positive" in result.stdout
         finally:
             os.unlink(config_file)
     
@@ -86,7 +84,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
             assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Loading configuration from" in result.stdout
+            assert "Invalid YAML" in result.stdout
         finally:
             os.unlink(config_file)
     
@@ -102,7 +100,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
             assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Loading configuration from" in result.stdout
+            assert "end_date must be after start_date" in result.stdout
         finally:
             os.unlink(config_file)
 
@@ -110,9 +108,9 @@ class TestDataAcquisitionErrorScenarios:
     def setup_method(self):
         self.runner = CliRunner()
     
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_network_connection_failure(self, mock_fetch_market_data):
-        mock_fetch_market_data.side_effect = DataError("Connection timeout")
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_network_connection_failure(self, mock_fetch_data):
+        mock_fetch_data.side_effect = DataError("Connection timeout")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -123,15 +121,14 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Fetching market data for GOODTICKER" in result.stdout
-        finally:
-            os.unlink(config_file)
+            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Connection timeout" in result.stdout
+        finally:            os.unlink(config_file)
     
-    @patch('src.meqsap.cli.validate_config')
-    @patch('src.meqsap.cli.load_yaml_config')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_invalid_ticker_symbol(self, mock_fetch_market_data, mock_load_yaml, mock_validate_config):
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    @patch('src.meqsap.cli.commands.analyze.validate_config')
+    @patch('src.meqsap.cli.commands.analyze.load_yaml_config')
+    def test_invalid_ticker_symbol(self, mock_load_yaml, mock_validate_config, mock_fetch_data):
         mock_config_obj = Mock(spec=StrategyConfig)
         mock_config_obj.strategy_type = "MovingAverageCrossover"
         mock_config_obj.ticker = "MOCKFAIL"
@@ -147,7 +144,7 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
         mock_load_yaml.return_value = {"ticker": "MOCKFAIL", "strategy_type": "MovingAverageCrossover", "start_date": "2023-01-01", "end_date": "2023-12-31"}
         mock_validate_config.return_value = mock_config_obj
 
-        mock_fetch_market_data.side_effect = DataError("No data found for symbol MOCKFAIL")
+        mock_fetch_data.side_effect = DataError("No data found for symbol MOCKFAIL")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -158,16 +155,15 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Fetching market data for MOCKFAIL" in result.stdout
-        finally:
-            os.unlink(config_file)
+            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "No data found for symbol MOCKFAIL" in result.stdout
+        finally:            os.unlink(config_file)
     
-    @patch('src.meqsap.cli.run_complete_backtest')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_insufficient_data_period(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({'open': [100], 'close': [100]})
-        mock_run_complete_backtest.side_effect = BacktestError("Insufficient data points for MA 50/100")
+    @patch('src.meqsap.workflows.analysis.run_complete_backtest')
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_insufficient_data_period(self, mock_fetch_data, mock_run_backtest):
+        mock_fetch_data.return_value = pd.DataFrame({'open': [100], 'close': [100]})
+        mock_run_backtest.side_effect = BacktestError("Insufficient data points for MA 50/100")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -178,14 +174,13 @@ strategy_params: {"fast_ma": 50, "slow_ma": 100}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Running backtest analysis..." in result.stdout
-        finally:
-            os.unlink(config_file)
+            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Insufficient data points" in result.stdout
+        finally:            os.unlink(config_file)
     
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_api_rate_limiting(self, mock_fetch_market_data):
-        mock_fetch_market_data.side_effect = DataError("Rate limit exceeded")
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_api_rate_limiting(self, mock_fetch_data):
+        mock_fetch_data.side_effect = DataError("Rate limit exceeded")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -196,8 +191,8 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Fetching market data for AAPL" in result.stdout
+            assert result.exit_code == 2, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Rate limit exceeded" in result.stdout
         finally:
             os.unlink(config_file)
 
@@ -205,14 +200,14 @@ class TestBacktestExecutionErrorScenarios:
     def setup_method(self):
         self.runner = CliRunner()
     
-    @patch('src.meqsap.cli.run_complete_backtest')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_mathematical_computation_errors(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({
+    @patch('src.meqsap.workflows.analysis.run_complete_backtest')
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_mathematical_computation_errors(self, mock_fetch_data, mock_run_backtest):
+        mock_fetch_data.return_value = pd.DataFrame({
             'open':[100],'high':[100],'low':[100],
             'close':[100],'volume':[100]
         })
-        mock_run_complete_backtest.side_effect = BacktestError("Division by zero in Sharpe calculation")
+        mock_run_backtest.side_effect = BacktestError("Division by zero in Sharpe calculation")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -223,19 +218,18 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Running backtest analysis..." in result.stdout
-        finally:
-            os.unlink(config_file)
+            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Division by zero" in result.stdout
+        finally:            os.unlink(config_file)
     
-    @patch('src.meqsap.cli.run_complete_backtest')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_memory_exhaustion_errors(self, mock_fetch_market_data, mock_run_complete_backtest):
-        mock_fetch_market_data.return_value = pd.DataFrame({
+    @patch('src.meqsap.workflows.analysis.run_complete_backtest')
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_memory_exhaustion_errors(self, mock_fetch_data, mock_run_backtest):
+        mock_fetch_data.return_value = pd.DataFrame({
             'open':[100,101,102],'high':[100,101,102],'low':[100,101,102],
             'close':[100,101,102],'volume':[100,101,102]
         })
-        mock_run_complete_backtest.side_effect = MemoryError("Not enough memory")
+        mock_run_backtest.side_effect = MemoryError("Not enough memory")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -246,15 +240,12 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Running backtest analysis..." in result.stdout # Check for earlier message
-            # The specific "Not enough memory" will be in suggestions if _generate_error_message was called
-            # but for exit code 3 from _main_pipeline, it's not.
-        finally:
-            os.unlink(config_file)
+            assert result.exit_code == 3, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Not enough memory" in result.stdout
+        finally:            os.unlink(config_file)
     
-    @patch('src.meqsap.cli.validate_config')
-    @patch('src.meqsap.cli.load_yaml_config')
+    @patch('src.meqsap.cli.commands.analyze.validate_config')
+    @patch('src.meqsap.cli.commands.analyze.load_yaml_config')
     def test_invalid_strategy_parameters(self, mock_load_yaml_config, mock_validate_config):
         mock_load_yaml_config.return_value = {
             "strategy_type": "MovingAverageCrossover", "ticker": "AAPL",
@@ -271,8 +262,8 @@ strategy_params: { "fast_ma": 50, "slow_ma": 10 } """)
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Loading configuration from" in result.stdout
+            assert result.exit_code == 1, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Fast MA (50) must be less than Slow MA (10)" in result.stdout
         finally:
             os.unlink(config_file)
 
@@ -280,13 +271,18 @@ class TestReportGenerationErrorScenarios:
     def setup_method(self):
         self.runner = CliRunner()
     
-    @patch('src.meqsap.cli.generate_complete_report')
-    @patch('src.meqsap.cli.run_complete_backtest')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_pdf_generation_permission_error(self, mock_fetch_market_data, mock_run_complete_backtest, mock_generate_complete_report):
-        mock_fetch_market_data.return_value = pd.DataFrame({'close': [100]})
-        mock_run_complete_backtest.return_value = Mock(spec=BacktestAnalysisResult)
-        mock_generate_complete_report.side_effect = ReportingError("Permission denied for PDF")
+    @patch('src.meqsap.workflows.analysis.ReportingOrchestrator')
+    @patch('src.meqsap.workflows.analysis.run_complete_backtest')
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_pdf_generation_permission_error(self, mock_fetch_data, mock_run_backtest, mock_orchestrator_cls):
+        mock_fetch_data.return_value = pd.DataFrame({'close': [100]})
+        # Fix: Provide a more complete mock to avoid AttributeError downstream
+        mock_analysis_result = Mock(spec=BacktestAnalysisResult)
+        mock_primary_result = Mock(spec=BacktestResult)
+        mock_primary_result.sharpe_ratio = 1.0
+        mock_analysis_result.primary_result = mock_primary_result
+        mock_run_backtest.return_value = mock_analysis_result
+        mock_orchestrator_cls.return_value.generate_reports.side_effect = ReportingError("Permission denied for PDF")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -297,8 +293,8 @@ strategy_params: {"fast_ma": 10, "slow_ma": 20}""")
             config_file = f.name
         try:
             result = self.runner.invoke(app, ["analyze", config_file, "--report"], catch_exceptions=True)
-            assert result.exit_code == 4, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}"
-            assert "Generating reports" in result.stdout # Check for earlier message
+            assert result.exit_code == 4, f"EXIT CODE: {result.exit_code}\nSTDOUT: {result.stdout}\nException: {result.exception}"
+            assert "Permission denied for PDF" in result.stdout
         finally:
             os.unlink(config_file)
 
@@ -306,12 +302,18 @@ class TestProgressAndUserExperience:
     def setup_method(self):
         self.runner = CliRunner()
     
-    @patch('src.meqsap.cli.Progress')
-    @patch('src.meqsap.cli.fetch_market_data')
-    def test_progress_indicators_data_download(self, mock_fetch_market_data, mock_progress_constructor):
-        mock_fetch_market_data.return_value = pd.DataFrame({'close': [100, 101, 102]})
-        mock_progress_instance = MagicMock()
-        mock_progress_constructor.return_value.__enter__.return_value = mock_progress_instance
+    @patch('src.meqsap.workflows.analysis.Status')
+    @patch('src.meqsap.workflows.analysis.fetch_market_data')
+    def test_progress_indicators_data_download(self, mock_fetch_data, mock_status_constructor):
+        mock_fetch_data.return_value = pd.DataFrame({'close': [100, 101, 102]})
+        mock_status_instance = MagicMock()
+        mock_status_constructor.return_value.__enter__.return_value = mock_status_instance
+        # Fix: Provide a more complete mock to avoid AttributeError downstream
+        mock_analysis_result = Mock(spec=BacktestAnalysisResult)
+        mock_primary_result = Mock(spec=BacktestResult)
+        mock_primary_result.sharpe_ratio = 1.0
+        mock_analysis_result.primary_result = mock_primary_result
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("""
 strategy_type: "MovingAverageCrossover"
@@ -321,11 +323,11 @@ end_date: "2023-01-03"
 strategy_params: {"fast_ma": 1, "slow_ma": 2}""")
             config_file = f.name
         try:
-            with patch('src.meqsap.cli.run_complete_backtest', return_value=Mock(spec=BacktestAnalysisResult)), \
-                 patch('src.meqsap.cli.generate_complete_report', return_value=None):
+            with patch('src.meqsap.workflows.analysis.run_complete_backtest', return_value=mock_analysis_result), \
+                 patch('src.meqsap.workflows.analysis.ReportingOrchestrator', return_value=Mock()):
                 self.runner.invoke(app, ["analyze", config_file], catch_exceptions=True)
-            mock_progress_constructor.assert_called()
-            mock_progress_instance.add_task.assert_any_call("Downloading market data...", total=None)
+            mock_status_constructor.assert_called()
+            mock_status_instance.update.assert_any_call("✅ Analysis complete!")
         finally:
             os.unlink(config_file)
     

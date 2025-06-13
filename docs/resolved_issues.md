@@ -5,22 +5,22 @@ This file tracks issues that have been resolved, including their re-open history
 **Last Updated:** 2025-06-19
 
 ---
+**Issue ID:** FLAW-20250617-002
+**Original Description (Concise):** The CLI `optimize` command violated exit code policy and had broken `KeyboardInterrupt` handling, causing loss of optimization progress.
+**Initial Resolution Summary (Concise):** The `OptimizationEngine` was verified to correctly handle `KeyboardInterrupt` and set an interruption flag. The CLI command was verified to correctly inspect this flag. The `handle_cli_errors` decorator was verified to map `OptimizationError` and `OptimizationInterrupted` exceptions to the correct exit codes (6 and 7 respectively), resolving the issue.
+**Date First Resolved:** 2025-06-19
+**Reopen Count:** 0
+**Last Reopened Date:** 
+**Last Resolution Summary (Concise):** The `OptimizationEngine` was verified to correctly handle `KeyboardInterrupt` and set an interruption flag. The CLI command was verified to correctly inspect this flag. The `handle_cli_errors` decorator was verified to map `OptimizationError` and `OptimizationInterrupted` exceptions to the correct exit codes (6 and 7 respectively), resolving the issue.
+**Date Last Resolved:** 2025-06-19
+---
 **Issue ID:** FLAW-20250617-001
 **Original Description (Concise):** The comment in `examples/indian_stock_sample.yaml` incorrectly stated that `objective_function` names are case-insensitive, contradicting the case-sensitive implementation.
 **Initial Resolution Summary (Concise):** Corrected the comment in `examples/indian_stock_sample.yaml` to state that `objective_function` names are case-sensitive, aligning documentation with the implementation.
 **Date First Resolved:** 2025-06-18
-**Reopen Count:** 0
-**Last Reopened Date:** 
+**Reopen Count:** 1
+**Last Reopened Date:** 2025-06-19
 **Last Resolution Summary (Concise):** Corrected the comment in `examples/indian_stock_sample.yaml` to state that `objective_function` names are case-sensitive, aligning documentation with the implementation.
-**Date Last Resolved:** 2025-06-18
----
-**Issue ID:** FLAW-20250617-002
-**Original Description (Concise):** The CLI `optimize` command violated exit code policy and had broken `KeyboardInterrupt` handling, causing loss of optimization progress.
-**Initial Resolution Summary (Concise):** The `OptimizationEngine` was verified to correctly handle `KeyboardInterrupt` and set an interruption flag. The CLI command was verified to correctly inspect this flag. The `handle_cli_errors` decorator was verified to map `OptimizationError` and `OptimizationInterrupted` exceptions to the correct exit codes (6 and 7 respectively), resolving the issue.
-**Date First Resolved:** 2025-06-18
-**Reopen Count:** 0
-**Last Reopened Date:** 
-**Last Resolution Summary (Concise):** The `OptimizationEngine` was verified to correctly handle `KeyboardInterrupt` and set an interruption flag. The CLI command was verified to correctly inspect this flag. The `handle_cli_errors` decorator was verified to map `OptimizationError` and `OptimizationInterrupted` exceptions to the correct exit codes (6 and 7 respectively), resolving the issue.
 **Date Last Resolved:** 2025-06-18
 ---
 **Issue ID:** FLAW-20250601-001

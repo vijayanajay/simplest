@@ -64,12 +64,14 @@ class TestOptimizationErrorHandling:
         # Patch the backtest function to raise the exception
         mock_backtest = mocker.patch('src.meqsap.optimizer.engine.run_complete_backtest')
         mock_backtest.side_effect = exception_type
-        
-        # Patch other methods
+          # Patch other methods
         mocker.patch.object(mock_engine, '_suggest_params_for_trial', return_value=mock_trial.params)
         mocker.patch.object(mock_engine, '_record_failure')
         mocker.patch.object(mock_engine, '_update_progress')
         
+        # Set caplog level to capture DEBUG logs before executing
+        caplog.set_level("DEBUG")
+
         # Execute the method - engine needs _market_data set
         mock_engine._market_data = mock_market_data
         result = mock_engine._run_single_trial(mock_trial, mock_market_data)
@@ -77,9 +79,6 @@ class TestOptimizationErrorHandling:
         # Assertions
         assert result == FAILED_TRIAL_SCORE
         mock_engine._record_failure.assert_called_once_with(expected_failure_type, mock_trial.params)
-        
-        # Set caplog level to capture DEBUG logs
-        caplog.set_level("DEBUG")
         
         # Check logging
         if isinstance(exception_type, (DataError, BacktestError, ConfigurationError)):

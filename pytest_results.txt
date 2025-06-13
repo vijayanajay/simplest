@@ -4,25 +4,28 @@ cachedir: \tmp\pytest_cache
 rootdir: D:\Code\simplest
 configfile: pyproject.toml
 plugins: cov-6.1.1, mock-3.14.1
-collected 275 items
+collected 262 items
 
-tests\indicators_core\indicators\test_moving_average.py ........         [  2%]
-tests\indicators_core\indicators\test_rsi.py ........                    [  5%]
-tests\indicators_core\test_base.py ........                              [  8%]
+tests\indicators_core\indicators\test_moving_average.py ........         [  3%]
+tests\indicators_core\indicators\test_rsi.py ........                    [  6%]
+tests\indicators_core\test_base.py ........                              [  9%]
 tests\indicators_core\test_parameters.py ............                    [ 13%]
-tests\test_backtest.py .............                                     [ 17%]
-tests\test_cli.py ..................                                     [ 24%]
-tests\test_cli_comprehensive.py .......................                  [ 32%]
-tests\test_cli_enhanced.py ...................................           [ 45%]
-tests\test_cli_optimize_integration.py ...................               [ 52%]
-tests\test_config.py ............................                        [ 62%]
-tests\test_data.py .......                                               [ 65%]
-tests\test_float_handling.py ........                                    [ 68%]
-tests\test_objective_functions.py .................                      [ 74%]
-tests\test_optimizer\test_optimization_error_handling.py .......         [ 76%]
-tests\test_reporting\test_models.py ......                               [ 78%]
-tests\test_reporting_main.py ................................s........   [ 93%]
-tests\test_run.py .................                                      [100%]
+tests\test_backtest.py .............                                     [ 18%]
+tests\test_cli.py .................                                      [ 25%]
+tests\test_cli_baseline.py ...                                           [ 26%]
+tests\test_cli_comprehensive.py .......................                  [ 35%]
+tests\test_cli_enhanced.py ..........                                    [ 38%]
+tests\test_cli_optimize_integration.py ...................               [ 46%]
+tests\test_config.py ............................                        [ 56%]
+tests\test_data.py .......                                               [ 59%]
+tests\test_float_handling.py ........                                    [ 62%]
+tests\test_objective_functions.py .................                      [ 69%]
+tests\test_optimizer\test_optimization_error_handling.py .......         [ 71%]
+tests\test_reporting\test_models.py ......                               [ 74%]
+tests\test_reporting\test_reporters.py ......                            [ 76%]
+tests\test_reporting_main.py ................................s........   [ 91%]
+tests\test_run.py .................                                      [ 98%]
+tests\test_workflows\test_analysis_workflow.py ....                      [100%]
 
 =============================== tests coverage ================================
 ______________ coverage: platform win32, python 3.12.10-final-0 _______________
@@ -32,11 +35,12 @@ Name                                                       Stmts   Miss  Cover
 src\__init__.py                                                0      0   100%
 src\meqsap\__init__.py                                         4      0   100%
 src\meqsap\backtest.py                                       446    112    75%
-src\meqsap\cli\__init__.py                                   172     13    92%
-src\meqsap\cli\commands\__init__.py                            2      0   100%
+src\meqsap\cli\__init__.py                                    43      4    91%
+src\meqsap\cli\commands\__init__.py                            3      0   100%
+src\meqsap\cli\commands\analyze.py                            21      0   100%
 src\meqsap\cli\commands\optimize.py                           92      8    91%
 src\meqsap\cli\optimization_ui.py                             94     25    73%
-src\meqsap\cli\utils.py                                       96      2    98%
+src\meqsap\cli\utils.py                                      107      8    93%
 src\meqsap\config.py                                         189     22    88%
 src\meqsap\data.py                                            68     11    84%
 src\meqsap\exceptions.py                                      24      0   100%
@@ -56,7 +60,9 @@ src\meqsap\reporting\__init__.py                               6      0   100%
 src\meqsap\reporting\format_utils.py                         244     66    73%
 src\meqsap\reporting\main.py                                  41      0   100%
 src\meqsap\reporting\models.py                                53      3    94%
-src\meqsap\reporting\reporters.py                            100     46    54%
+src\meqsap\reporting\reporters.py                            100     18    82%
+src\meqsap\workflows\__init__.py                               2      0   100%
+src\meqsap\workflows\analysis.py                             105     12    89%
 test_yfinance_india.py                                        31     27    13%
 tests\__init__.py                                              3      0   100%
 tests\indicators_core\__init__.py                              0      0   100%
@@ -65,10 +71,11 @@ tests\indicators_core\indicators\test_moving_average.py       44      0   100%
 tests\indicators_core\indicators\test_rsi.py                  45      0   100%
 tests\indicators_core\test_base.py                            71      2    97%
 tests\indicators_core\test_parameters.py                      50      0   100%
-tests\test_backtest.py                                       177      0   100%
-tests\test_cli.py                                            335      0   100%
-tests\test_cli_comprehensive.py                              255      1    99%
-tests\test_cli_enhanced.py                                   333      0   100%
+tests\test_backtest.py                                       175      0   100%
+tests\test_cli.py                                            261      0   100%
+tests\test_cli_baseline.py                                    62      0   100%
+tests\test_cli_comprehensive.py                              264      1    99%
+tests\test_cli_enhanced.py                                    84      0   100%
 tests\test_cli_optimize_integration.py                       320      0   100%
 tests\test_config.py                                         166      0   100%
 tests\test_data.py                                           107      0   100%
@@ -78,10 +85,13 @@ tests\test_optimizer\__init__.py                               0      0   100%
 tests\test_optimizer\test_optimization_error_handling.py      81      0   100%
 tests\test_reporting\__init__.py                               0      0   100%
 tests\test_reporting\test_models.py                           50      0   100%
+tests\test_reporting\test_reporters.py                        83      0   100%
 tests\test_reporting_main.py                                 335     11    97%
 tests\test_reporting_models\__init__.py                        0      0   100%
 tests\test_reporting_models\test_models.py                     0      0   100%
 tests\test_run.py                                            165     10    94%
+tests\test_workflows\__init__.py                               0      0   100%
+tests\test_workflows\test_analysis_workflow.py                86      0   100%
 ------------------------------------------------------------------------------
-TOTAL                                                       4836    537    89%
-======================= 274 passed, 1 skipped in 33.44s =======================
+TOTAL                                                       4762    518    89%
+======================= 261 passed, 1 skipped in 27.47s =======================

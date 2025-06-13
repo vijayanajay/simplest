@@ -56,7 +56,7 @@ strategy_params:
 optimization_config:
   active: true                    # Must be true to enable optimization
   algorithm: "GridSearch"         # Systematic exploration of all combinations
-  # Objective function name is case-insensitive.
+  # Objective function name is case-sensitive.
   # Available options: SharpeRatio, CalmarRatio, ProfitFactor, SharpeWithHoldPeriodConstraint
   objective_function: "SharpeRatio"    # Optimize for risk-adjusted returns
   objective_params:
